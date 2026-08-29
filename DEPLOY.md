@@ -139,10 +139,16 @@ While viewing:
 | drawing arrows, adding notes | switching Step 1 / Step 2 |
 | the card panel and submit/clear buttons (hidden) | refresh, back to list, reading everything |
 
-Getting around a board: drag anywhere on the background to pan (cards are click-through
-while viewing, so you can drag over them too), scroll or two-finger swipe to pan,
-ctrl/⌘+scroll to zoom. If a board looks empty, the participant's cards are probably
-off to one side — press **화면 맞춤 / Reset view** to snap back to origin at 100%.
+Getting around a board: drag anywhere on the background to pan, scroll or two-finger
+swipe to pan, ctrl/⌘+scroll to zoom. If a board looks empty, the participant's cards are
+probably off to one side — press **화면 맞춤 / Reset view** to snap back to origin at 100%.
+
+**Reading text longer than its card:** put the pointer over the card's text and scroll.
+The text scrolls inside the card; once it hits top or bottom the board resumes panning.
+You can also click into the text and select it. (Typing does nothing — the handler is a
+no-op and the value is controlled, so it reverts immediately.) This applies to
+participants too: before, a wheel event anywhere over the board panned it, so nobody
+could scroll a description longer than its card.
 
 Why this is belt-and-braces: `componentDidUpdate` fires on *any* state change and writes
 both localStorage and a queued sheet POST, and `latestState_()` returns the **newest** row

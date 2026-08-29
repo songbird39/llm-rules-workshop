@@ -263,6 +263,48 @@ console.log("\nview mode cannot write");
       "wheel pan binds on the board step");
   }
 
+  // 7d-ter. text inside a card must be reachable and scrollable while viewing
+  check(/pointer-events:auto/.test(doc), "card text re-enabled under pointer-events:none");
+  check((doc.match(/pointer-events:auto/g) || []).length === 5,
+    "all five text elements re-enabled",
+    ` (${(doc.match(/pointer-events:auto/g) || []).length})`);
+  check(/descOverflow: RO \? 'auto' : 'hidden'/.test(doc),
+    "collapsed rule card scrolls in view mode, stays clipped for participants");
+
+  // ---- the wheel handler, executed for real -----------------------------
+  // It must scroll overflowing card text instead of panning, but still pan once the
+  // text is at its edge, or the board feels stuck over a long card.
+  console.log("\nwheel over a card scrolls the text, not the board");
+  {
+    const body = doc.match(/this\._wheel = \(e\) => \{[\s\S]*?\n    \};/)[0];
+    let panned, zoomed;
+    const run = (target, deltaY, mod) => {
+      panned = zoomed = false;
+      const fn = new Function("e", "self", body.replace("this._wheel = (e) => {", "").replace(/\};$/, "")
+        .replace(/this\.zoomBy\([^)]*\)/g, "self.zoom()")
+        .replace(/this\.setState\(\([\s\S]*?\)\);/g, "self.pan();"));
+      const e = {
+        deltaY, deltaX: 0, ctrlKey: !!mod, metaKey: false,
+        target, preventDefault: () => {}
+      };
+      fn(e, { zoom: () => (zoomed = true), pan: () => (panned = true) });
+      return { panned, zoomed };
+    };
+    // a textarea with 200px of content in a 100px box
+    const mk = (scrollTop) => ({
+      tagName: "TEXTAREA", scrollHeight: 200, clientHeight: 100, scrollTop,
+      closest: function () { return this; }
+    });
+    const bare = { tagName: "DIV", closest: () => null };
+
+    check(!run(mk(0), 60).panned, "scrolling down mid-text does not pan");
+    check(!run(mk(50), -60).panned, "scrolling up mid-text does not pan");
+    check(run(mk(100), 60).panned, "at the bottom it pans again");
+    check(run(mk(0), -60).panned, "at the top it pans again");
+    check(run(bare, 60).panned, "over empty canvas it pans");
+    check(run(mk(0), 60, true).zoomed, "ctrl+wheel still zooms over a card");
+  }
+
   // 7e. the roster path
   check(/this\.jsonp\('list=1'\)/.test(doc), "roster fetched via ?list=1");
   check(/ADMIN_CODE/.test(doc), "admin code constant present");
