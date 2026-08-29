@@ -21,7 +21,7 @@
 </style>
 </helmet>
 <template id="__bundler_thumbnail"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200"><rect width="200" height="200" fill="#2f3b52"/><g transform="rotate(-8 100 100)"><rect x="58" y="62" width="84" height="60" rx="8" fill="#fff" opacity=".55"/></g><g transform="rotate(6 100 108)"><rect x="62" y="74" width="84" height="60" rx="8" fill="#fff"/><rect x="74" y="88" width="46" height="7" rx="3.5" fill="#2f3b52"/><rect x="74" y="102" width="60" height="5" rx="2.5" fill="#9aa5b8"/><rect x="74" y="113" width="38" height="5" rx="2.5" fill="#9aa5b8"/></g></svg></template>
-<div style="display:flex;flex-direction:column;height:100vh;overflow:hidden">
+<div style="display:flex;flex-direction:column;height:calc(100vh / {{ ui }});zoom:{{ ui }};overflow:hidden">
 
   <div style="display:flex;flex-wrap:wrap;align-items:center;gap:10px 16px;min-height:58px;flex:0 0 auto;padding:9px 18px;background:#faf8f3;border-bottom:1px solid #e2dfd7">
     <sc-if value="{{ isStep2 }}" hint-placeholder-val="{{ false }}">
@@ -278,6 +278,30 @@ const TINT = {
 const CARD = 168, STORE = 'llm-guardrail-workshop-v4';
 
 /* ─────────────────────────────────────────────────────────────────
+   UI 배율 / UI SCALE
+   모든 크기가 px로 고정되어 있어 고해상도 모니터에서 글씨가 작습니다.
+   앱 루트에 CSS zoom을 걸어 전체를 확대합니다.
+   Every size in this app is a hardcoded px value, so the whole UI is
+   tiny on a 1440p/4K display. We scale the app root with CSS `zoom`.
+     ?ui=1      → exactly the old, unscaled behaviour (escape hatch)
+     ?ui=1.5    → force a specific scale (clamped 0.8–2)
+     no param   → auto from viewport width
+   Pointer maths divides by UI in four places (toCanvas, pan, panel
+   resize, drag ghost); if the browser lacks `zoom` support we fall
+   back to 1 so those divisions stay correct rather than silently
+   throwing the board out of alignment.
+   ───────────────────────────────────────────────────────────────── */
+const UI = (function () {
+  try {
+    if (typeof CSS === 'undefined' || !CSS.supports || !CSS.supports('zoom', '1.5')) return 1;
+    const q = parseFloat(new URLSearchParams(location.search).get('ui'));
+    if (q > 0) return Math.min(2, Math.max(0.8, q));
+    const w = window.innerWidth || 0;
+    return w >= 2200 ? 1.35 : w >= 1700 ? 1.2 : 1;
+  } catch (e) { return 1; }
+})();
+
+/* ─────────────────────────────────────────────────────────────────
    서버 저장 설정 / SERVER SAVE CONFIG
    Apps Script 웹앱(…/exec) URL이 아래에 고정되어 있습니다.
    The Apps Script web-app URL is baked in below, so the plain
@@ -523,7 +547,7 @@ class Component extends DCLogic {
   toCanvas(cx, cy) {
     const r = this.canvasRef.current.getBoundingClientRect();
     const z = this.state.zoom;
-    return { x: (cx - r.left - this.state.pan.x) / z, y: (cy - r.top - this.state.pan.y) / z };
+    return { x: ((cx - r.left) / UI - this.state.pan.x) / z, y: ((cy - r.top) / UI - this.state.pan.y) / z };
   }
   fix(v) { return (this.props.snapToGrid ?? true) ? Math.round(v / 24) * 24 : Math.round(v); }
 
@@ -781,9 +805,9 @@ class Component extends DCLogic {
       const p = this.toCanvas(e.clientX, e.clientY);
       this.setState((s) => ({ notes: s.notes.map((n) => n.id === d.id ? Object.assign({}, n, { x: Math.round(p.x - d.ox), y: Math.round(p.y - d.oy) }) : n) }));
     } else if (d.kind === 'resize') {
-      this.setState({ panelW: Math.min(940, Math.max(210, d.pw + (e.clientX - d.sx))) });
+      this.setState({ panelW: Math.min(940, Math.max(210, d.pw + (e.clientX - d.sx) / UI)) });
     } else if (d.kind === 'pan') {
-      this.setState({ pan: { x: d.px + (e.clientX - d.sx), y: d.py + (e.clientY - d.sy) } });
+      this.setState({ pan: { x: d.px + (e.clientX - d.sx) / UI, y: d.py + (e.clientY - d.sy) / UI } });
     }
   }
   onUp(e) {
@@ -1172,8 +1196,9 @@ class Component extends DCLogic {
         };
       }),
       ghost: !!this.state.ghost,
-      ghostX: this.state.ghost ? this.state.ghost.x + 14 : 0,
-      ghostY: this.state.ghost ? this.state.ghost.y + 12 : 0,
+      ghostX: this.state.ghost ? (this.state.ghost.x + 14) / UI : 0,
+      ghostY: this.state.ghost ? (this.state.ghost.y + 12) / UI : 0,
+      ui: UI,
       ghostTint: this.state.ghost ? TINT[this.state.ghost.type] : '#eee',
       ghostText: this.state.ghost ? this.state.ghost.text : ''
     };

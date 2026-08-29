@@ -24,6 +24,36 @@ from a subfolder, which is why it is not under `prototype/` any more.
 That is the participant link. Nothing to append.
 
 Works on phones, tablets and laptops; participants just open the link.
+
+### Interface size
+
+Every size in the app is a hardcoded px value (fonts run 9–17px), which is unreadably
+small on a 1440p or 4K monitor. The app root now scales with CSS `zoom`, picked from the
+viewport width at load:
+
+| viewport width | scale |
+|---|---|
+| ≥ 2200px (1440p/4K at 100%) | 1.35 |
+| ≥ 1700px | 1.2 |
+| below that (laptops, tablets, phones) | 1.0 — unchanged |
+
+Override per link with `?ui=` (clamped 0.8–2.0), combinable with `?sync=`:
+
+```
+https://songbird39.github.io/llm-rules-workshop/?ui=1.5
+https://songbird39.github.io/llm-rules-workshop/?ui=1     ← exactly the old, unscaled UI
+```
+
+`?ui=1` is the escape hatch: if anything looks wrong mid-session, that restores the
+pre-scaling behaviour without a redeploy. Browsers without CSS `zoom` support fall back
+to 1.0 automatically.
+
+This is separate from the **board zoom** (the −/+ control on the canvas, 35–160%), which
+only scales the cards. The UI scale covers the panel, header and toolbar too.
+
+⚠ If you change any pointer/drag code, re-run `node tools/test_ui_scale.js`. Pointer
+events arrive in scaled client px while card positions are stored in unscaled px, so a
+missing division makes cards drift away from the cursor.
 `index.html` is large (~22 MB) because fonts and the runtime are inlined — the first
 load takes a few seconds on mobile data, then it is cached.
 
