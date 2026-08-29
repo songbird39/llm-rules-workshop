@@ -233,6 +233,55 @@ async function dragTileToBoard(page, title, fx = 0.45, fy = 0.4) {
     await page.close();
   }
 
+  // ------------------------------------------------- 3c. drop lands where the ghost was
+  // The ghost offset is in screen px (position:fixed, scaled by UI only) while a card
+  // position is in canvas px (scaled by UI * board zoom), so this has to hold at any
+  // board zoom, not just 100%.
+  console.log("\ndrop lands where the drag ghost was");
+  for (const target of [1, 0.6, 1.5]) {
+    const { page } = await boot(browser, { width: 1440, height: 900 });
+    await toBoard(page, "T04");
+    const cb = await (await page.$('div[style*="radial-gradient"]')).boundingBox();
+    const readZoom = () => page.evaluate(() => {
+      const L = [...document.querySelectorAll("div")].find((d) => d.style.width === "5000px");
+      const m = /scale\(([\d.]+)\)/.exec(L.style.transform);
+      return m ? parseFloat(m[1]) : 1;
+    });
+    await page.mouse.move(cb.x + cb.width / 2, cb.y + cb.height / 2);
+    for (let i = 0; i < 40; i++) {
+      const z = await readZoom();
+      if (Math.abs(z - target) < 0.05) break;
+      await page.keyboard.down("Control");
+      await page.mouse.wheel(0, z > target ? 120 : -120);
+      await page.keyboard.up("Control");
+      await page.waitForTimeout(60);
+    }
+    const zoom = await readZoom();
+
+    const tile = page.getByText("학습 전", { exact: true }).first();
+    await tile.scrollIntoViewIfNeeded();
+    const tb = await tile.boundingBox();
+    await page.mouse.move(tb.x + tb.width / 2, tb.y + tb.height / 2);
+    await page.mouse.down();
+    await page.mouse.move(cb.x + cb.width * 0.5, cb.y + cb.height * 0.45, { steps: 10 });
+    await page.waitForTimeout(120);
+    const ghost = await page.evaluate(() => {
+      const g = [...document.querySelectorAll("div")].find((d) => d.style.position === "fixed" && d.style.zIndex === "50");
+      const r = g.getBoundingClientRect();
+      return { x: r.x, y: r.y };
+    });
+    await page.mouse.up();
+    await page.waitForTimeout(200);
+    const card = (await boardCards(page)).pop();
+    const dx = card.x - ghost.x, dy = card.y - ghost.y;
+    // cards snap on a 10 local-px grid, which is 10 * zoom * UI on screen
+    const tol = Math.max(12, 12 * zoom);
+    check(Math.abs(dx) <= tol && Math.abs(dy) <= tol,
+      `lands where the ghost was at board zoom ${zoom.toFixed(2)}`,
+      ` (off by ${dx.toFixed(1)},${dy.toFixed(1)}; tol ${tol.toFixed(0)})`);
+    await page.close();
+  }
+
   // ------------------------------------------------- 4. ?ui=1 escape hatch
   console.log("\n?ui=1 escape hatch");
   {

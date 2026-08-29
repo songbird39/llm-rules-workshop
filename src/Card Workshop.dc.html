@@ -316,6 +316,10 @@ const TINT = {
   how: 'oklch(0.93 0.026 160)'
 };
 const CARD = 168, STORE = 'llm-guardrail-workshop-v4';
+// 드래그 중 미리보기와 놓았을 때의 위치를 같게 만드는 오프셋 (커서 기준 오른쪽 아래)
+// Ghost/drop offset, in screen px, down-and-right of the cursor. Used by BOTH the
+// drag preview and addCard on release so they cannot disagree.
+const GHOST_DX = 14, GHOST_DY = 12;
 
 /* ─────────────────────────────────────────────────────────────────
    UI 배율 / UI SCALE
@@ -967,7 +971,10 @@ class Component extends DCLogic {
       const r = this.canvasRef.current ? this.canvasRef.current.getBoundingClientRect() : null;
       if (r && e.clientX > r.left && e.clientX < r.right && e.clientY > r.top && e.clientY < r.bottom) {
         const p = this.toCanvas(e.clientX, e.clientY);
-        this.addCard(d.type, d.tpl, p.x - CARD / 2, p.y - 26);
+        // 미리보기와 같은 자리에 놓는다 / land where the ghost was.
+        // screen px -> canvas px: divide by board zoom and UI zoom.
+        const k = (this.state.zoom || 1) * UI;
+        this.addCard(d.type, d.tpl, p.x + GHOST_DX / k, p.y + GHOST_DY / k);
       }
       this.setState({ ghost: null });
     }
@@ -1368,8 +1375,8 @@ class Component extends DCLogic {
         };
       }),
       ghost: !!this.state.ghost,
-      ghostX: this.state.ghost ? (this.state.ghost.x + 14) / UI : 0,
-      ghostY: this.state.ghost ? (this.state.ghost.y + 12) / UI : 0,
+      ghostX: this.state.ghost ? (this.state.ghost.x + GHOST_DX) / UI : 0,
+      ghostY: this.state.ghost ? (this.state.ghost.y + GHOST_DY) / UI : 0,
       ui: UI,
       ghostTint: this.state.ghost ? TINT[this.state.ghost.type] : '#eee',
       ghostText: this.state.ghost ? this.state.ghost.text : ''

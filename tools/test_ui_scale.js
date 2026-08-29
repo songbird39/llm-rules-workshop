@@ -104,7 +104,8 @@ console.log("\npatch sites");
   ["toCanvas divides by UI", "((cx - r.left) / UI - this.state.pan.x) / z"],
   ["panel resize divides by UI", "d.pw + (e.clientX - d.sx) / UI"],
   ["pan divides by UI", "d.px + (e.clientX - d.sx) / UI"],
-  ["ghost divides by UI", "(this.state.ghost.x + 14) / UI"],
+  ["ghost divides by UI", "(this.state.ghost.x + GHOST_DX) / UI"],
+  ["drop reuses the ghost offset", "this.addCard(d.type, d.tpl, p.x + GHOST_DX / k, p.y + GHOST_DY / k)"],
   ["root applies zoom", "zoom:{{ ui }}"],
   ["root compensates height", "height:calc(100vh / {{ ui }})"],
 ].forEach(([label, needle]) =>
