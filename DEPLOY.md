@@ -69,7 +69,7 @@ See the setup comment at the top of `server/Code.gs`. Short version:
 `src/Card Workshop.dc.html` (`const SYNC_URL`) and the deployed `index.html`:
 
 ```
-https://script.google.com/macros/s/AKfycbxsrbb98XMbg9jrRl5U8TdBJKnWvS5Fx5_uve26fdHFuKrd07huZYOn7k2YZDlEGCKQVQ/exec
+https://script.google.com/macros/s/AKfycbwOKZ3D8lRPMXtdpkhj6GR-QNAtYIIhQfyIBrecUOdCIQJYhiwjM6BOs0F_ty1rAw79cQ/exec
 ```
 
 Participants get the plain Pages URL, nothing appended.
@@ -113,10 +113,22 @@ everyone in the sheet — code, record count, whether they submitted, last activ
 clicking one opens their board **read-only**.
 
 ⚠ **Requires an Apps Script redeploy.** The roster uses a new `?list=1` action in
-`server/Code.gs`. Paste the current file into the editor, then
-**Deploy ▸ Manage deployments ▸ Edit (pencil) ▸ Version: New version ▸ Deploy**. Editing
-the script without a new version leaves the old code live and the roster shows
-*"Could not load the list."* The `/exec` URL does not change.
+`server/Code.gs`. Paste the current file into the editor, then publish it.
+
+Two ways, and they differ in one important respect:
+
+| | URL | notes |
+|---|---|---|
+| **Deploy ▸ Manage deployments ▸ Edit ▸ Version: New version** | **unchanged** | preferred — nothing to re-bake |
+| **Deploy ▸ New deployment** | **new `/exec` URL** | you must re-bake `SYNC_URL` or the app keeps talking to the old deployment |
+
+Saving the script without publishing either way leaves the old code live, and the roster
+shows *"Could not load the list."*
+
+Old deployments keep serving the version they were pinned to, so a stale one still accepts
+participant saves — it just lacks `?list=1`. That makes the failure quiet: saving looks
+fine, only the roster breaks. If the roster errors, check that `SYNC_URL` above matches the
+deployment you actually published to.
 
 While viewing:
 
