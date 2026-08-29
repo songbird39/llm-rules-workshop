@@ -342,6 +342,116 @@ async function dragTileToBoard(page, title, fx = 0.45, fy = 0.4) {
     await page.close();
   }
 
+  // ------------------------------------------------- 3e. marquee, ctrl-click, group move
+  // NB: drags here are PACED (a move every ~50ms) rather than mouse.move({steps}).
+  // Synthetic steps get coalesced/dropped under load and the assertions then measure
+  // a fraction of the intended distance, which looks exactly like a maths bug.
+  console.log("\nmarquee select, ctrl-click, group move");
+  {
+    const { page, errors } = await boot(browser, { width: 1440, height: 900 });
+    await toBoard(page, "T11");
+    await dragTileToBoard(page, "학습 전", 0.25, 0.20);
+    await dragTileToBoard(page, "학습 중", 0.45, 0.20);
+    await dragTileToBoard(page, "학습 후", 0.65, 0.20);
+    const cb = await (await page.$('div[style*="radial-gradient"]')).boundingBox();
+    const geo = () => page.evaluate(() => {
+      const L = [...document.querySelectorAll("div")].find((d) => d.style.width === "5000px");
+      return [...L.children].filter((c) => c.tagName === "DIV" && c.querySelector("input"))
+        .map((c) => ({ t: c.querySelector("input").value, x: c.offsetLeft, y: c.offsetTop,
+                       sel: !!c.style.outline && c.style.outline !== "none" }));
+    });
+
+    // marquee across the row
+    await page.mouse.move(cb.x + cb.width * 0.15, cb.y + cb.height * 0.10);
+    await page.mouse.down();
+    for (const f of [0.3, 0.5, 0.65, 0.80]) {
+      await page.mouse.move(cb.x + cb.width * f, cb.y + cb.height * 0.45);
+      await page.waitForTimeout(40);
+    }
+    const marqDrawn = await page.evaluate(() =>
+      !![...document.querySelectorAll("div")].find((d) => /oklch\(0.51 0.08 253 \/ 0.1\)/.test(d.style.background)));
+    await page.mouse.up();
+    await page.waitForTimeout(250);
+    check(marqDrawn, "marquee rectangle is drawn while dragging");
+    let g = await geo();
+    check(g.filter((c) => c.sel).length === 3, "marquee selected all three",
+      ` (${g.filter((c) => c.sel).length})`);
+
+    // group move: full distance, and relative layout preserved
+    const before = g.map((c) => ({ t: c.t, x: c.x, y: c.y }));
+    const first = await page.evaluate(() => {
+      const L = [...document.querySelectorAll("div")].find((d) => d.style.width === "5000px");
+      const c = [...L.children].filter((e) => e.tagName === "DIV" && e.querySelector("input"))[0];
+      const r = c.getBoundingClientRect();
+      return { x: r.x, y: r.y };
+    });
+    await page.mouse.move(first.x + 80, first.y + 6);
+    await page.mouse.down();
+    await page.waitForTimeout(50);
+    for (let i = 1; i <= 6; i++) {
+      await page.mouse.move(first.x + 80 + 20 * i, first.y + 6 + 12 * i);
+      await page.waitForTimeout(50);
+    }
+    await page.mouse.up();
+    await page.waitForTimeout(300);
+    const after = (await geo()).map((c) => ({ t: c.t, x: c.x, y: c.y }));
+    const B = {}, A = {};
+    before.forEach((c) => { B[c.t] = c; });   // key by title: raising reorders the array
+    after.forEach((c) => { A[c.t] = c; });
+    const k0 = before[0].t;
+    const d0 = { x: A[k0].x - B[k0].x, y: A[k0].y - B[k0].y };
+    check(Math.abs(d0.x - 120) <= 3 && Math.abs(d0.y - 72) <= 3,
+      "group moved the full drag distance", ` (${JSON.stringify(d0)})`);
+    check(Object.keys(B).every((t) => Math.abs((A[t].x - B[t].x) - d0.x) < 1 && Math.abs((A[t].y - B[t].y) - d0.y) < 1),
+      "all three moved by the same delta (layout preserved)");
+
+    // click empty canvas clears
+    await page.mouse.click(cb.x + cb.width * 0.9, cb.y + cb.height * 0.85);
+    await page.waitForTimeout(200);
+    g = await geo();
+    check(g.filter((c) => c.sel).length === 0, "clicking empty canvas clears the selection");
+
+    // ctrl-click adds
+    const rects = await page.evaluate(() => {
+      const L = [...document.querySelectorAll("div")].find((d) => d.style.width === "5000px");
+      return [...L.children].filter((e) => e.tagName === "DIV" && e.querySelector("input"))
+        .map((c) => { const r = c.getBoundingClientRect(); return { x: r.x, y: r.y }; });
+    });
+    await page.keyboard.down("Control");
+    await page.mouse.click(rects[0].x + 80, rects[0].y + 6);
+    await page.waitForTimeout(120);
+    await page.mouse.click(rects[2].x + 80, rects[2].y + 6);
+    await page.keyboard.up("Control");
+    await page.waitForTimeout(200);
+    g = await geo();
+    check(g.filter((c) => c.sel).length === 2, "ctrl-click selected exactly two",
+      ` (${g.filter((c) => c.sel).length})`);
+
+    // panning must survive the change from pan-drag to marquee-drag
+    const panBefore = await boardTransform(page);
+    await page.keyboard.down("Alt");
+    await page.mouse.move(cb.x + cb.width * 0.5, cb.y + cb.height * 0.8);
+    await page.mouse.down();
+    for (let i = 1; i <= 4; i++) {
+      await page.mouse.move(cb.x + cb.width * 0.5 + 25 * i, cb.y + cb.height * 0.8 + 10 * i);
+      await page.waitForTimeout(40);
+    }
+    await page.mouse.up();
+    await page.keyboard.up("Alt");
+    await page.waitForTimeout(200);
+    check(panBefore !== (await boardTransform(page)), "Alt+drag still pans the board");
+
+    // selection is UI-only and must never be saved
+    const stored = await page.evaluate(() => {
+      const k = Object.keys(localStorage).find((x) => x.includes("llm-guardrail") && x.endsWith(":T11"));
+      return "sel" in JSON.parse(localStorage.getItem(k));
+    });
+    check(!stored, "selection is not written to storage");
+    if (SHOTS) await page.screenshot({ path: `${SHOTS}/select.png` });
+    check(errors.length === 0, "no console errors", errors.length ? ` (${errors[0]})` : "");
+    await page.close();
+  }
+
   // ------------------------------------------------- 4. ?ui=1 escape hatch
   console.log("\n?ui=1 escape hatch");
   {

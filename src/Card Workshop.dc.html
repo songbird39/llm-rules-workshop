@@ -241,11 +241,14 @@
     <div ref="{{ canvasRef }}" onPointerDown="{{ onCanvasDown }}" style="position:relative;flex:1;min-width:0;overflow:hidden;cursor:{{ canvasCursor }};background-color:#ebe8e0;background-image:radial-gradient(#dad6cb 1px, transparent 1px);background-size:24px 24px">
       <div style="position:absolute;left:0;top:0;width:5000px;height:5000px;transform-origin:0 0;pointer-events:{{ layerPE }};transform:translate({{ panX }}px, {{ panY }}px) scale({{ zoom }})">
         {{ arrowsLayer }}
+        <sc-if value="{{ marq }}" hint-placeholder-val="{{ false }}">
+          <div style="position:absolute;left:{{ marqX }}px;top:{{ marqY }}px;width:{{ marqW }}px;height:{{ marqH }}px;border:1px solid oklch(0.51 0.08 253);background:oklch(0.51 0.08 253 / 0.10);border-radius:2px;pointer-events:none"></div>
+        </sc-if>
         <sc-if value="{{ selArrowInfo }}" hint-placeholder-val="{{ false }}">
           <button onPointerDown="{{ delSelArrow }}" title="{{ t.arrowDelTip }}" style="position:absolute;left:{{ selArrowX }}px;top:{{ selArrowY }}px;transform:translate(-50%,-50%);width:22px;height:22px;border:1px solid #d6d3ca;border-radius:50%;background:#fffefb;color:#b03f34;font-size:11px;line-height:1;cursor:pointer;box-shadow:0 2px 8px rgba(0,0,0,0.12);z-index:5">✕</button>
         </sc-if>
         <sc-for list="{{ notes }}" as="n" hint-placeholder-count="0">
-          <div onPointerDown="{{ n.onDown }}" style="position:absolute;left:{{ n.x }}px;top:{{ n.y }}px;width:168px;padding:0 8px 8px;display:flex;flex-direction:column;gap:2px;cursor:grab">
+          <div onPointerDown="{{ n.onDown }}" style="position:absolute;left:{{ n.x }}px;top:{{ n.y }}px;width:168px;padding:0 8px 8px;display:flex;flex-direction:column;gap:2px;outline:{{ n.outline }};outline-offset:2px;cursor:grab">
             <textarea value="{{ n.text }}" onChange="{{ n.onText }}" autoFocus="{{ n.autoFocus }}" data-grow="1" placeholder="{{ t.notePh }}" rows="3" style="width:100%;height:auto;min-height:62px;overflow:hidden;resize:none;border:1px dashed #c2beb2;border-radius:7px;background:rgba(255,254,251,0.7);font-size:12px;line-height:1.55;color:#44423b;outline:none;padding:8px 10px;font-family:inherit;pointer-events:auto" style-focus="border-color:oklch(0.51 0.08 253);background:#fffefb"></textarea>
             <div style="display:flex;align-items:center;gap:5px;height:13px">
               <div style="flex:1"></div>
@@ -254,7 +257,7 @@
           </div>
         </sc-for>
         <sc-for list="{{ cards }}" as="c" hint-placeholder-count="0">
-          <div onPointerDown="{{ c.onDown }}" style="position:absolute;left:{{ c.x }}px;top:{{ c.y }}px;width:168px;display:flex;flex-direction:column;gap:5px;background:#fffefb;border:1px solid #e2dfd7;border-radius:10px;padding:7px;box-shadow:0 3px 12px rgba(0,0,0,0.08);cursor:{{ c.cursor }}">
+          <div onPointerDown="{{ c.onDown }}" style="position:absolute;left:{{ c.x }}px;top:{{ c.y }}px;width:168px;display:flex;flex-direction:column;gap:5px;background:#fffefb;border:1px solid #e2dfd7;border-radius:10px;padding:7px;box-shadow:0 3px 12px rgba(0,0,0,0.08);outline:{{ c.outline }};outline-offset:2px;cursor:{{ c.cursor }}">
             <div style="display:flex;align-items:center;gap:5px;background:{{ c.tint }};border-radius:5px;padding:3px 5px">
               <input value="{{ c.title }}" onChange="{{ c.onTitle }}" placeholder="{{ c.titlePlaceholder }}" style="flex:1;min-width:0;border:none;background:transparent;font-size:12.5px;font-weight:600;letter-spacing:-0.01em;outline:none;padding:0;pointer-events:auto" />
               <sc-if value="{{ c.isRule }}" hint-placeholder-val="{{ false }}">
@@ -515,7 +518,7 @@ function defaultRules(lang) {
 class Component extends DCLogic {
   constructor(props) {
     super(props);
-    this.state = { sync: '', step: 0, lang: 'ko', rules: defaultRules('ko'), pid: '', loginPid: '', cards: [], notes: [], arrows: [], arrowMode: false, pendingArrow: null, selArrow: null, noteMode: false, focusNote: null, pan: { x: 0, y: 0 }, zoom: 1, ghost: null, seq: 1, panelW: 566, admin: false, viewPid: '', roster: [], rosterMsg: '' };
+    this.state = { sync: '', step: 0, lang: 'ko', rules: defaultRules('ko'), pid: '', loginPid: '', cards: [], notes: [], arrows: [], arrowMode: false, pendingArrow: null, selArrow: null, noteMode: false, focusNote: null, pan: { x: 0, y: 0 }, zoom: 1, ghost: null, seq: 1, panelW: 566, sel: [], marquee: null, admin: false, viewPid: '', roster: [], rosterMsg: '' };
     this.canvasRef = React.createRef();
     this.drag = null;
   }
@@ -529,6 +532,14 @@ class Component extends DCLogic {
     this._up = (e) => this.onUp(e);
     window.addEventListener('pointermove', this._move);
     window.addEventListener('pointerup', this._up);
+    // Space 를 누르고 있는 동안은 화면 이동 / hold Space to pan instead of marquee
+    this._key = (e) => {
+      const t = e.target && e.target.tagName;
+      if (t === 'TEXTAREA' || t === 'INPUT') return;
+      if (e.code === 'Space' || e.key === ' ') this._space = e.type === 'keydown';
+    };
+    window.addEventListener('keydown', this._key);
+    window.addEventListener('keyup', this._key);
     this._online = () => this.flush();
     window.addEventListener('online', this._online);
     if (this.syncUrl() && this.queueRead().length) this.flush();
@@ -575,7 +586,12 @@ class Component extends DCLogic {
 
   componentDidUpdate() {
     if (this.state.step === 2) this.bindWheel();
-    if (this.state.step === 2) { this.autoGrow(); this.measureCards(); }
+    // 드래그 중에는 높이를 재지 않는다. 이동은 높이를 바꾸지 않는데, 매 이동마다
+    // autoGrow + 강제 레이아웃을 돌리면 렌더 루프가 되어 포인터 이벤트가 굶는다.
+    // Skip while dragging: moving cannot change a height, and running autoGrow plus a
+    // forced layout on every pointermove starves the main thread — pointer events stop
+    // being delivered mid-drag and the drag dies after one step.
+    if (this.state.step === 2 && !this.drag) { this.autoGrow(); this.measureCards(); }
     try {
       localStorage.setItem(STORE + ':lang', this.state.lang);
       if (this.state.step > 0 && this.state.pid && !this.isView()) {
@@ -878,9 +894,70 @@ class Component extends DCLogic {
       this.setState((s) => ({ notes: (s.notes || []).concat([{ id: id, x: Math.round(p.x), y: Math.round(p.y), text: '' }]), seq: s.seq + 1, noteMode: false, focusNote: id }));
       return;
     }
-    this.drag = { kind: 'pan', sx: e.clientX, sy: e.clientY, px: this.state.pan.x, py: this.state.pan.y };
+    // 가운데 버튼 · Alt · Space = 화면 이동, 그냥 드래그 = 영역 선택
+    // middle button / Alt / Space pan; a plain drag draws a selection marquee
+    if (e.button === 1 || e.altKey || this._space) {
+      this.drag = { kind: 'pan', sx: e.clientX, sy: e.clientY, px: this.state.pan.x, py: this.state.pan.y };
+      return;
+    }
+    // 영역 선택 중 브라우저가 텍스트를 선택하지 않게 막는다.
+    // Stop the browser from starting a text selection across the board. If a stray text
+    // selection survives, the NEXT mousedown-and-move on it starts a native text drag,
+    // and during a native drag Chromium stops firing pointermove entirely — the drag
+    // dies after one step. This cost a long debugging session; do not remove.
+    e.preventDefault();
+    this.clearTextSel();
+    const p = this.toCanvas(e.clientX, e.clientY);
+    const add = e.ctrlKey || e.metaKey;
+    this.drag = { kind: 'marq', x0: p.x, y0: p.y, add: add, base: add ? (this.state.sel || []).slice() : [] };
+    this.setState({ marquee: { x: p.x, y: p.y, w: 0, h: 0 }, sel: add ? (this.state.sel || []) : [] });
   }
   // 맨 앞으로 올리기 / raise to the top of the paint order (arrays paint in order)
+  // ── 선택 / selection ────────────────────────────────────────────────
+  isSel(id) { return (this.state.sel || []).indexOf(id) >= 0; }
+
+  // 남아 있는 텍스트 선택을 지운다 (네이티브 드래그 방지) / drop any stray text selection,
+  // which would otherwise turn the next drag into a native text drag
+  clearTextSel() {
+    try {
+      const s = window.getSelection();
+      if (s && !s.isCollapsed) s.removeAllRanges();
+    } catch (err) {}
+  }
+
+  toggleSel(id) {
+    this.setState((s) => {
+      const cur = s.sel || [];
+      return { sel: cur.indexOf(id) >= 0 ? cur.filter((x) => x !== id) : cur.concat([id]) };
+    });
+  }
+
+  // 보드 위 요소들의 실제 사각형 (캔버스 좌표) / rects of everything on the board, in
+  // canvas coordinates. offsetLeft/Top are pre-transform, so no zoom conversion needed.
+  boardRects() {
+    const layer = this.cardsLayer();
+    if (!layer) return [];
+    const noteEls = [], cardEls = [];
+    for (let i = 0; i < layer.children.length; i++) {
+      const el = layer.children[i];
+      if (el.tagName !== 'DIV') continue;
+      (el.querySelector('input') ? cardEls : noteEls).push(el);
+    }
+    const out = [];
+    const add = (el, item) => {
+      if (el) out.push({ id: item.id, x: el.offsetLeft, y: el.offsetTop, w: el.offsetWidth, h: el.offsetHeight });
+    };
+    (this.state.notes || []).forEach((n, i) => add(noteEls[i], n));
+    this.state.cards.forEach((c, i) => add(cardEls[i], c));
+    return out;
+  }
+
+  hitsIn(x, y, w, h) {
+    return this.boardRects()
+      .filter((r) => r.x < x + w && r.x + r.w > x && r.y < y + h && r.y + r.h > y)
+      .map((r) => r.id);
+  }
+
   raiseCard(id) {
     this.setState((s) => {
       const c = s.cards.find((k) => k.id === id);
@@ -899,11 +976,16 @@ class Component extends DCLogic {
   }
 
   startNoteMove(id, e) {
+    if (e.ctrlKey || e.metaKey) { e.stopPropagation(); this.toggleSel(id); return; }
     this.raiseNote(id);
     if (e.target.tagName === 'TEXTAREA' || e.target.tagName === 'BUTTON') return;
     e.stopPropagation();
-    const n = (this.state.notes || []).find((k) => k.id === id);
+    e.preventDefault();
+    this.clearTextSel();
     const p = this.toCanvas(e.clientX, e.clientY);
+    if (this.isSel(id) && (this.state.sel || []).length > 1) { this.startGroup(p); return; }
+    this.setState({ sel: [id] });
+    const n = (this.state.notes || []).find((k) => k.id === id);
     this.drag = { kind: 'note', id: id, ox: p.x - n.x, oy: p.y - n.y };
   }
   // 실제로 렌더된 높이를 쓴다 — 화살표 끝점과 링크 판정이 키 큰 카드에서도 맞도록
@@ -939,13 +1021,17 @@ class Component extends DCLogic {
       if (el.tagName === 'DIV' && el.querySelector('input')) els.push(el);
     }
     if (els.length !== this.state.cards.length) return;   // mid-render, try again next pass
-    let changed = false;
-    const next = this.state.cards.map((c, i) => {
-      const h = els[i].offsetHeight;
-      if (h && Math.abs((c.h || 0) - h) > 1) { changed = true; return Object.assign({}, c, { h: h }); }
-      return c;
+    const hs = [];
+    for (let i = 0; i < els.length; i++) hs.push(els[i].offsetHeight);
+    if (!this.state.cards.some((c, i) => hs[i] && Math.abs((c.h || 0) - hs[i]) > 1)) return;
+    // 반드시 함수형 setState — 객체형이면 그 사이에 큐에 쌓인 위치 변경을 통째로 덮어쓴다
+    // MUST be a functional setState. The object form replaces `cards` with a snapshot
+    // taken before any moves queued in the meantime, silently discarding them: a
+    // 12-step group drag ended up moving 1/12 of the distance.
+    this.setState((s) => {
+      if (s.cards.length !== hs.length) return null;
+      return { cards: s.cards.map((c, i) => (hs[i] && Math.abs((c.h || 0) - hs[i]) > 1 ? Object.assign({}, c, { h: hs[i] }) : c)) };
     });
-    if (changed) this.setState({ cards: next });
   }
 
   cardsLayer() {
@@ -963,15 +1049,35 @@ class Component extends DCLogic {
       this.setState({ pendingArrow: { from: id, x: p.x, y: p.y } });
       return;
     }
+    // Ctrl/Cmd 클릭 = 선택 토글 (이동하지 않음) / ctrl-click toggles selection
+    if (e.ctrlKey || e.metaKey) { e.stopPropagation(); this.toggleSel(id); return; }
     // 클릭하면 맨 앞으로 / clicking raises, even when the pointer landed on text or a
     // button and the drag below is skipped
     this.raiseCard(id);
     const t = e.target.tagName;
     if (t === 'INPUT' || t === 'TEXTAREA' || t === 'BUTTON') return;
     e.stopPropagation();
-    const c = this.state.cards.find((k) => k.id === id);
+    e.preventDefault();          // 네이티브 텍스트 드래그 방지 / no native text drag
+    this.clearTextSel();
     const p = this.toCanvas(e.clientX, e.clientY);
+    if (this.isSel(id) && (this.state.sel || []).length > 1) { this.startGroup(p); return; }
+    this.setState({ sel: [id] });
+    const c = this.state.cards.find((k) => k.id === id);
     this.drag = { kind: 'move', id: id, ox: p.x - c.x, oy: p.y - c.y };
+  }
+
+  // 선택된 것들을 함께 이동 / move the whole selection by one shared delta, so the
+  // arrangement is preserved exactly (per-item snapping would distort it)
+  startGroup(p) {
+    const set = {};
+    (this.state.sel || []).forEach((id) => { set[id] = true; });
+    // 마지막 포인터 위치만 들고, 매 이동마다 '증분'을 더한다.
+    // Track only the last pointer position and apply an INCREMENTAL shift each move.
+    // Original-position + total-delta looks equivalent but is not: it depends on every
+    // queued update seeing an unstale base, and under React batching the last write can
+    // win and swallow the rest (observed: a 12-step drag moved 1/12 of the distance).
+    // An increment applied inside a functional updater is order-independent.
+    this.drag = { kind: 'multi', lx: p.x, ly: p.y, set: set };
   }
   onMove(e) {
     const d = this.drag;
@@ -996,6 +1102,26 @@ class Component extends DCLogic {
     } else if (d.kind === 'note') {
       const p = this.toCanvas(e.clientX, e.clientY);
       this.setState((s) => ({ notes: s.notes.map((n) => n.id === d.id ? Object.assign({}, n, { x: Math.round(p.x - d.ox), y: Math.round(p.y - d.oy) }) : n) }));
+    } else if (d.kind === 'marq') {
+      const p = this.toCanvas(e.clientX, e.clientY);
+      const x = Math.min(d.x0, p.x), y = Math.min(d.y0, p.y);
+      const w = Math.abs(p.x - d.x0), h = Math.abs(p.y - d.y0);
+      const hits = this.hitsIn(x, y, w, h);
+      const merged = d.add ? d.base.concat(hits.filter((id) => d.base.indexOf(id) < 0)) : hits;
+      this.setState({ marquee: { x: x, y: y, w: w, h: h }, sel: merged });
+    } else if (d.kind === 'multi') {
+      const p = this.toCanvas(e.clientX, e.clientY);
+      const dx = p.x - d.lx, dy = p.y - d.ly;
+      d.lx = p.x; d.ly = p.y;
+      if (!dx && !dy) return;
+      const set = d.set;
+      // 드래그 중에는 반올림하지 않는다 — 매 프레임 반올림하면 오차가 쌓인다
+      // No rounding mid-drag: rounding every increment would accumulate drift.
+      // onUp rounds once at the end.
+      this.setState((s) => ({
+        cards: s.cards.map((c) => (set[c.id] ? Object.assign({}, c, { x: c.x + dx, y: c.y + dy }) : c)),
+        notes: (s.notes || []).map((n) => (set[n.id] ? Object.assign({}, n, { x: n.x + dx, y: n.y + dy }) : n))
+      }));
     } else if (d.kind === 'resize') {
       this.setState({ panelW: Math.min(940, Math.max(210, d.pw + (e.clientX - d.sx) / UI)) });
     } else if (d.kind === 'pan') {
@@ -1006,6 +1132,15 @@ class Component extends DCLogic {
     const d = this.drag;
     this.drag = null;
     if (!d) return;
+    if (d.kind === 'marq') { this.setState({ marquee: null }); return; }
+    if (d.kind === 'multi') {
+      // 드래그가 끝나면 한 번만 정수로 / round once, at the end
+      this.setState((s) => ({
+        cards: s.cards.map((c) => (d.set[c.id] ? Object.assign({}, c, { x: Math.round(c.x), y: Math.round(c.y) }) : c)),
+        notes: (s.notes || []).map((n) => (d.set[n.id] ? Object.assign({}, n, { x: Math.round(n.x), y: Math.round(n.y) }) : n))
+      }));
+      return;
+    }
     if (d.kind === 'link') {
       const p = this.toCanvas(e.clientX, e.clientY);
       const hit = this.state.cards.slice().reverse().find((c) => {
@@ -1292,6 +1427,11 @@ class Component extends DCLogic {
       canEdit: !RO,
       showPanel: !RO,
       layerPE: RO ? 'none' : 'auto',
+      marq: !!this.state.marquee,
+      marqX: this.state.marquee ? this.state.marquee.x : 0,
+      marqY: this.state.marquee ? this.state.marquee.y : 0,
+      marqW: this.state.marquee ? this.state.marquee.w : 0,
+      marqH: this.state.marquee ? this.state.marquee.h : 0,
       descOverflow: RO ? 'auto' : 'hidden',
       rosterList: (this.state.roster || []).map((r) => ({
         key: r.participant,
@@ -1388,6 +1528,7 @@ class Component extends DCLogic {
       notes: (this.state.notes || []).map((n) => ({
         key: n.id,
         x: n.x, y: n.y,
+        outline: this.isSel(n.id) ? '2px solid oklch(0.51 0.08 253)' : 'none',
         text: n.text,
         autoFocus: this.state.focusNote === n.id,
         onDown: (e) => this.startNoteMove(n.id, e),
@@ -1402,6 +1543,7 @@ class Component extends DCLogic {
         return {
           key: c.id,
           x: c.x, y: c.y,
+          outline: this.isSel(c.id) ? '2px solid oklch(0.51 0.08 253)' : 'none',
           h: c.h || (folded ? 90 : 168),
           accent: ACC[c.type],
           tint: TINT[c.type],
