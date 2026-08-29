@@ -245,11 +245,12 @@
           <button onPointerDown="{{ delSelArrow }}" title="{{ t.arrowDelTip }}" style="position:absolute;left:{{ selArrowX }}px;top:{{ selArrowY }}px;transform:translate(-50%,-50%);width:22px;height:22px;border:1px solid #d6d3ca;border-radius:50%;background:#fffefb;color:#b03f34;font-size:11px;line-height:1;cursor:pointer;box-shadow:0 2px 8px rgba(0,0,0,0.12);z-index:5">✕</button>
         </sc-if>
         <sc-for list="{{ notes }}" as="n" hint-placeholder-count="0">
-          <div onPointerDown="{{ n.onDown }}" style="position:absolute;left:{{ n.x }}px;top:{{ n.y }}px;width:200px;display:flex;flex-direction:column;gap:2px;cursor:grab">
-            <div style="display:flex;justify-content:flex-end;height:12px">
-              <button onClick="{{ n.onDel }}" title="{{ t.noteDelTip }}" style="border:none;background:transparent;color:#bfbcb3;font-size:11px;line-height:12px;cursor:pointer;padding:0 2px" style-hover="color:#b03f34">✕</button>
+          <div onPointerDown="{{ n.onDown }}" style="position:absolute;left:{{ n.x }}px;top:{{ n.y }}px;width:168px;padding:0 8px 8px;display:flex;flex-direction:column;gap:2px;cursor:grab">
+            <textarea value="{{ n.text }}" onChange="{{ n.onText }}" autoFocus="{{ n.autoFocus }}" placeholder="{{ t.notePh }}" rows="3" style="width:100%;border:1px dashed #c2beb2;border-radius:7px;background:rgba(255,254,251,0.7);font-size:12px;line-height:1.55;color:#44423b;outline:none;padding:8px 10px;font-family:inherit;pointer-events:auto" style-focus="border-color:oklch(0.51 0.08 253);background:#fffefb"></textarea>
+            <div style="display:flex;align-items:center;gap:5px;height:13px">
+              <div style="flex:1"></div>
+              <button onClick="{{ n.onDel }}" title="{{ t.noteDelTip }}" style="border:none;background:transparent;color:#bfbcb3;font-size:11px;line-height:13px;cursor:pointer;padding:0 2px" style-hover="color:#b03f34">✕</button>
             </div>
-            <textarea value="{{ n.text }}" onChange="{{ n.onText }}" autoFocus="{{ n.autoFocus }}" placeholder="{{ t.notePh }}" rows="3" style="width:100%;border:1px dashed #c2beb2;border-radius:7px;background:rgba(255,254,251,0.7);font-size:13px;line-height:1.55;color:#44423b;outline:none;padding:8px 10px;font-family:inherit;pointer-events:auto" style-focus="border-color:oklch(0.51 0.08 253);background:#fffefb"></textarea>
           </div>
         </sc-for>
         <sc-for list="{{ cards }}" as="c" hint-placeholder-count="0">
@@ -873,7 +874,26 @@ class Component extends DCLogic {
     }
     this.drag = { kind: 'pan', sx: e.clientX, sy: e.clientY, px: this.state.pan.x, py: this.state.pan.y };
   }
+  // 맨 앞으로 올리기 / raise to the top of the paint order (arrays paint in order)
+  raiseCard(id) {
+    this.setState((s) => {
+      const c = s.cards.find((k) => k.id === id);
+      if (!c || s.cards[s.cards.length - 1] === c) return null;
+      return { cards: s.cards.filter((k) => k.id !== id).concat([c]) };
+    });
+  }
+
+  raiseNote(id) {
+    this.setState((s) => {
+      const list = s.notes || [];
+      const n = list.find((k) => k.id === id);
+      if (!n || list[list.length - 1] === n) return null;
+      return { notes: list.filter((k) => k.id !== id).concat([n]) };
+    });
+  }
+
   startNoteMove(id, e) {
+    this.raiseNote(id);
     if (e.target.tagName === 'TEXTAREA' || e.target.tagName === 'BUTTON') return;
     e.stopPropagation();
     const n = (this.state.notes || []).find((k) => k.id === id);
@@ -889,13 +909,15 @@ class Component extends DCLogic {
       this.setState({ pendingArrow: { from: id, x: p.x, y: p.y } });
       return;
     }
+    // 클릭하면 맨 앞으로 / clicking raises, even when the pointer landed on text or a
+    // button and the drag below is skipped
+    this.raiseCard(id);
     const t = e.target.tagName;
     if (t === 'INPUT' || t === 'TEXTAREA' || t === 'BUTTON') return;
     e.stopPropagation();
     const c = this.state.cards.find((k) => k.id === id);
     const p = this.toCanvas(e.clientX, e.clientY);
     this.drag = { kind: 'move', id: id, ox: p.x - c.x, oy: p.y - c.y };
-    this.setState((s) => ({ cards: s.cards.filter((k) => k.id !== id).concat([c]) }));
   }
   onMove(e) {
     const d = this.drag;

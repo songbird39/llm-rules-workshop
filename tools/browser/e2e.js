@@ -180,6 +180,59 @@ async function dragTileToBoard(page, title, fx = 0.45, fy = 0.4) {
     await page.close();
   }
 
+  // ------------------------------------------------- 3b. note/card parity + raise
+  console.log("\nnotes match cards, clicking raises");
+  {
+    const { page, errors } = await boot(browser, { width: 1440, height: 900 });
+    await toBoard(page, "T02");
+    await dragTileToBoard(page, "학습 전", 0.3, 0.35);
+    await dragTileToBoard(page, "학습 중", 0.55, 0.35);
+    const cb = await (await page.$('div[style*="radial-gradient"]')).boundingBox();
+    await page.getByText("메모", { exact: false }).click();
+    await page.mouse.click(cb.x + cb.width * 0.42, cb.y + cb.height * 0.7);
+    await page.waitForTimeout(300);
+
+    const geo = await page.evaluate(() => {
+      const L = [...document.querySelectorAll("div")].find((d) => d.style.width === "5000px");
+      const kids = [...L.children].filter((c) => c.tagName === "DIV");
+      const card = kids.find((c) => c.offsetWidth === 168 && c.querySelector("input"));
+      const note = kids.find((c) => c.querySelector("textarea") && !c.querySelector("input"));
+      const corner = (par, el) => {
+        const a = par.getBoundingClientRect(), b = el.getBoundingClientRect();
+        return { fromBottom: +(a.bottom - b.bottom).toFixed(1), fromRight: +(a.right - b.right).toFixed(1) };
+      };
+      const cbtns = card.querySelectorAll("button");
+      return {
+        cardW: card.offsetWidth, noteW: note.offsetWidth,
+        cardFont: getComputedStyle(card.querySelector("textarea")).fontSize,
+        noteFont: getComputedStyle(note.querySelector("textarea")).fontSize,
+        cardDel: corner(card, cbtns[cbtns.length - 1]),
+        noteDel: corner(note, note.querySelector("button")),
+      };
+    });
+    check(geo.noteW === geo.cardW, "note width equals card width", ` (${geo.noteW})`);
+    check(geo.noteFont === geo.cardFont, "note font equals card description font", ` (${geo.noteFont})`);
+    check(near(geo.noteDel.fromBottom, geo.cardDel.fromBottom) && near(geo.noteDel.fromRight, geo.cardDel.fromRight),
+      "delete button sits at the same corner offset",
+      ` (note ${JSON.stringify(geo.noteDel)} card ${JSON.stringify(geo.cardDel)})`);
+
+    const order = () => page.evaluate(() => {
+      const L = [...document.querySelectorAll("div")].find((d) => d.style.width === "5000px");
+      return [...L.children].filter((c) => c.tagName === "DIV")
+        .map((c) => { const i = c.querySelector("input"); return i ? i.value : "note"; });
+    });
+    const before = await order();
+    const first = before.find((v) => v !== "note");
+    await page.locator(`input[value="${first}"]`).last().click();  // click its TEXT, not the body
+    await page.waitForTimeout(200);
+    const after = await order();
+    check(after[after.length - 1] === first,
+      "clicking a card's text raises it to front", ` (${JSON.stringify(before)} -> ${JSON.stringify(after)})`);
+    if (SHOTS) await page.screenshot({ path: `${SHOTS}/notes.png` });
+    check(errors.length === 0, "no console errors", errors.length ? ` (${errors[0]})` : "");
+    await page.close();
+  }
+
   // ------------------------------------------------- 4. ?ui=1 escape hatch
   console.log("\n?ui=1 escape hatch");
   {
