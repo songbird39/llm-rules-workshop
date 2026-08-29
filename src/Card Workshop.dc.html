@@ -1,0 +1,1180 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.css" rel="stylesheet">
+<style>
+  *{box-sizing:border-box}
+  html,body{margin:0;height:100%}
+  body{font-family:Pretendard,-apple-system,'Apple SD Gothic Neo',system-ui,sans-serif;color:#1b1a17;background:#f1efe8;-webkit-font-smoothing:antialiased}
+  a{color:oklch(0.51 0.08 253);text-decoration:none}
+  a:hover{color:oklch(0.41 0.08 253)}
+  input,textarea,button{font:inherit;color:inherit}
+  textarea{resize:none}
+  ::selection{background:#dfe4ec}
+</style>
+</helmet>
+<template id="__bundler_thumbnail"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200"><rect width="200" height="200" fill="#2f3b52"/><g transform="rotate(-8 100 100)"><rect x="58" y="62" width="84" height="60" rx="8" fill="#fff" opacity=".55"/></g><g transform="rotate(6 100 108)"><rect x="62" y="74" width="84" height="60" rx="8" fill="#fff"/><rect x="74" y="88" width="46" height="7" rx="3.5" fill="#2f3b52"/><rect x="74" y="102" width="60" height="5" rx="2.5" fill="#9aa5b8"/><rect x="74" y="113" width="38" height="5" rx="2.5" fill="#9aa5b8"/></g></svg></template>
+<div style="display:flex;flex-direction:column;height:100vh;overflow:hidden">
+
+  <div style="display:flex;flex-wrap:wrap;align-items:center;gap:10px 16px;min-height:58px;flex:0 0 auto;padding:9px 18px;background:#faf8f3;border-bottom:1px solid #e2dfd7">
+    <sc-if value="{{ isStep2 }}" hint-placeholder-val="{{ false }}">
+      <button onClick="{{ goBack }}" style="padding:7px 13px;border:1px solid #d6d3ca;border-radius:7px;background:#fff;font-size:13.5px;cursor:pointer" style-hover="background:#f1efe8">{{ t.prev }}</button>
+    </sc-if>
+    <div style="display:flex;flex-direction:column;gap:1px;min-width:0;flex-shrink:1">
+      <div style="font-size:16px;font-weight:600;letter-spacing:-0.01em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ t.title }}</div>
+      <div style="font-size:11px;letter-spacing:0.06em;color:#98958c">{{ stepLabel }}</div>
+    </div>
+    <sc-if value="{{ isLoggedIn }}" hint-placeholder-val="{{ false }}">
+      <div style="display:flex;align-items:center;gap:6px;margin-left:8px">
+        <span style="font-size:11.5px;letter-spacing:0.04em;color:#98958c">{{ t.participant }}</span>
+        <span style="padding:4px 10px;border:1px solid #dedbd3;border-radius:6px;background:#fdfcf9;font-size:13px;font-weight:600">{{ pid }}</span>
+        <sc-if value="{{ showSync }}" hint-placeholder-val="{{ false }}">
+          <span style="display:inline-flex;align-items:center;gap:5px;padding:3px 8px;border-radius:20px;background:{{ syncBg }};font-size:11.5px;color:{{ syncColor }};white-space:nowrap">
+            <span style="width:6px;height:6px;border-radius:50%;background:{{ syncDot }}"></span>{{ syncLabel }}
+          </span>
+        </sc-if>
+        <button onClick="{{ doLogout }}" style="padding:4px 9px;border:1px solid transparent;border-radius:6px;background:transparent;color:#98958c;font-size:12.5px;cursor:pointer" style-hover="color:#1b1a17">{{ t.logout }}</button>
+      </div>
+    </sc-if>
+    <select value="{{ lang }}" onChange="{{ onLang }}" style="padding:5px 6px;border:1px solid #dedbd3;border-radius:6px;background:#fdfcf9;font-size:12.5px;outline:none;cursor:pointer;color:#44423b">
+      <option value="ko">한국어</option>
+      <option value="en">English</option>
+    </select>
+    <div style="flex:1"></div>
+    <sc-if value="{{ isStep1 }}" hint-placeholder-val="{{ true }}">
+      <div style="display:flex;align-items:center;gap:12px">
+        <span style="font-size:12.5px;color:#7a776f">{{ selLabel }}</span>
+        <button onClick="{{ goNext }}" style="padding:8px 20px;border:1px solid transparent;border-radius:7px;background:#1b1a17;color:#faf8f3;font-size:13.5px;cursor:pointer;opacity:{{ nextOpacity }}" style-hover="background:#35332c">{{ t.next }}</button>
+      </div>
+    </sc-if>
+    <sc-if value="{{ isStep2 }}" hint-placeholder-val="{{ false }}">
+      <div style="display:flex;flex-wrap:wrap;justify-content:flex-end;align-items:center;gap:8px;min-width:0">
+        <div style="display:flex;align-items:center;border:1px solid #d6d3ca;border-radius:7px;overflow:hidden;background:#fff">
+          <button onClick="{{ zoomOut }}" style="width:32px;height:33px;border:none;background:transparent;cursor:pointer;font-size:16px;line-height:1" style-hover="background:#f1efe8">−</button>
+          <div style="width:48px;text-align:center;font-family:ui-monospace,Menlo,monospace;font-size:11.5px;color:#7a776f;border-left:1px solid #e8e5dd;border-right:1px solid #e8e5dd;height:33px;line-height:33px">{{ zoomLabel }}</div>
+          <button onClick="{{ zoomIn }}" style="width:32px;height:33px;border:none;background:transparent;cursor:pointer;font-size:16px;line-height:1" style-hover="background:#f1efe8">+</button>
+        </div>
+        <button onClick="{{ toggleArrowMode }}" title="{{ t.arrowTip }}" style="padding:7px 12px;border:1px solid #d6d3ca;border-radius:7px;background:{{ arrowBtnBg }};color:{{ arrowBtnColor }};font-size:13.5px;cursor:pointer">{{ t.arrow }}</button>
+        <button onClick="{{ toggleNoteMode }}" title="{{ t.noteTip }}" style="padding:7px 12px;border:1px solid #d6d3ca;border-radius:7px;background:{{ noteBtnBg }};color:{{ noteBtnColor }};font-size:13.5px;cursor:pointer">{{ t.note }}</button>
+        <button onClick="{{ resetView }}" style="padding:7px 12px;border:1px solid #d6d3ca;border-radius:7px;background:#fff;font-size:13.5px;cursor:pointer" style-hover="background:#f1efe8">{{ t.fit }}</button>
+        <button onClick="{{ exportJson }}" style="padding:7px 13px;border:1px solid transparent;border-radius:7px;background:#1b1a17;color:#faf8f3;font-size:13.5px;cursor:pointer" style-hover="background:#35332c">{{ t.exportBtn }}</button>
+        <button onClick="{{ clearAll }}" title="{{ t.clearTip }}" style="padding:7px 10px;border:1px solid #e2dfd7;border-radius:7px;background:transparent;color:#98958c;font-size:13.5px;cursor:pointer" style-hover="color:#b03f34;border-color:#ddc0bb">{{ t.clear }}</button>
+      </div>
+    </sc-if>
+  </div>
+
+  <sc-if value="{{ isStep0 }}" hint-placeholder-val="{{ true }}">
+    <div style="flex:1;min-height:0;display:flex;align-items:center;justify-content:center;background:#f1efe8">
+      <div style="display:flex;flex-direction:column;gap:18px;width:380px;background:#fffefb;border:1px solid #e2dfd7;border-radius:14px;padding:32px 34px;box-shadow:0 6px 24px rgba(0,0,0,0.06)">
+        <div style="display:flex;flex-direction:column;gap:6px">
+          <div style="font-size:17px;font-weight:700;letter-spacing:-0.01em">{{ t.loginTitle }}</div>
+          <div style="font-size:12.5px;line-height:1.6;color:#7a776f">{{ t.loginSub }}</div>
+        </div>
+        <div style="display:flex;gap:8px">
+          <input value="{{ loginPid }}" onChange="{{ onLoginPid }}" onKeyDown="{{ onLoginKey }}" placeholder="P00" autoFocus="{{ true }}" style="flex:1;min-width:0;padding:9px 12px;border:1px solid #dedbd3;border-radius:8px;background:#fdfcf9;font-size:15px;font-weight:600;outline:none" style-focus="border-color:oklch(0.51 0.08 253)" />
+          <button onClick="{{ doLogin }}" style="padding:9px 18px;border:1px solid transparent;border-radius:8px;background:#1b1a17;color:#faf8f3;font-size:14px;cursor:pointer;opacity:{{ startOpacity }}" style-hover="background:#35332c">{{ t.start }}</button>
+        </div>
+        <sc-if value="{{ hasSaved }}" hint-placeholder-val="{{ false }}">
+          <div style="display:flex;flex-direction:column;gap:8px;border-top:1px solid #ece9e1;padding-top:14px">
+            <div style="font-size:11.5px;letter-spacing:0.04em;color:#98958c">{{ t.continueAs }}</div>
+            <div style="display:flex;flex-wrap:wrap;gap:7px">
+              <sc-for list="{{ savedList }}" as="s" hint-placeholder-count="0">
+                <button onClick="{{ s.onPick }}" style="padding:5px 12px;border:1px solid #d6d3ca;border-radius:16px;background:#faf8f3;font-size:13px;font-weight:600;cursor:pointer" style-hover="border-color:oklch(0.51 0.08 253);color:oklch(0.51 0.08 253)">{{ s.label }}</button>
+              </sc-for>
+            </div>
+          </div>
+        </sc-if>
+      </div>
+    </div>
+  </sc-if>
+
+  <sc-if value="{{ isStep1 }}" hint-placeholder-val="{{ false }}">
+    <div style="flex:1;min-height:0;overflow-y:auto;background:#f1efe8">
+      <div style="max-width:1380px;margin:0 auto;padding:22px 32px 36px;display:flex;flex-direction:column;gap:18px;min-height:100%">
+        <div style="font-size:13.5px;line-height:1.65;color:#7a776f">
+          {{ t.i1a }}<b style="color:#1b1a17;font-weight:600">{{ t.i1b }}</b>{{ t.i1c }}<b style="color:#1b1a17;font-weight:600">{{ t.i1d }}</b>{{ t.i1e }}
+        </div>
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,270px),1fr));gap:22px;align-items:start">
+        <sc-for list="{{ cats }}" as="cat" hint-placeholder-count="3">
+          <div style="display:flex;flex-direction:column;gap:12px">
+            <div style="display:flex;flex-direction:column;gap:2px;border-bottom:1px solid #e2dfd7;padding-bottom:9px">
+              <div style="display:flex;align-items:center;gap:8px">
+                <span style="width:9px;height:9px;border-radius:2px;background:oklch(0.51 0.08 253)"></span>
+                <span style="font-size:15px;font-weight:700;letter-spacing:-0.01em">{{ cat.label }}</span>
+              </div>
+              <span style="font-size:12px;color:#a7a49b;padding-left:17px">{{ cat.sub }}</span>
+            </div>
+            <div style="display:flex;flex-direction:column;gap:10px">
+              <sc-for list="{{ cat.rules }}" as="r" hint-placeholder-count="4">
+                <div onClick="{{ r.onToggle }}" style="display:flex;flex-direction:column;gap:7px;background:{{ r.bg }};border:1.5px solid {{ r.bd }};border-radius:11px;padding:9px;cursor:pointer;box-shadow:{{ r.shadow }}" style-hover="border-color:oklch(0.51 0.08 253)">
+                  <div style="display:flex;align-items:center;gap:7px;background:{{ r.tint }};border-radius:6px;padding:5px 7px">
+                    <span style="width:19px;height:19px;flex:0 0 19px;border-radius:50%;background:{{ r.ckBg }};border:1.5px solid {{ r.ckBd }};color:#fff;display:flex;align-items:center;justify-content:center;font-size:11.5px;line-height:1">{{ r.ck }}</span>
+                    <input value="{{ r.title }}" onChange="{{ r.onTitle }}" placeholder="{{ t.ruleName }}" style="flex:1;min-width:0;border:none;background:transparent;font-size:13px;font-weight:600;letter-spacing:-0.01em;outline:none;padding:0" />
+                    <sc-if value="{{ r.isCustom }}" hint-placeholder-val="{{ false }}">
+                      <button onClick="{{ r.onDel }}" title="{{ t.delTip }}" style="border:none;background:transparent;color:#bfbcb3;font-size:12px;line-height:1;cursor:pointer;padding:0 2px" style-hover="color:#b03f34">✕</button>
+                    </sc-if>
+                  </div>
+                  <textarea value="{{ r.desc }}" onChange="{{ r.onDesc }}" placeholder="{{ t.ruleDescPh }}" style="width:100%;height:52px;border:none;background:transparent;font-size:12.5px;font-weight:500;line-height:1.55;letter-spacing:-0.01em;color:#26251f;outline:none;padding:0 2px"></textarea>
+                </div>
+              </sc-for>
+              <button onClick="{{ cat.onAdd }}" style="min-height:44px;border:1.5px dashed #c9c6bd;border-radius:11px;background:transparent;color:#98958c;font-size:13px;cursor:pointer" style-hover="border-color:oklch(0.51 0.08 253);color:oklch(0.51 0.08 253)">{{ t.addRule }}</button>
+            </div>
+          </div>
+        </sc-for>
+        </div>
+      </div>
+    </div>
+  </sc-if>
+
+  <sc-if value="{{ isStep2 }}" hint-placeholder-val="{{ false }}">
+  <div style="display:flex;flex:1;min-height:0">
+
+    <div style="flex:0 0 {{ panelW }}px;display:flex;flex-direction:column;background:#faf8f3;overflow-y:auto">
+      <div style="padding:14px 16px 12px;font-size:13px;line-height:1.65;color:#7a776f;border-bottom:1px solid #ece9e1">
+        {{ t.p1a }}<b style="color:#1b1a17;font-weight:600">{{ t.p1b }}</b>{{ t.p1c }}<b style="color:#1b1a17;font-weight:600">{{ t.p1d }}</b>{{ t.p1e }}<b style="color:#1b1a17;font-weight:600">{{ t.p1f }}</b>{{ t.p1g }}
+      </div>
+
+      <div style="padding:16px 16px 4px;display:flex;align-items:baseline;gap:8px">
+        <span style="width:9px;height:9px;border-radius:2px;background:oklch(0.51 0.08 253);align-self:center"></span>
+        <span style="font-size:14px;font-weight:600">{{ t.ruleCards }}</span>
+        <span style="font-size:11.5px;color:#a7a49b">{{ t.ruleCardsSub }}</span>
+      </div>
+      <div style="display:flex;flex-wrap:wrap;gap:10px;padding:8px 16px 18px">
+        <sc-for list="{{ deckRule }}" as="d" hint-placeholder-count="6">
+          <div onPointerDown="{{ d.onDown }}" onDoubleClick="{{ d.onAdd }}" title="{{ t.dragTip }}" style="width:168px;height:168px;flex:0 0 auto;display:flex;flex-direction:column;gap:5px;background:#fffefb;border:1px solid #e2dfd7;border-radius:10px;padding:7px;cursor:grab;box-shadow:0 1px 5px rgba(0,0,0,0.05)" style-hover="border-color:#c9c6bd;box-shadow:0 4px 14px rgba(0,0,0,0.09)">
+            <div style="display:flex;align-items:center;gap:5px;background:{{ d.tint }};border-radius:5px;padding:3px 5px">
+              <span style="flex:1;min-width:0;font-size:12.5px;font-weight:600;letter-spacing:-0.01em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:{{ d.titleColor }}">{{ d.title }}</span>
+              <span style="font-size:9px;letter-spacing:0.02em;color:{{ d.accent }};border:1px solid {{ d.accent }};border-radius:3px;padding:0 3px">{{ d.mark }}</span>
+            </div>
+            <div style="flex:1;min-height:0;display:flex;align-items:center;justify-content:center;border:1px solid #eae7df;border-radius:5px;background:#f7f5f0;padding:7px;font-size:12px;font-weight:500;line-height:1.5;letter-spacing:-0.015em;color:#26251f;overflow:hidden;text-align:center;text-wrap:pretty">{{ d.body }}</div>
+          </div>
+        </sc-for>
+      </div>
+
+      <div style="padding:8px 16px 4px;display:flex;align-items:baseline;gap:8px;border-top:1px solid #ece9e1">
+        <span style="width:9px;height:9px;border-radius:2px;background:oklch(0.51 0.08 62);align-self:center"></span>
+        <span style="font-size:14px;font-weight:600">{{ t.whenCards }}</span>
+        <span style="font-size:11.5px;color:#a7a49b">{{ t.whenCardsSub }}</span>
+      </div>
+      <div style="display:flex;flex-wrap:wrap;gap:10px;padding:8px 16px 18px">
+        <sc-for list="{{ deckWhen }}" as="d" hint-placeholder-count="4">
+          <div onPointerDown="{{ d.onDown }}" onDoubleClick="{{ d.onAdd }}" title="{{ t.dragTip }}" style="width:168px;height:168px;flex:0 0 auto;display:flex;flex-direction:column;gap:5px;background:#fffefb;border:1px solid #e2dfd7;border-radius:10px;padding:7px;cursor:grab;box-shadow:0 1px 5px rgba(0,0,0,0.05)" style-hover="border-color:#c9c6bd;box-shadow:0 4px 14px rgba(0,0,0,0.09)">
+            <div style="display:flex;align-items:center;gap:5px;background:{{ d.tint }};border-radius:5px;padding:3px 5px">
+              <span style="flex:1;min-width:0;font-size:12.5px;font-weight:600;letter-spacing:-0.01em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:{{ d.titleColor }}">{{ d.title }}</span>
+              <span style="font-size:9px;letter-spacing:0.02em;color:{{ d.accent }};border:1px solid {{ d.accent }};border-radius:3px;padding:0 3px">{{ d.mark }}</span>
+            </div>
+            <div style="flex:1.15;min-height:0;display:flex;align-items:center;justify-content:center;border:1px solid #eae7df;border-radius:5px;background:#f7f5f0;padding:1px 2px;overflow:hidden">{{ d.diagram }}</div>
+            <div style="flex:1;min-height:0;border-top:1px solid #eae7df;padding-top:4px;font-size:10.5px;line-height:1.45;color:#5b584f;overflow:hidden">{{ d.body }}</div>
+          </div>
+        </sc-for>
+      </div>
+
+      <div style="padding:8px 16px 4px;display:flex;align-items:baseline;gap:8px;border-top:1px solid #ece9e1">
+        <span style="width:9px;height:9px;border-radius:2px;background:oklch(0.51 0.08 160);align-self:center"></span>
+        <span style="font-size:14px;font-weight:600">{{ t.howCards }}</span>
+        <span style="font-size:11.5px;color:#a7a49b">{{ t.howCardsSub }}</span>
+      </div>
+      <div style="display:flex;flex-wrap:wrap;gap:10px;padding:8px 16px 26px">
+        <sc-for list="{{ deckHow }}" as="d" hint-placeholder-count="4">
+          <div onPointerDown="{{ d.onDown }}" onDoubleClick="{{ d.onAdd }}" title="{{ t.dragTip }}" style="width:168px;height:168px;flex:0 0 auto;display:flex;flex-direction:column;gap:5px;background:#fffefb;border:1px solid #e2dfd7;border-radius:10px;padding:7px;cursor:grab;box-shadow:0 1px 5px rgba(0,0,0,0.05)" style-hover="border-color:#c9c6bd;box-shadow:0 4px 14px rgba(0,0,0,0.09)">
+            <div style="display:flex;align-items:center;gap:5px;background:{{ d.tint }};border-radius:5px;padding:3px 5px">
+              <span style="flex:1;min-width:0;font-size:12.5px;font-weight:600;letter-spacing:-0.01em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:{{ d.titleColor }}">{{ d.title }}</span>
+              <span style="font-size:9px;letter-spacing:0.02em;color:{{ d.accent }};border:1px solid {{ d.accent }};border-radius:3px;padding:0 3px">{{ d.mark }}</span>
+            </div>
+            <div style="flex:1.15;min-height:0;display:flex;align-items:center;justify-content:center;border:1px solid #eae7df;border-radius:5px;background:#f7f5f0;padding:1px 2px;overflow:hidden">{{ d.diagram }}</div>
+            <div style="flex:1;min-height:0;border-top:1px solid #eae7df;padding-top:4px;font-size:10.5px;line-height:1.45;color:#5b584f;overflow:hidden">{{ d.body }}</div>
+          </div>
+        </sc-for>
+      </div>
+    </div>
+
+    <div onPointerDown="{{ onResizeDown }}" title="{{ t.resizeTip }}" style="flex:0 0 7px;cursor:col-resize;background:#e2dfd7;border-left:1px solid #d6d3ca;border-right:1px solid #d6d3ca;display:flex;align-items:center;justify-content:center" style-hover="background:#d6d3ca">
+      <div style="width:2px;height:34px;border-radius:1px;background:#b6b3aa"></div>
+    </div>
+
+    <div ref="{{ canvasRef }}" onPointerDown="{{ onCanvasDown }}" style="position:relative;flex:1;min-width:0;overflow:hidden;cursor:{{ canvasCursor }};background-color:#ebe8e0;background-image:radial-gradient(#dad6cb 1px, transparent 1px);background-size:24px 24px">
+      <div style="position:absolute;left:0;top:0;width:5000px;height:5000px;transform-origin:0 0;transform:translate({{ panX }}px, {{ panY }}px) scale({{ zoom }})">
+        {{ arrowsLayer }}
+        <sc-if value="{{ selArrowInfo }}" hint-placeholder-val="{{ false }}">
+          <button onPointerDown="{{ delSelArrow }}" title="{{ t.arrowDelTip }}" style="position:absolute;left:{{ selArrowX }}px;top:{{ selArrowY }}px;transform:translate(-50%,-50%);width:22px;height:22px;border:1px solid #d6d3ca;border-radius:50%;background:#fffefb;color:#b03f34;font-size:11px;line-height:1;cursor:pointer;box-shadow:0 2px 8px rgba(0,0,0,0.12);z-index:5">✕</button>
+        </sc-if>
+        <sc-for list="{{ notes }}" as="n" hint-placeholder-count="0">
+          <div onPointerDown="{{ n.onDown }}" style="position:absolute;left:{{ n.x }}px;top:{{ n.y }}px;width:200px;display:flex;flex-direction:column;gap:2px;cursor:grab">
+            <div style="display:flex;justify-content:flex-end;height:12px">
+              <button onClick="{{ n.onDel }}" title="{{ t.noteDelTip }}" style="border:none;background:transparent;color:#bfbcb3;font-size:11px;line-height:12px;cursor:pointer;padding:0 2px" style-hover="color:#b03f34">✕</button>
+            </div>
+            <textarea value="{{ n.text }}" onChange="{{ n.onText }}" autoFocus="{{ n.autoFocus }}" placeholder="{{ t.notePh }}" rows="3" style="width:100%;border:1px dashed #c2beb2;border-radius:7px;background:rgba(255,254,251,0.7);font-size:13px;line-height:1.55;color:#44423b;outline:none;padding:8px 10px;font-family:inherit" style-focus="border-color:oklch(0.51 0.08 253);background:#fffefb"></textarea>
+          </div>
+        </sc-for>
+        <sc-for list="{{ cards }}" as="c" hint-placeholder-count="0">
+          <div onPointerDown="{{ c.onDown }}" style="position:absolute;left:{{ c.x }}px;top:{{ c.y }}px;width:168px;height:{{ c.h }}px;display:flex;flex-direction:column;gap:5px;background:#fffefb;border:1px solid #e2dfd7;border-radius:10px;padding:7px;box-shadow:0 3px 12px rgba(0,0,0,0.08);cursor:{{ c.cursor }}">
+            <div style="display:flex;align-items:center;gap:5px;background:{{ c.tint }};border-radius:5px;padding:3px 5px">
+              <input value="{{ c.title }}" onChange="{{ c.onTitle }}" placeholder="{{ c.titlePlaceholder }}" style="flex:1;min-width:0;border:none;background:transparent;font-size:12.5px;font-weight:600;letter-spacing:-0.01em;outline:none;padding:0" />
+              <sc-if value="{{ c.isRule }}" hint-placeholder-val="{{ false }}">
+                <button onClick="{{ c.onFold }}" title="{{ t.foldTip }}" style="border:none;background:transparent;color:{{ c.accent }};font-size:10px;line-height:1;cursor:pointer;padding:0 1px">{{ c.foldIcon }}</button>
+              </sc-if>
+              <span style="font-size:9px;letter-spacing:0.02em;color:{{ c.accent }};border:1px solid {{ c.accent }};border-radius:3px;padding:0 3px">{{ c.mark }}</span>
+            </div>
+            <sc-if value="{{ c.isRuleOpen }}" hint-placeholder-val="{{ false }}">
+              <div style="flex:1;min-height:0;border:1px solid #eae7df;border-radius:5px;background:#f7f5f0;padding:7px">
+                <textarea value="{{ c.desc }}" onChange="{{ c.onDesc }}" placeholder="{{ t.writeRule }}" style="width:100%;height:100%;border:none;background:transparent;font-size:12px;font-weight:500;line-height:1.45;letter-spacing:-0.015em;text-align:center;color:#26251f;outline:none;padding:0"></textarea>
+              </div>
+            </sc-if>
+            <sc-if value="{{ c.isRuleClosed }}" hint-placeholder-val="{{ false }}">
+              <div style="flex:1;min-height:0;font-size:10.5px;line-height:1.4;color:#5b584f;overflow:hidden;padding:0 2px">{{ c.desc }}</div>
+            </sc-if>
+            <sc-if value="{{ c.hasDiagram }}" hint-placeholder-val="{{ true }}">
+              <div style="flex:1.15;min-height:0;display:flex;align-items:center;justify-content:center;border:1px solid #eae7df;border-radius:5px;background:#f7f5f0;padding:1px 2px;overflow:hidden">{{ c.diagram }}</div>
+            </sc-if>
+            <sc-if value="{{ c.hasDiagram }}" hint-placeholder-val="{{ true }}">
+              <div style="flex:1;min-height:0;border-top:1px solid #eae7df;padding-top:4px">
+                <textarea value="{{ c.desc }}" onChange="{{ c.onDesc }}" placeholder="{{ t.descPh }}" style="width:100%;height:100%;border:none;background:transparent;font-size:10.5px;line-height:1.45;color:#5b584f;outline:none;padding:0"></textarea>
+              </div>
+            </sc-if>
+            <div style="display:flex;align-items:center;gap:5px;height:13px">
+              <div style="flex:1"></div>
+              <button onClick="{{ c.onDup }}" title="{{ t.dupTip }}" style="border:none;background:transparent;color:#bfbcb3;font-size:11px;line-height:13px;cursor:pointer;padding:0 2px" style-hover="color:#1b1a17">⧉</button>
+              <button onClick="{{ c.onDel }}" title="{{ t.delTip }}" style="border:none;background:transparent;color:#bfbcb3;font-size:11px;line-height:13px;cursor:pointer;padding:0 2px" style-hover="color:#b03f34">✕</button>
+            </div>
+          </div>
+        </sc-for>
+      </div>
+
+      <sc-if value="{{ isEmpty }}" hint-placeholder-val="{{ true }}">
+        <div style="position:absolute;left:50%;top:44%;transform:translate(-50%,-50%);text-align:center;color:#a7a49b;font-size:14px;line-height:1.7;pointer-events:none">
+          {{ t.empty1 }}<br />{{ t.empty2 }}
+        </div>
+      </sc-if>
+
+      <sc-if value="{{ ghost }}" hint-placeholder-val="{{ false }}">
+        <div style="position:fixed;left:{{ ghostX }}px;top:{{ ghostY }}px;width:168px;height:168px;pointer-events:none;z-index:50;opacity:0.92;display:flex;flex-direction:column;gap:5px;background:#fffefb;border:1px solid #d6d3ca;border-radius:10px;padding:7px;box-shadow:0 14px 30px rgba(0,0,0,0.18)">
+          <div style="background:{{ ghostTint }};border-radius:5px;padding:3px 5px;font-size:12.5px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ ghostText }}</div>
+          <div style="flex:1;border:1px solid #eae7df;border-radius:6px;background:#f7f5f0"></div>
+        </div>
+      </sc-if>
+    </div>
+  </div>
+  </sc-if>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;snapToGrid&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:true,&quot;tsType&quot;:&quot;boolean&quot;,&quot;section&quot;:&quot;Canvas&quot;},&quot;syncUrl&quot;:{&quot;editor&quot;:&quot;text&quot;,&quot;default&quot;:&quot;&quot;,&quot;tsType&quot;:&quot;string&quot;,&quot;section&quot;:&quot;Server&quot;}}">
+const ACC = {
+  rule: 'oklch(0.51 0.08 253)',
+  when: 'oklch(0.51 0.08 62)',
+  how: 'oklch(0.51 0.08 160)'
+};
+const TINT = {
+  rule: 'oklch(0.93 0.026 253)',
+  when: 'oklch(0.93 0.026 62)',
+  how: 'oklch(0.93 0.026 160)'
+};
+const CARD = 168, STORE = 'llm-guardrail-workshop-v4';
+
+/* ─────────────────────────────────────────────────────────────────
+   서버 저장 설정 / SERVER SAVE CONFIG
+   Google Apps Script 웹앱 URL을 여기에 붙여 넣으세요 (…/exec).
+   Paste your Apps Script web-app URL below, or set
+   window.WORKSHOP_SYNC_URL, or open the page with ?sync=<url>.
+   Empty = local-only (offline autosave still works).
+   ───────────────────────────────────────────────────────────────── */
+const SYNC_URL = '';
+const AUTOSAVE_MS = 2500;
+
+const I18N = {
+  ko: {
+    mark: { rule: '규칙', when: '언제', how: '어떻게' },
+    cats: [
+      { id: 'use', label: '“~~에만 AI를 사용한다”', sub: 'AI를 쓰는 범위 정하기' },
+      { id: 'way', label: '“AI를 통한 ~~는 ~~하게 한다”', sub: 'AI를 쓰는 방식 정하기' },
+      { id: 'alt', label: '“AI 대신 ~~로 한다”', sub: 'AI가 아닌 다른 방법 정하기' }
+    ],
+    rules: [
+      ['use', '브레인스토밍 · 초안', '브레인스토밍 / 계획 / 초안'],
+      ['use', '보충 학습', '본 학습(수업/교재 등)에서 다루지 않는 부분의 보충'],
+      ['use', '연습 · 복습', '본 학습 이후의 연습 / 복습'],
+      ['use', '퀴즈 · 피드백', '본 학습 이후의 퀴즈 제작 / 피드백 / 채점'],
+      ['way', '먼저 직접 시도', 'AI에게 문장이나 답을 요청하는 대신 먼저 직접 시도'],
+      ['way', '변형해서 사용', 'AI의 출력물을 자신의 상황에 맞게 변형해 사용'],
+      ['way', '기록과 반성', 'AI 사용 방식을 기록 및 반성'],
+      ['way', '새 개념 학습 금지', '처음 배우는 개념을 AI로 학습하지 않는다'],
+      ['alt', '외부 설명 자료', '교재, 사전 등 외부 설명 자료 사용'],
+      ['alt', '외부 읽기 · 듣기 자료', '외부 읽기/듣기 텍스트 혹은 영상 자료 사용'],
+      ['alt', '외부 보조 도구', '암기 카드 등 외부 보조 도구 사용'],
+      ['alt', '직접 작성', '복사 대신 직접 타자치기 / 손으로 쓰기 / 말하면서 쓰기 등 노력을 들여 작성'],
+      ['alt', '별도로 정리', '학습 상황과 내용을 별도로 노트 / 문서 등에 정리']
+    ],
+    deck: {
+      when: [
+        { title: '학습 전', desc: '학습 전', dia: 'w_before' },
+        { title: '학습 중', desc: '학습 중 (항상/몇분 단위로)', dia: 'w_during' },
+        { title: '학습 후', desc: '학습 후', dia: 'w_after' },
+        { title: '자동으로', desc: '해당하는 상황이 되면 자동으로', dia: 'w_auto' },
+        { title: '위반 요청 감지', desc: '규칙을 어기는 요청이 감지되면', dia: 'w_violate' },
+        { title: '거듭 요청 시 해제', desc: '사용자가 거듭 요청하면 일시적으로 가드레일을 해제한다', dia: 'w_retry' },
+        { title: '설정에서 해제', desc: '설정 등에 들어가서 사용자가 가드레일을 끌 수 있게끔 한다', dia: 'w_settings' },
+        { title: '어려움 감지 시 해제', desc: '사용자가 어려움을 느끼고 있음을 감지하면 가드레일을 해제한다', dia: 'w_struggle' },
+        { title: '', desc: '', dia: null, blank: '＋ 기타 (직접 작성)' }
+      ],
+      how: [
+        { title: '스스로 지키기', desc: '사용자가 알아서 지킨다 (=아무것도 안한다)', dia: 'h_self' },
+        { title: '규칙 상기', desc: '규칙을 시스템에 표출시켜서 상기시킨다', dia: 'h_remind' },
+        { title: '채팅 프리셋', desc: '원하는 행동을 쉽게 쓸 수 있도록 채팅 프리셋으로 제공한다', dia: 'h_preset' },
+        { title: '모드 / 템플릿', desc: '원하는 행동 만을 할 수 있도록 모드/템플릿을 설정한다', dia: 'h_mode' },
+        { title: '외부 도구 열기', desc: '자동으로 외부 도구를 띄운다 (사전/유튜브/단어카드/문서파일 등)', dia: 'h_tool' },
+        { title: '한 번 더 확인', desc: '채팅 혹은 시스템에서 요청을 실행할 것인지 다시 한 번 확인한다', dia: 'h_confirm' },
+        { title: '경고 후 거부', desc: '채팅 혹은 시스템에서 경고창을 띄우고 요청을 거부한다', dia: 'h_refuse' },
+        { title: '단계별 힌트', desc: '직접적으로 제공하는 대신 단계별 힌트를 제공한다', dia: 'h_hint' },
+        { title: '', desc: '', dia: null, blank: '＋ 기타 (직접 작성)' }
+      ]
+    },
+    ui: {
+      title: '나의 AI 학습 규칙 만들기', step1: '1단계 · 규칙 고르기', step2: '2단계 · 언제 · 어떻게 조합하기',
+      participant: '참여자', prev: '← 이전', next: '다음 →', choose: '규칙을 골라 주세요', selSuffix: '개 선택됨',
+      syncPending: '저장 중…', syncSaved: '서버 저장됨', syncOffline: '오프라인 · 재시도 대기',
+      syncLocal: '⚠ 로컬 저장만 · 서버 미연결', syncReady: '서버 연결됨', syncLoading: '서버에서 불러오는 중…',
+      fit: '화면 맞춤', note: '✎ 메모', exportBtn: '제출 · JSON 저장', clear: '초기화', confirmClear: '보드의 모든 카드를 지울까요?',
+      arrow: '↗ 화살표', arrowTip: '카드에서 카드로 드래그해 화살표로 잇기', arrowDelTip: '화살표 삭제',
+      step0: '참여자 로그인', loginTitle: '참여자 코드를 입력해 주세요', loginSub: '작업은 참여자 코드별로 자동 저장됩니다. 같은 코드로 다시 들어오면 이어서 할 수 있습니다.', start: '시작하기 →', continueAs: '이어서 하기', logout: '나가기',
+      i1a: '지키고 싶은 ', i1b: '규칙 카드', i1c: '를 모두 골라 주세요. 여러 장을 고를 수 있고, 카드 위 글자를 눌러 내용을 직접 고치거나 ', i1d: '＋ 새 규칙', i1e: '으로 나만의 규칙을 추가할 수 있습니다.',
+      p1a: '고른 ', p1b: '① 규칙 카드', p1c: '를 오른쪽 보드에 놓고, ', p1d: '② 언제 카드', p1e: '와 ', p1f: '③ 어떻게 카드', p1g: '를 한 줄로 나란히 놓으면 하나의 조합이 됩니다. 카드 위 글자는 눌러서 직접 고칠 수 있습니다.',
+      addRule: '＋ 새 규칙', ruleName: '규칙 이름', ruleDescPh: '규칙 내용 쓰기', cardName: '카드 이름', writeRule: '규칙 쓰기', descPh: '설명', notePh: '메모 쓰기…',
+      ruleCards: '규칙 카드', ruleCardsSub: '1단계에서 고른 규칙', whenCards: '언제 카드', whenCardsSub: '규칙이 언제 작동하나요?', howCards: '어떻게 카드', howCardsSub: '시스템이 어떻게 도와주나요?',
+      empty1: '왼쪽에서 고른 규칙 카드를 이 보드에 놓아 보세요.', empty2: '규칙 · 언제 · 어떻게 카드를 한 줄로 놓으면 조합이 됩니다.',
+      dragTip: '드래그해서 보드에 놓기 (더블클릭으로 추가)', noteTip: '보드 빈 곳을 눌러 메모 만들기', resizeTip: '드래그해서 폭 조절', dupTip: '복제', delTip: '삭제', foldTip: '펼치기 / 접기', noteDelTip: '메모 삭제', clearTip: '보드 비우기'
+    }
+  },
+  en: {
+    mark: { rule: 'Rule', when: 'When', how: 'How' },
+    cats: [
+      { id: 'use', label: '“Use AI only for ~~”', sub: 'Deciding where AI may be used' },
+      { id: 'way', label: '“Do ~~ with AI in a ~~ way”', sub: 'Deciding how AI is used' },
+      { id: 'alt', label: '“Use ~~ instead of AI”', sub: 'Deciding non-AI alternatives' }
+    ],
+    rules: [
+      ['use', 'Brainstorm · Drafts', 'Brainstorming / planning / first drafts'],
+      ['use', 'Supplementary study', 'Filling gaps not covered in main study (class/textbook)'],
+      ['use', 'Practice · Review', 'Practice / review after main study'],
+      ['use', 'Quizzes · Feedback', 'Quiz creation / feedback / grading after main study'],
+      ['way', 'Try it myself first', 'Try on my own before asking AI for sentences or answers'],
+      ['way', 'Adapt, not copy', 'Adapt AI output to my own situation before using it'],
+      ['way', 'Log and reflect', 'Record and reflect on how I use AI'],
+      ['way', 'No new concepts via AI', 'Do not learn brand-new concepts with AI'],
+      ['alt', 'External references', 'Use textbooks, dictionaries, and other reference materials'],
+      ['alt', 'External media', 'Use external reading/listening texts or video materials'],
+      ['alt', 'External study aids', 'Use flashcards and other external study aids'],
+      ['alt', 'Write it myself', 'Type, handwrite, or say-and-write with effort instead of copying'],
+      ['alt', 'Keep separate notes', 'Organize study context and content in separate notes/documents']
+    ],
+    deck: {
+      when: [
+        { title: 'Before study', desc: 'Before the study session', dia: 'w_before' },
+        { title: 'During study', desc: 'During study (always / every few minutes)', dia: 'w_during' },
+        { title: 'After study', desc: 'After the study session', dia: 'w_after' },
+        { title: 'Automatically', desc: 'Automatically when the situation applies', dia: 'w_auto' },
+        { title: 'Violation detected', desc: 'When a rule-breaking request is detected', dia: 'w_violate' },
+        { title: 'Unlock on retry', desc: 'Temporarily lift the guardrail if the user asks repeatedly', dia: 'w_retry' },
+        { title: 'Unlock in settings', desc: 'Let the user turn the guardrail off in settings', dia: 'w_settings' },
+        { title: 'Unlock on struggle', desc: 'Lift the guardrail when the user seems to be struggling', dia: 'w_struggle' },
+        { title: '', desc: '', dia: null, blank: '＋ Other (write your own)' }
+      ],
+      how: [
+        { title: 'Self-enforce', desc: 'The user keeps the rule on their own (= system does nothing)', dia: 'h_self' },
+        { title: 'Rule reminder', desc: 'Show the rule in the system as a reminder', dia: 'h_remind' },
+        { title: 'Chat presets', desc: 'Provide chat presets that make the desired behavior easy to use', dia: 'h_preset' },
+        { title: 'Mode / Template', desc: 'Set a mode/template so only the desired behavior is possible', dia: 'h_mode' },
+        { title: 'Open external tool', desc: 'Automatically open an external tool (dictionary/YouTube/flashcards/docs)', dia: 'h_tool' },
+        { title: 'Confirm first', desc: 'Ask once more in chat or the system before executing the request', dia: 'h_confirm' },
+        { title: 'Warn and refuse', desc: 'Show a warning in chat or the system and refuse the request', dia: 'h_refuse' },
+        { title: 'Step-by-step hints', desc: 'Give step-by-step hints instead of the direct answer', dia: 'h_hint' },
+        { title: '', desc: '', dia: null, blank: '＋ Other (write your own)' }
+      ]
+    },
+    ui: {
+      title: 'Design My AI Learning Rules', step1: 'Step 1 · Choose rules', step2: 'Step 2 · Combine when & how',
+      participant: 'Participant', prev: '← Back', next: 'Next →', choose: 'Choose your rules', selSuffix: ' selected',
+      syncPending: 'Saving…', syncSaved: 'Saved to server', syncOffline: 'Offline · will retry',
+      syncLocal: '⚠ Local only · no server', syncReady: 'Server connected', syncLoading: 'Loading from server…',
+      fit: 'Reset view', note: '✎ Note', exportBtn: 'Submit · Save JSON', clear: 'Clear', confirmClear: 'Clear all cards on the board?',
+      arrow: '↗ Arrow', arrowTip: 'Drag from one card to another to connect them', arrowDelTip: 'Delete arrow',
+      step0: 'Participant sign-in', loginTitle: 'Enter your participant code', loginSub: 'Work is saved automatically per participant code. Come back with the same code to continue where you left off.', start: 'Start →', continueAs: 'Continue as', logout: 'Exit',
+      i1a: 'Choose all the ', i1b: 'rule cards', i1c: ' you want to keep. You can pick several, edit any text directly on a card, or add your own with ', i1d: '＋ New rule', i1e: '.',
+      p1a: 'Place your chosen ', p1b: '① rule cards', p1c: ' on the board, then line up a ', p1d: '② when card', p1e: ' and a ', p1f: '③ how card', p1g: ' in the same row to form a combination. Tap any text on a card to edit it.',
+      addRule: '＋ New rule', ruleName: 'Rule name', ruleDescPh: 'Write the rule', cardName: 'Card name', writeRule: 'Write rule', descPh: 'Description', notePh: 'Write a note…',
+      ruleCards: 'Rule cards', ruleCardsSub: 'Rules chosen in step 1', whenCards: 'When cards', whenCardsSub: 'When does the rule apply?', howCards: 'How cards', howCardsSub: 'How does the system help?',
+      empty1: 'Drag your rule cards from the left onto this board.', empty2: 'Line up rule · when · how cards in a row to form a combination.',
+      dragTip: 'Drag onto the board (double-click to add)', noteTip: 'Click an empty spot on the board to add a note', resizeTip: 'Drag to resize', dupTip: 'Duplicate', delTip: 'Delete', foldTip: 'Expand / collapse', noteDelTip: 'Delete note', clearTip: 'Clear the board'
+    }
+  }
+};
+function defaultRules(lang) {
+  return I18N[lang || 'ko'].rules.map((r, i) => ({ id: 'r' + i, cat: r[0], title: r[1], desc: r[2], sel: false, custom: false }));
+}
+
+class Component extends DCLogic {
+  constructor(props) {
+    super(props);
+    this.state = { sync: '', step: 0, lang: 'ko', rules: defaultRules('ko'), pid: '', loginPid: '', cards: [], notes: [], arrows: [], arrowMode: false, pendingArrow: null, selArrow: null, noteMode: false, focusNote: null, pan: { x: 0, y: 0 }, zoom: 1, ghost: null, seq: 1, panelW: 566 };
+    this.canvasRef = React.createRef();
+    this.drag = null;
+  }
+
+  componentDidMount() {
+    try {
+      const lg = localStorage.getItem(STORE + ':lang');
+      if (lg && I18N[lg]) this.setState({ lang: lg });
+    } catch (e) {}
+    this._move = (e) => this.onMove(e);
+    this._up = (e) => this.onUp(e);
+    window.addEventListener('pointermove', this._move);
+    window.addEventListener('pointerup', this._up);
+    this._online = () => this.flush();
+    window.addEventListener('online', this._online);
+    if (this.syncUrl() && this.queueRead().length) this.flush();
+  }
+
+  componentWillUnmount() {
+    window.removeEventListener('pointermove', this._move);
+    window.removeEventListener('pointerup', this._up);
+    window.removeEventListener('online', this._online);
+    if (this._auto) clearTimeout(this._auto);
+    if (this._retry) clearTimeout(this._retry);
+    this.unbindWheel();
+  }
+
+  bindWheel() {
+    const el = this.canvasRef.current;
+    if (!el || this._wheelEl === el) return;
+    this.unbindWheel();
+    this._wheel = (e) => {
+      e.preventDefault();
+      if (e.ctrlKey || e.metaKey) this.zoomBy(e.deltaY > 0 ? -0.08 : 0.08);
+      else this.setState((s) => ({ pan: { x: s.pan.x - e.deltaX, y: s.pan.y - e.deltaY } }));
+    };
+    el.addEventListener('wheel', this._wheel, { passive: false });
+    this._wheelEl = el;
+  }
+  unbindWheel() {
+    if (this._wheelEl && this._wheel) this._wheelEl.removeEventListener('wheel', this._wheel);
+    this._wheelEl = null;
+  }
+
+  componentDidUpdate() {
+    if (this.state.step === 2) this.bindWheel();
+    try {
+      localStorage.setItem(STORE + ':lang', this.state.lang);
+      if (this.state.step > 0 && this.state.pid) {
+        localStorage.setItem(STORE + ':' + this.state.pid, JSON.stringify({ savedAt: Date.now(), pid: this.state.pid, cards: this.state.cards, notes: this.state.notes, arrows: this.state.arrows, seq: this.state.seq, panelW: this.state.panelW, step: this.state.step, lang: this.state.lang, rules: this.state.rules }));
+      }
+    } catch (e) {}
+    this.scheduleAutosave();
+  }
+
+  sig() {
+    return JSON.stringify([this.state.pid, this.state.step, this.state.cards, this.state.notes, this.state.arrows, this.state.rules]);
+  }
+
+  scheduleAutosave() {
+    if (!this.syncUrl() || this.state.step < 1 || !this.state.pid) return;
+    const sig = this.sig();
+    if (sig === this._sig) return;
+    this._sig = sig;
+    if (this._auto) clearTimeout(this._auto);
+    this._auto = setTimeout(() => { this._auto = null; this.enqueue('autosave'); }, AUTOSAVE_MS);
+  }
+
+  savedPids() {
+    try {
+      return Object.keys(localStorage)
+        .filter((k) => k.indexOf(STORE + ':') === 0 && k !== STORE + ':lang' && k !== STORE + ':queue')
+        .map((k) => k.slice((STORE + ':').length)).sort();
+    } catch (e) { return []; }
+  }
+  login(rawPid) {
+    const pid = (rawPid || '').trim();
+    if (!pid) return;
+    let d = null;
+    try { d = JSON.parse(localStorage.getItem(STORE + ':' + pid) || 'null'); } catch (e) {}
+    if (!d) {
+      // 이전 버전(단일 저장) 데이터 인수: 참여자 코드가 정확히 일치할 때만, 한 번 옮기고 제거
+      try {
+        const od = JSON.parse(localStorage.getItem(STORE) || 'null');
+        if (od && od.pid === pid) { d = od; localStorage.removeItem(STORE); }
+      } catch (e) {}
+    }
+    const lang = this.state.lang;
+    this.setState({ pid: pid, loginPid: '' });
+    if (d) this.applyState(d, lang);
+    else this.setState({ step: 1, rules: defaultRules(lang), cards: [], notes: [], arrows: [], seq: 1, panelW: 566, pan: { x: 0, y: 0 }, zoom: 1, noteMode: false }, () => this.seedSig());
+    this.syncDown(pid, d ? d.savedAt || 0 : 0);
+  }
+  logout() { this.setState({ pid: '', loginPid: '', step: 0, noteMode: false }); }
+
+  toCanvas(cx, cy) {
+    const r = this.canvasRef.current.getBoundingClientRect();
+    const z = this.state.zoom;
+    return { x: (cx - r.left - this.state.pan.x) / z, y: (cy - r.top - this.state.pan.y) / z };
+  }
+  fix(v) { return (this.props.snapToGrid ?? true) ? Math.round(v / 24) * 24 : Math.round(v); }
+
+  // 다이어그램: 단일 선 굵기(2.2), 둥근 캡, 잉크 회색 + 덱별 포인트 1색만 사용하는 라인 아이콘 시스템
+  diagram(key) {
+    const h = React.createElement;
+    const INK = '#96938a', FNT = '#d3d0c6', RED = '#b3554a';
+    const ORG = 'oklch(0.66 0.1 62)', GRN = 'oklch(0.58 0.08 160)';
+    const wrap = (kids) => h('svg', {
+      viewBox: '0 0 120 52', preserveAspectRatio: 'xMidYMid meet',
+      fill: 'none', strokeLinecap: 'round', strokeLinejoin: 'round',
+      style: { width: '100%', height: '100%', display: 'block' }
+    }, kids);
+    const session = (x, w) => [
+      h('rect', { key: 's', x: x, y: 22, width: w, height: 20, rx: 5, stroke: INK, strokeWidth: 2 }),
+      h('line', { key: 'sl1', x1: x + 8, y1: 29, x2: x + 8 + w * 0.4, y2: 29, stroke: FNT, strokeWidth: 3 }),
+      h('line', { key: 'sl2', x1: x + 8, y1: 36, x2: x + 8 + w * 0.58, y2: 36, stroke: FNT, strokeWidth: 3 })
+    ];
+    const baseline = h('line', { key: 'bl', x1: 12, y1: 47, x2: 108, y2: 47, stroke: FNT, strokeWidth: 2 });
+    const userBubble = (lineColor) => [
+      h('rect', { key: 'ub', x: 58, y: 5, width: 54, height: 17, rx: 6, fill: '#ecece7' }),
+      h('rect', { key: 'ul', x: 65, y: 11.5, width: 40, height: 4, rx: 2, fill: lineColor })
+    ];
+    const aiBubble = [
+      h('rect', { key: 'ab', x: 8, y: 29, width: 54, height: 17, rx: 6, stroke: FNT, strokeWidth: 2 }),
+      h('line', { key: 'al1', x1: 34, y1: 35, x2: 55, y2: 35, stroke: FNT, strokeWidth: 3 }),
+      h('line', { key: 'al2', x1: 34, y1: 41, x2: 48, y2: 41, stroke: FNT, strokeWidth: 3 })
+    ];
+    const openLock = (x, color) => [
+      h('path', { key: 'sh', d: 'M' + (x + 3) + ' 22 v-5.5 a6.5 6.5 0 0 1 12.6 -2.4', stroke: color, strokeWidth: 2.2 }),
+      h('rect', { key: 'lb', x: x, y: 22, width: 19, height: 15, rx: 4.5, stroke: color, strokeWidth: 2.2 }),
+      h('circle', { key: 'kh', cx: x + 9.5, cy: 29.5, r: 2, fill: color })
+    ];
+
+    if (key === 'w_before') return wrap([baseline].concat(session(58, 48), [
+      h('circle', { key: 'd', cx: 26, cy: 32, r: 6.5, fill: ORG }),
+      h('path', { key: 'a', d: 'M38 32 h11 m-4 -4 l4.5 4 l-4.5 4', stroke: INK, strokeWidth: 2.2 })
+    ]));
+    if (key === 'w_during') return wrap([baseline].concat([
+      h('rect', { key: 's', x: 20, y: 22, width: 80, height: 20, rx: 5, stroke: INK, strokeWidth: 2 }),
+      h('circle', { key: 'd1', cx: 40, cy: 32, r: 5, fill: ORG }),
+      h('circle', { key: 'd2', cx: 60, cy: 32, r: 5, fill: ORG }),
+      h('circle', { key: 'd3', cx: 80, cy: 32, r: 5, fill: ORG })
+    ]));
+    if (key === 'w_after') return wrap([baseline].concat(session(14, 48), [
+      h('path', { key: 'a', d: 'M71 32 h11 m-4 -4 l4.5 4 l-4.5 4', stroke: INK, strokeWidth: 2.2 }),
+      h('circle', { key: 'd', cx: 94, cy: 32, r: 6.5, fill: ORG })
+    ]));
+    if (key === 'w_auto') return wrap([
+      h('circle', { key: 'd', cx: 46, cy: 26, r: 5.5, fill: ORG }),
+      h('path', { key: 'a1', d: 'M58 16 A14.3 14.3 0 0 1 58 36', stroke: INK, strokeWidth: 2.2 }),
+      h('path', { key: 'a2', d: 'M66 10 A22.8 22.8 0 0 1 66 42', stroke: FNT, strokeWidth: 2.2 })
+    ]);
+    if (key === 'w_violate') return wrap([].concat(userBubble(RED), [
+      h('path', { key: 'sd', d: 'M18 17 l12 -4.5 12 4.5 v9 c0 8.5 -5 13.5 -12 17.5 c-7 -4 -12 -9 -12 -17.5 Z', stroke: RED, strokeWidth: 2.2 }),
+      h('line', { key: 'ex', x1: 30, y1: 23, x2: 30, y2: 30, stroke: RED, strokeWidth: 2.6 }),
+      h('circle', { key: 'ed', cx: 30, cy: 35.5, r: 1.8, fill: RED })
+    ]));
+    if (key === 'w_retry') return wrap([
+      h('rect', { key: 'b1', x: 8, y: 5, width: 46, height: 13, rx: 5, fill: '#ecece7' }),
+      h('rect', { key: 'b2', x: 14, y: 21, width: 46, height: 13, rx: 5, fill: '#ecece7' }),
+      h('rect', { key: 'b3', x: 20, y: 37, width: 46, height: 13, rx: 5, fill: '#ecece7' }),
+      h('rect', { key: 'l3', x: 26, y: 41.5, width: 34, height: 4, rx: 2, fill: RED })
+    ].concat(openLock(84, ORG)));
+    if (key === 'w_settings') return wrap([
+      h('rect', { key: 'tg', x: 14, y: 15, width: 44, height: 22, rx: 11, stroke: INK, strokeWidth: 2.2 }),
+      h('circle', { key: 'kn', cx: 25, cy: 26, r: 5.5, fill: ORG })
+    ].concat(openLock(84, ORG)));
+    if (key === 'w_struggle') return wrap([
+      h('rect', { key: 'b', x: 10, y: 15, width: 54, height: 22, rx: 6, fill: '#ecece7' }),
+      h('path', { key: 'sq', d: 'M18 26 q4 -7 8 0 t8 0 t8 0 t8 0', stroke: RED, strokeWidth: 2.2 })
+    ].concat(openLock(84, ORG)));
+
+    if (key === 'h_self') return wrap([
+      h('circle', { key: 'hd', cx: 52, cy: 15, r: 7.5, stroke: INK, strokeWidth: 2.2 }),
+      h('path', { key: 'bd', d: 'M37 44 a15 15 0 0 1 30 0', stroke: INK, strokeWidth: 2.2 }),
+      h('path', { key: 'ck', d: 'M74 31 l5.5 5.5 l10 -12', stroke: GRN, strokeWidth: 2.6 })
+    ]);
+    if (key === 'h_remind') return wrap([
+      h('rect', { key: 'w', x: 30, y: 8, width: 60, height: 36, rx: 7, stroke: INK, strokeWidth: 2.2 }),
+      h('line', { key: 'bn', x1: 38, y1: 17.5, x2: 82, y2: 17.5, stroke: GRN, strokeWidth: 5 }),
+      h('line', { key: 'l1', x1: 38, y1: 29, x2: 74, y2: 29, stroke: FNT, strokeWidth: 3 }),
+      h('line', { key: 'l2', x1: 38, y1: 36, x2: 62, y2: 36, stroke: FNT, strokeWidth: 3 })
+    ]);
+    if (key === 'h_preset') return wrap([
+      h('rect', { key: 'c1', x: 20, y: 9, width: 24, height: 12, rx: 6, stroke: GRN, strokeWidth: 2 }),
+      h('rect', { key: 'c2', x: 50, y: 9, width: 30, height: 12, rx: 6, stroke: GRN, strokeWidth: 2 }),
+      h('rect', { key: 'c3', x: 86, y: 9, width: 14, height: 12, rx: 6, stroke: GRN, strokeWidth: 2 }),
+      h('rect', { key: 'in', x: 20, y: 30, width: 80, height: 14, rx: 7, stroke: INK, strokeWidth: 2.2 }),
+      h('line', { key: 'cr', x1: 29, y1: 34.5, x2: 29, y2: 39.5, stroke: FNT, strokeWidth: 2.4 })
+    ]);
+    if (key === 'h_mode') return wrap([
+      h('rect', { key: 't1', x: 30, y: 5, width: 20, height: 11, rx: 4, fill: GRN }),
+      h('rect', { key: 't2', x: 54, y: 5, width: 20, height: 11, rx: 4, fill: FNT }),
+      h('rect', { key: 't3', x: 78, y: 5, width: 20, height: 11, rx: 4, fill: FNT }),
+      h('rect', { key: 'w', x: 26, y: 16, width: 68, height: 31, rx: 6, stroke: INK, strokeWidth: 2.2 }),
+      h('line', { key: 'lb1', x1: 34, y1: 24, x2: 46, y2: 24, stroke: FNT, strokeWidth: 3 }),
+      h('rect', { key: 'f1', x: 52, y: 21, width: 34, height: 7, rx: 2.5, stroke: FNT, strokeWidth: 1.6, strokeDasharray: '3 2.5' }),
+      h('line', { key: 'lb2', x1: 34, y1: 37, x2: 46, y2: 37, stroke: FNT, strokeWidth: 3 }),
+      h('rect', { key: 'f2', x: 52, y: 34, width: 24, height: 7, rx: 2.5, stroke: FNT, strokeWidth: 1.6, strokeDasharray: '3 2.5' })
+    ]);
+    if (key === 'h_tool') return wrap([
+      h('rect', { key: 'ab', x: 8, y: 10, width: 46, height: 15, rx: 5.5, fill: '#ecece7' }),
+      h('rect', { key: 'ab2', x: 14, y: 29, width: 40, height: 13, rx: 5, fill: '#ecece7' }),
+      h('path', { key: 'ar', d: 'M60 26 h9 m-3.5 -3.5 l4 3.5 l-4 3.5', stroke: INK, strokeWidth: 2 }),
+      h('path', { key: 'bkl', d: 'M92 12 c-6 -3.5 -12 -3.5 -16 -1.5 v26 c4 -2 10 -2 16 1.5 Z', stroke: GRN, strokeWidth: 2.2 }),
+      h('path', { key: 'bkr', d: 'M92 12 c6 -3.5 12 -3.5 16 -1.5 v26 c-4 -2 -10 -2 -16 1.5 Z', stroke: GRN, strokeWidth: 2.2 }),
+      h('line', { key: 'bl1', x1: 81, y1: 18, x2: 88, y2: 17, stroke: FNT, strokeWidth: 2.4 }),
+      h('line', { key: 'bl2', x1: 96, y1: 17, x2: 103, y2: 18, stroke: FNT, strokeWidth: 2.4 })
+    ]);
+    if (key === 'h_confirm') return wrap([].concat(userBubble(RED), aiBubble, [
+      h('circle', { key: 'c', cx: 21, cy: 37.5, r: 7.5, fill: '#e0b03f' }),
+      h('text', { key: 't', x: 21, y: 41.8, textAnchor: 'middle', fontSize: 11, fontWeight: 700, fill: '#463607', fontFamily: 'Menlo, monospace' }, '?')
+    ]));
+    if (key === 'h_refuse') return wrap([].concat(userBubble(RED), aiBubble, [
+      h('circle', { key: 'c', cx: 21, cy: 37.5, r: 7, stroke: RED, strokeWidth: 2.4 }),
+      h('line', { key: 'x', x1: 16.2, y1: 42.3, x2: 25.8, y2: 32.7, stroke: RED, strokeWidth: 2.4 })
+    ]));
+    if (key === 'h_hint') return wrap([
+      h('rect', { key: 's1', x: 20, y: 38, width: 22, height: 9, rx: 2.5, stroke: INK, strokeWidth: 2 }),
+      h('rect', { key: 's2', x: 46, y: 28, width: 22, height: 19, rx: 2.5, stroke: INK, strokeWidth: 2 }),
+      h('rect', { key: 's3', x: 72, y: 18, width: 22, height: 29, rx: 2.5, stroke: INK, strokeWidth: 2 }),
+      h('circle', { key: 'd1', cx: 31, cy: 32, r: 3.4, fill: GRN }),
+      h('circle', { key: 'd2', cx: 57, cy: 22, r: 3.4, fill: GRN }),
+      h('circle', { key: 'd3', cx: 83, cy: 12, r: 3.4, fill: GRN })
+    ]);
+
+    return wrap([]);
+  }
+
+  // 언어 전환: 어떤 언어의 기본 문구든 그대로면 새 언어로 교체하고, 사용자가 고쳐 쓴 문구는 그대로 둔다
+  setLang(nl) {
+    if (nl === this.state.lang) return;
+    const langs = Object.keys(I18N);
+    const newR = I18N[nl].rules;
+    // 기본 규칙 문구 색인: 어느 언어의 몇 번째 규칙인지 찾기
+    const ruleTitleIdx = (v) => { for (const lg of langs) { const i = I18N[lg].rules.findIndex((r) => r[1] === v); if (i >= 0) return i; } return -1; };
+    const ruleDescIdx = (v) => { for (const lg of langs) { const i = I18N[lg].rules.findIndex((r) => r[2] === v); if (i >= 0) return i; } return -1; };
+    const rules = this.state.rules.map((r) => {
+      if (r.custom) return r;
+      const i = parseInt(r.id.slice(1), 10);
+      if (isNaN(i) || !newR[i]) return r;
+      return Object.assign({}, r, {
+        title: ruleTitleIdx(r.title) === i ? newR[i][1] : r.title,
+        desc: ruleDescIdx(r.desc) === i ? newR[i][2] : r.desc
+      });
+    });
+    const cards = this.state.cards.map((c) => {
+      if (c.type === 'rule') {
+        let title = c.title, desc = c.desc;
+        const ti = ruleTitleIdx(c.title);
+        if (ti >= 0) title = newR[ti][1];
+        const di = ruleDescIdx(c.desc);
+        if (di >= 0) desc = newR[di][2];
+        return Object.assign({}, c, { title: title, desc: desc });
+      }
+      if (!c.dia) return c;
+      const nd = (I18N[nl].deck[c.type] || []).find((k) => k.dia === c.dia);
+      if (!nd) return c;
+      let title = c.title, desc = c.desc;
+      for (const lg of langs) {
+        const od = (I18N[lg].deck[c.type] || []).find((k) => k.dia === c.dia);
+        if (!od) continue;
+        if (c.title === od.title) title = nd.title;
+        if (c.desc === od.desc) desc = nd.desc;
+      }
+      return Object.assign({}, c, { title: title, desc: desc });
+    });
+    this.setState({ lang: nl, rules: rules, cards: cards });
+  }
+
+  // ── 1단계: 규칙 선택 ──
+  patchRule(id, k, v) { this.setState((s) => ({ rules: s.rules.map((r) => r.id === id ? Object.assign({}, r, { [k]: v }) : r) })); }
+  toggleRule(id, e) {
+    const t = e.target.tagName;
+    if (t === 'INPUT' || t === 'TEXTAREA' || t === 'BUTTON') return;
+    this.patchRule(id, 'sel', !this.state.rules.find((r) => r.id === id).sel);
+  }
+  addCustom(cat) {
+    const id = 'rc' + Date.now();
+    this.setState((s) => ({ rules: s.rules.concat([{ id: id, cat: cat, title: '', desc: '', sel: true, custom: true }]) }));
+  }
+
+  // ── 2단계: 보드 ──
+  startNew(type, tpl, e) {
+    e.preventDefault();
+    this.drag = { kind: 'new', type: type, tpl: tpl };
+    this.setState({ ghost: { x: e.clientX, y: e.clientY, type: type, text: tpl.title || tpl.blank || '' } });
+  }
+  addCard(type, tpl, x, y) {
+    const card = { id: 'c' + this.state.seq, type: type, title: tpl.title || '', desc: tpl.desc || '', dia: tpl.dia || null, collapsed: type === 'rule', x: this.fix(x), y: this.fix(y) };
+    this.setState((s) => ({ cards: s.cards.concat([card]), seq: s.seq + 1 }));
+  }
+  quickAdd(type, tpl) {
+    const col = { rule: 48, when: 256, how: 464 }[type];
+    const n = this.state.cards.filter((c) => c.type === type).length;
+    this.addCard(type, tpl, col, 32 + n * 32);
+  }
+
+  onCanvasDown(e) {
+    if (this.state.selArrow) this.setState({ selArrow: null });
+    if (this.state.noteMode) {
+      const p = this.toCanvas(e.clientX, e.clientY);
+      const id = 'n' + this.state.seq;
+      this.setState((s) => ({ notes: (s.notes || []).concat([{ id: id, x: Math.round(p.x), y: Math.round(p.y), text: '' }]), seq: s.seq + 1, noteMode: false, focusNote: id }));
+      return;
+    }
+    this.drag = { kind: 'pan', sx: e.clientX, sy: e.clientY, px: this.state.pan.x, py: this.state.pan.y };
+  }
+  startNoteMove(id, e) {
+    if (e.target.tagName === 'TEXTAREA' || e.target.tagName === 'BUTTON') return;
+    e.stopPropagation();
+    const n = (this.state.notes || []).find((k) => k.id === id);
+    const p = this.toCanvas(e.clientX, e.clientY);
+    this.drag = { kind: 'note', id: id, ox: p.x - n.x, oy: p.y - n.y };
+  }
+  cardRect(c) { return { x: c.x, y: c.y, w: CARD, h: (c.type === 'rule' && c.collapsed) ? 90 : 168 }; }
+  startMove(id, e) {
+    if (this.state.arrowMode) {
+      e.stopPropagation(); e.preventDefault();
+      const p = this.toCanvas(e.clientX, e.clientY);
+      this.drag = { kind: 'link', from: id };
+      this.setState({ pendingArrow: { from: id, x: p.x, y: p.y } });
+      return;
+    }
+    const t = e.target.tagName;
+    if (t === 'INPUT' || t === 'TEXTAREA' || t === 'BUTTON') return;
+    e.stopPropagation();
+    const c = this.state.cards.find((k) => k.id === id);
+    const p = this.toCanvas(e.clientX, e.clientY);
+    this.drag = { kind: 'move', id: id, ox: p.x - c.x, oy: p.y - c.y };
+    this.setState((s) => ({ cards: s.cards.filter((k) => k.id !== id).concat([c]) }));
+  }
+  onMove(e) {
+    const d = this.drag;
+    if (!d) return;
+    if (d.kind === 'new') {
+      this.setState((s) => ({ ghost: Object.assign({}, s.ghost, { x: e.clientX, y: e.clientY }) }));
+    } else if (d.kind === 'move') {
+      const p = this.toCanvas(e.clientX, e.clientY);
+      let nx = this.fix(p.x - d.ox), ny = this.fix(p.y - d.oy);
+      const SNAP = 10, GAP = 16;
+      let bx = SNAP, by = SNAP;
+      this.state.cards.forEach((c) => {
+        if (c.id === d.id) return;
+        // 수평 정렬: 상단끼리, 그리고 좌/우 변끼리 + 카드 간격
+        [c.y].forEach((ty) => { const dd = Math.abs(ny - ty); if (dd < by) { by = dd; ny = ty; } });
+        [c.x, c.x + CARD + GAP, c.x - CARD - GAP].forEach((tx) => { const dd = Math.abs(nx - tx); if (dd < bx) { bx = dd; nx = tx; } });
+      });
+      this.setState((s) => ({ cards: s.cards.map((c) => c.id === d.id ? Object.assign({}, c, { x: nx, y: ny }) : c) }));
+    } else if (d.kind === 'link') {
+      const p = this.toCanvas(e.clientX, e.clientY);
+      this.setState((s) => ({ pendingArrow: s.pendingArrow ? Object.assign({}, s.pendingArrow, { x: p.x, y: p.y }) : null }));
+    } else if (d.kind === 'note') {
+      const p = this.toCanvas(e.clientX, e.clientY);
+      this.setState((s) => ({ notes: s.notes.map((n) => n.id === d.id ? Object.assign({}, n, { x: Math.round(p.x - d.ox), y: Math.round(p.y - d.oy) }) : n) }));
+    } else if (d.kind === 'resize') {
+      this.setState({ panelW: Math.min(940, Math.max(210, d.pw + (e.clientX - d.sx))) });
+    } else if (d.kind === 'pan') {
+      this.setState({ pan: { x: d.px + (e.clientX - d.sx), y: d.py + (e.clientY - d.sy) } });
+    }
+  }
+  onUp(e) {
+    const d = this.drag;
+    this.drag = null;
+    if (!d) return;
+    if (d.kind === 'link') {
+      const p = this.toCanvas(e.clientX, e.clientY);
+      const hit = this.state.cards.slice().reverse().find((c) => {
+        const r = this.cardRect(c);
+        return c.id !== d.from && p.x >= r.x && p.x <= r.x + r.w && p.y >= r.y && p.y <= r.y + r.h;
+      });
+      if (hit && !this.state.arrows.some((a) => a.from === d.from && a.to === hit.id)) {
+        this.setState((s) => ({ arrows: s.arrows.concat([{ id: 'a' + s.seq, from: d.from, to: hit.id }]), seq: s.seq + 1, pendingArrow: null }));
+      } else this.setState({ pendingArrow: null });
+      return;
+    }
+    if (d.kind === 'new') {
+      const r = this.canvasRef.current ? this.canvasRef.current.getBoundingClientRect() : null;
+      if (r && e.clientX > r.left && e.clientX < r.right && e.clientY > r.top && e.clientY < r.bottom) {
+        const p = this.toCanvas(e.clientX, e.clientY);
+        this.addCard(d.type, d.tpl, p.x - CARD / 2, p.y - 26);
+      }
+      this.setState({ ghost: null });
+    }
+  }
+
+  patch(id, k, v) { this.setState((s) => ({ cards: s.cards.map((c) => c.id === id ? Object.assign({}, c, { [k]: v }) : c) })); }
+  dup(id) {
+    const c = this.state.cards.find((k) => k.id === id);
+    this.setState((s) => ({ cards: s.cards.concat([Object.assign({}, c, { id: 'c' + s.seq, x: c.x + 20, y: c.y + 16 })]), seq: s.seq + 1 }));
+  }
+  del(id) { this.setState((s) => ({ cards: s.cards.filter((c) => c.id !== id), arrows: s.arrows.filter((a) => a.from !== id && a.to !== id) })); }
+  zoomBy(d) { this.setState((s) => ({ zoom: Math.min(1.6, Math.max(0.35, Math.round((s.zoom + d) * 100) / 100)) })); }
+
+  arrowEnds(a) {
+    const f = this.state.cards.find((c) => c.id === a.from), tc = this.state.cards.find((c) => c.id === a.to);
+    if (!f || !tc) return null;
+    const rf = this.cardRect(f), rt = this.cardRect(tc);
+    const edge = (r, tx, ty) => {
+      const cx = r.x + r.w / 2, cy = r.y + r.h / 2;
+      const dx = tx - cx, dy = ty - cy;
+      if (!dx && !dy) return { x: cx, y: cy };
+      const s = Math.min(dx ? (r.w / 2) / Math.abs(dx) : Infinity, dy ? (r.h / 2) / Math.abs(dy) : Infinity);
+      return { x: cx + dx * s, y: cy + dy * s };
+    };
+    const cf = { x: rf.x + rf.w / 2, y: rf.y + rf.h / 2 }, ct = { x: rt.x + rt.w / 2, y: rt.y + rt.h / 2 };
+    return { p1: edge(rf, ct.x, ct.y), p2: edge(rt, cf.x, cf.y) };
+  }
+  arrowMid(id) {
+    const a = this.state.arrows.find((k) => k.id === id);
+    if (!a) return null;
+    const e = this.arrowEnds(a);
+    return e ? { x: (e.p1.x + e.p2.x) / 2, y: (e.p1.y + e.p2.y) / 2 } : null;
+  }
+  // 화살표 레이어는 SVG라 템플릿 대신 직접 그린다
+  arrowsLayer() {
+    const h = React.createElement;
+    const SEL = ACC.rule, INK = '#8a877e';
+    const kids = [h('defs', { key: 'defs' },
+      h('marker', { id: 'om-ah', viewBox: '0 0 10 10', refX: 8.5, refY: 5, markerWidth: 6.5, markerHeight: 6.5, orient: 'auto-start-reverse' }, h('path', { d: 'M0 0 L10 5 L0 10 z', fill: INK })),
+      h('marker', { id: 'om-ah-sel', viewBox: '0 0 10 10', refX: 8.5, refY: 5, markerWidth: 6.5, markerHeight: 6.5, orient: 'auto-start-reverse' }, h('path', { d: 'M0 0 L10 5 L0 10 z', fill: SEL }))
+    )];
+    this.state.arrows.forEach((a) => {
+      const e = this.arrowEnds(a);
+      if (!e) return;
+      const sel = this.state.selArrow === a.id;
+      kids.push(h('line', {
+        key: a.id + 'hit', x1: e.p1.x, y1: e.p1.y, x2: e.p2.x, y2: e.p2.y,
+        stroke: 'transparent', strokeWidth: 14,
+        style: { pointerEvents: 'stroke', cursor: 'pointer' },
+        onPointerDown: (ev) => { ev.stopPropagation(); this.setState({ selArrow: a.id }); }
+      }));
+      kids.push(h('line', { key: a.id, x1: e.p1.x, y1: e.p1.y, x2: e.p2.x, y2: e.p2.y, stroke: sel ? SEL : INK, strokeWidth: sel ? 3 : 2.2, strokeLinecap: 'round', markerEnd: 'url(#' + (sel ? 'om-ah-sel' : 'om-ah') + ')' }));
+    });
+    const p = this.state.pendingArrow;
+    if (p) {
+      const f = this.state.cards.find((c) => c.id === p.from);
+      if (f) {
+        const r = this.cardRect(f);
+        kids.push(h('line', { key: 'pending', x1: r.x + r.w / 2, y1: r.y + r.h / 2, x2: p.x, y2: p.y, stroke: SEL, strokeWidth: 2.2, strokeDasharray: '6 5', strokeLinecap: 'round', markerEnd: 'url(#om-ah-sel)' }));
+      }
+    }
+    return h('svg', { width: 5000, height: 5000, style: { position: 'absolute', left: 0, top: 0, pointerEvents: 'none' } }, kids);
+  }
+
+  rows() {
+    const cards = this.state.cards.slice().sort((a, b) => a.y - b.y || a.x - b.x);
+    const out = [];
+    cards.forEach((c) => {
+      const row = out.find((r) => Math.abs(r.y - c.y) < CARD * 0.7);
+      if (row) row.cards.push(c); else out.push({ y: c.y, cards: [c] });
+    });
+    out.forEach((r) => r.cards.sort((a, b) => a.x - b.x));
+    return out;
+  }
+
+  snapshot() {
+    const data = {
+      participant: this.state.pid,
+      exportedAt: new Date().toISOString(),
+      selectedRules: this.state.rules.filter((r) => r.sel).map((r) => ({ category: r.cat, title: r.title, description: r.desc, custom: r.custom })),
+      combinations: this.rows().map((r, i) => ({
+        index: i + 1,
+        cards: r.cards.map((c) => ({ type: c.type, title: c.title, description: c.desc, diagram: c.dia }))
+      })),
+      annotations: (this.state.notes || []).filter((n) => n.text.trim()).map((n) => ({ text: n.text, x: n.x, y: n.y })),
+      arrows: (this.state.arrows || []).map((a) => {
+        const f = this.state.cards.find((c) => c.id === a.from), tc = this.state.cards.find((c) => c.id === a.to);
+        return { from: f ? { type: f.type, title: f.title } : null, to: tc ? { type: tc.type, title: tc.title } : null };
+      }),
+      raw: this.state.cards,
+      // 다른 기기에서 그대로 복원하기 위한 전체 상태 / full state for cross-device restore
+      state: { savedAt: Date.now(), pid: this.state.pid, step: this.state.step, lang: this.state.lang, rules: this.state.rules, cards: this.state.cards, notes: this.state.notes, arrows: this.state.arrows, seq: this.state.seq, panelW: this.state.panelW }
+    };
+    return data;
+  }
+
+  // ── 서버 동기화 (Google Apps Script 웹앱) ─────────────────────────
+  syncUrl() {
+    try {
+      const q = new URLSearchParams(location.search).get('sync');
+      if (q) return q;
+    } catch (e) {}
+    return this.props.syncUrl || (typeof window !== 'undefined' && window.WORKSHOP_SYNC_URL) || SYNC_URL || '';
+  }
+
+  // 서버에서 참여자 상태 읽기 (JSONP — CORS 불필요) / read latest state for a participant
+  loadRemote(pid) {
+    const url = this.syncUrl();
+    if (!url) return Promise.resolve(null);
+    return new Promise((resolve) => {
+      const cb = '__ws_cb_' + Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
+      const s = document.createElement('script');
+      let done = false;
+      const finish = (v) => {
+        if (done) return;
+        done = true;
+        try { delete window[cb]; } catch (e) { window[cb] = undefined; }
+        if (s.parentNode) s.parentNode.removeChild(s);
+        clearTimeout(timer);
+        resolve(v);
+      };
+      const timer = setTimeout(() => finish(null), 9000);
+      window[cb] = (res) => finish(res && res.ok && res.state ? res.state : null);
+      s.onerror = () => finish(null);
+      s.src = url + (url.indexOf('?') < 0 ? '?' : '&') + 'participant=' + encodeURIComponent(pid) + '&callback=' + cb;
+      document.head.appendChild(s);
+    });
+  }
+
+  queuedFor(pid) {
+    return this.queueRead().some((it) => it.participant === pid);
+  }
+
+  // 방금 적용한 상태를 기준선으로 삼아 불필요한 자동저장을 막음 / seed the baseline so a
+  // freshly loaded state is not immediately re-sent as an "edit"
+  seedSig() {
+    if (this._auto) { clearTimeout(this._auto); this._auto = null; }
+    this._sig = this.sig();
+  }
+
+  applyState(d, fallbackLang) {
+    const lang = d.lang || fallbackLang || this.state.lang;
+    this.setState({
+      step: d.step > 0 ? d.step : 1,
+      lang: lang,
+      rules: (d.rules && d.rules.length) ? d.rules : defaultRules(lang),
+      cards: d.cards || [], notes: d.notes || [], arrows: d.arrows || [],
+      seq: d.seq || 1, panelW: d.panelW || 566,
+      pan: { x: 0, y: 0 }, zoom: 1, noteMode: false
+    }, () => this.seedSig());
+  }
+
+  async syncDown(pid, localSavedAt) {
+    if (!this.syncUrl()) return;
+    this.setState({ loadingRemote: true });
+    const remote = await this.loadRemote(pid);
+    this.setState({ loadingRemote: false });
+    if (!remote || this.state.pid !== pid) return;
+    // 이 기기에 아직 보내지 못한 변경이 있으면 로컬 우선 / unsent local work wins
+    if (this.queuedFor(pid)) { this.flush(); return; }
+    if ((remote.savedAt || 0) > (localSavedAt || 0)) {
+      this.applyState(remote);
+      this.setState({ sync: 'saved' });
+    }
+  }
+
+  queueRead() {
+    try { return JSON.parse(localStorage.getItem(STORE + ':queue') || '[]'); } catch (e) { return []; }
+  }
+
+  queueWrite(q) {
+    try { localStorage.setItem(STORE + ':queue', JSON.stringify(q.slice(-40))); } catch (e) {}
+  }
+
+  enqueue(kind) {
+    if (!this.syncUrl() || !this.state.pid || this.state.step < 1) return;
+    const q = this.queueRead().filter((it) => !(kind === 'autosave' && it.kind === 'autosave' && it.participant === this.state.pid));
+    q.push({ id: this.state.pid + '-' + Date.now() + '-' + Math.random().toString(36).slice(2, 7), kind: kind, participant: this.state.pid, queuedAt: new Date().toISOString(), payload: this.snapshot() });
+    this.queueWrite(q);
+    this.setState({ sync: 'pending' });
+    this.flush();
+  }
+
+  async flush() {
+    const url = this.syncUrl();
+    if (!url || this._flushing) return;
+    let q = this.queueRead();
+    if (!q.length) { this.setState({ sync: 'saved' }); return; }
+    this._flushing = true;
+    try {
+      while (q.length) {
+        const item = q[0];
+        try {
+          await fetch(url, { method: 'POST', mode: 'no-cors', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify(item) });
+        } catch (e) {
+          this.setState({ sync: 'offline' });
+          this.scheduleRetry();
+          this._flushing = false;
+          return;
+        }
+        q = this.queueRead().filter((it) => it.id !== item.id);
+        this.queueWrite(q);
+      }
+      this.setState({ sync: 'saved', syncedAt: Date.now() });
+    } finally {
+      this._flushing = false;
+    }
+  }
+
+  scheduleRetry() {
+    if (this._retry) return;
+    this._retry = setTimeout(() => { this._retry = null; this.flush(); }, 20000);
+  }
+
+  exportJson() {
+    const data = this.snapshot();
+    this.enqueue('submit');
+    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = (this.state.pid || 'participant') + '-ai-rules.json';
+    a.click();
+    URL.revokeObjectURL(a.href);
+  }
+
+  renderVals() {
+    const rules = this.state.rules;
+    const selCount = rules.filter((r) => r.sel).length;
+    const RB = ACC.rule;
+    const L = I18N[this.state.lang] || I18N.ko, t = L.ui;
+
+    const mkDeck = (type, list) => list.map((tpl, i) => ({
+      key: type + (tpl.id || i),
+      mark: L.mark[type],
+      title: tpl.title || tpl.blank || '',
+      titleColor: tpl.blank ? '#7a776f' : '#1b1a17',
+      body: tpl.blank ? '' : tpl.desc,
+      accent: ACC[type],
+      tint: TINT[type],
+      diagram: tpl.dia ? this.diagram(tpl.dia) : null,
+      onDown: (e) => this.startNew(type, tpl, e),
+      onAdd: () => this.quickAdd(type, tpl)
+    }));
+
+    return {
+      t: t,
+      lang: this.state.lang,
+      onLang: (e) => this.setLang(e.target.value),
+      pid: this.state.pid,
+      isStep0: this.state.step === 0,
+      isLoggedIn: this.state.step > 0,
+      showSync: this.state.step > 0,
+      syncLabel: !this.syncUrl() ? t.syncLocal : this.state.loadingRemote ? t.syncLoading : this.state.sync === 'saved' ? t.syncSaved : this.state.sync === 'offline' ? t.syncOffline : this.state.sync ? t.syncPending : t.syncReady,
+      syncColor: !this.syncUrl() ? '#8a6a1f' : this.state.sync === 'saved' ? '#5b7a5e' : this.state.sync === 'offline' ? '#b03f34' : '#98958c',
+      syncBg: !this.syncUrl() ? '#f7f0dc' : '#f4f2eb',
+      syncDot: !this.syncUrl() ? '#d0a531' : this.state.sync === 'saved' ? '#7d9a80' : this.state.sync === 'offline' ? '#c9776c' : '#c9c5ba',
+      isStep1: this.state.step === 1,
+      isStep2: this.state.step === 2,
+      stepLabel: this.state.step === 0 ? t.step0 : this.state.step === 1 ? t.step1 : t.step2,
+      loginPid: this.state.loginPid,
+      onLoginPid: (e) => this.setState({ loginPid: e.target.value }),
+      onLoginKey: (e) => { if (e.key === 'Enter') this.login(this.state.loginPid); },
+      doLogin: () => this.login(this.state.loginPid),
+      startOpacity: this.state.loginPid.trim() ? 1 : 0.4,
+      doLogout: () => this.logout(),
+      savedList: this.savedPids().map((p) => ({ key: p, label: p, onPick: () => this.login(p) })),
+      hasSaved: this.savedPids().length > 0,
+      selLabel: selCount ? selCount + t.selSuffix : t.choose,
+      nextOpacity: selCount ? 1 : 0.4,
+      goNext: () => { if (selCount) this.setState({ step: 2 }); },
+      goBack: () => this.setState({ step: 1 }),
+
+      cats: L.cats.map((cat) => ({
+        key: cat.id,
+        label: cat.label,
+        sub: cat.sub,
+        onAdd: () => this.addCustom(cat.id),
+        rules: rules.filter((r) => r.cat === cat.id).map((r) => ({
+          key: r.id,
+          title: r.title,
+          desc: r.desc,
+          isCustom: r.custom,
+          bg: r.sel ? 'oklch(0.985 0.008 253)' : '#fffefb',
+          bd: r.sel ? RB : '#e2dfd7',
+          tint: r.sel ? TINT.rule : '#f1efe8',
+          shadow: r.sel ? '0 0 0 2.5px oklch(0.88 0.04 253), 0 3px 10px rgba(0,0,0,0.06)' : '0 1px 5px rgba(0,0,0,0.05)',
+          ck: r.sel ? '✓' : '',
+          ckBg: r.sel ? RB : 'transparent',
+          ckBd: r.sel ? RB : '#c9c6bd',
+          onToggle: (e) => this.toggleRule(r.id, e),
+          onTitle: (e) => this.patchRule(r.id, 'title', e.target.value),
+          onDesc: (e) => this.patchRule(r.id, 'desc', e.target.value),
+          onDel: () => this.setState((s) => ({ rules: s.rules.filter((k) => k.id !== r.id) }))
+        }))
+      })),
+
+      deckRule: mkDeck('rule', rules.filter((r) => r.sel)),
+      deckWhen: mkDeck('when', L.deck.when),
+      deckHow: mkDeck('how', L.deck.how),
+
+      canvasRef: this.canvasRef,
+      onCanvasDown: (e) => this.onCanvasDown(e),
+      panelW: this.state.panelW,
+      onResizeDown: (e) => { e.preventDefault(); e.stopPropagation(); this.drag = { kind: 'resize', sx: e.clientX, pw: this.state.panelW }; },
+      panX: this.state.pan.x,
+      panY: this.state.pan.y,
+      zoom: this.state.zoom,
+      zoomLabel: Math.round(this.state.zoom * 100) + '%',
+      zoomIn: () => this.zoomBy(0.1),
+      zoomOut: () => this.zoomBy(-0.1),
+      resetView: () => this.setState({ pan: { x: 0, y: 0 }, zoom: 1 }),
+      isEmpty: this.state.cards.length === 0 && (this.state.notes || []).length === 0,
+      noteMode: this.state.noteMode,
+      noteBtnBg: this.state.noteMode ? '#1b1a17' : '#fff',
+      noteBtnColor: this.state.noteMode ? '#faf8f3' : '#1b1a17',
+      toggleNoteMode: () => this.setState((s) => ({ noteMode: !s.noteMode, arrowMode: false })),
+      arrowBtnBg: this.state.arrowMode ? '#1b1a17' : '#fff',
+      arrowBtnColor: this.state.arrowMode ? '#faf8f3' : '#1b1a17',
+      toggleArrowMode: () => this.setState((s) => ({ arrowMode: !s.arrowMode, noteMode: false, pendingArrow: null })),
+      canvasCursor: this.state.noteMode ? 'text' : this.state.arrowMode ? 'crosshair' : 'default',
+      cardCursor: this.state.arrowMode ? 'crosshair' : 'grab',
+      arrowsLayer: this.arrowsLayer(),
+      selArrowInfo: !!(this.state.selArrow && this.arrowMid(this.state.selArrow)),
+      selArrowX: this.state.selArrow && this.arrowMid(this.state.selArrow) ? this.arrowMid(this.state.selArrow).x : 0,
+      selArrowY: this.state.selArrow && this.arrowMid(this.state.selArrow) ? this.arrowMid(this.state.selArrow).y : 0,
+      delSelArrow: (e) => { e.stopPropagation(); e.preventDefault(); this.setState((s) => ({ arrows: s.arrows.filter((a) => a.id !== s.selArrow), selArrow: null })); },
+      notes: (this.state.notes || []).map((n) => ({
+        key: n.id,
+        x: n.x, y: n.y,
+        text: n.text,
+        autoFocus: this.state.focusNote === n.id,
+        onDown: (e) => this.startNoteMove(n.id, e),
+        onText: (e) => this.setState((s) => ({ notes: s.notes.map((k) => k.id === n.id ? Object.assign({}, k, { text: e.target.value }) : k) })),
+        onDel: () => this.setState((s) => ({ notes: s.notes.filter((k) => k.id !== n.id) }))
+      })),
+      clearAll: () => { if (confirm(t.confirmClear)) this.setState({ cards: [], notes: [], arrows: [], selArrow: null }); },
+      exportJson: () => this.exportJson(),
+      cards: this.state.cards.map((c) => {
+        const isRule = c.type === 'rule';
+        const folded = isRule && c.collapsed;
+        return {
+          key: c.id,
+          x: c.x, y: c.y,
+          h: folded ? 90 : 168,
+          accent: ACC[c.type],
+          tint: TINT[c.type],
+          mark: L.mark[c.type],
+          isRule: isRule,
+          isRuleOpen: isRule && !c.collapsed,
+          isRuleClosed: folded,
+          foldIcon: folded ? '▸' : '▾',
+          onFold: () => this.patch(c.id, 'collapsed', !c.collapsed),
+          hasDiagram: !isRule,
+          title: c.title,
+          desc: c.desc,
+          titlePlaceholder: isRule ? t.ruleName : t.cardName,
+          diagram: c.dia ? this.diagram(c.dia) : null,
+          cursor: this.state.arrowMode ? 'crosshair' : 'grab',
+          onDown: (e) => this.startMove(c.id, e),
+          onTitle: (e) => this.patch(c.id, 'title', e.target.value),
+          onDesc: (e) => this.patch(c.id, 'desc', e.target.value),
+          onDup: () => this.dup(c.id),
+          onDel: () => this.del(c.id)
+        };
+      }),
+      ghost: !!this.state.ghost,
+      ghostX: this.state.ghost ? this.state.ghost.x + 14 : 0,
+      ghostY: this.state.ghost ? this.state.ghost.y + 12 : 0,
+      ghostTint: this.state.ghost ? TINT[this.state.ghost.type] : '#eee',
+      ghostText: this.state.ghost ? this.state.ghost.text : ''
+    };
+  }
+}
+</script>
+</body>
+</html>
