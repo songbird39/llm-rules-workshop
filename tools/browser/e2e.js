@@ -452,6 +452,89 @@ async function dragTileToBoard(page, title, fx = 0.45, fy = 0.4) {
     await page.close();
   }
 
+  // ------------------------------------------------- 3f. arrows to anything
+  console.log("\narrows attach to cards, notes and empty space");
+  {
+    const { page, errors } = await boot(browser, { width: 1440, height: 900 });
+    await toBoard(page, "A1");
+    await dragTileToBoard(page, "학습 전", 0.20, 0.18);
+    await dragTileToBoard(page, "학습 중", 0.55, 0.18);
+    const cb = await (await page.$('div[style*="radial-gradient"]')).boundingBox();
+    await page.getByText("메모", { exact: false }).click();
+    await page.mouse.click(cb.x + cb.width * 0.25, cb.y + cb.height * 0.62);
+    await page.waitForTimeout(300);
+
+    const rects = await page.evaluate(() => {
+      const L = [...document.querySelectorAll("div")].find((d) => d.style.width === "5000px");
+      return [...L.children].filter((c) => c.tagName === "DIV").map((c) => {
+        const r = c.getBoundingClientRect();
+        return { kind: c.querySelector("input") ? "card" : "note", x: r.x, y: r.y, w: r.width, h: r.height };
+      });
+    });
+    const cards = rects.filter((r) => r.kind === "card"), notes = rects.filter((r) => r.kind === "note");
+    const stored = () => page.evaluate(() => {
+      const k = Object.keys(localStorage).find((x) => x.includes("llm-guardrail") && x.endsWith(":A1"));
+      return JSON.parse(localStorage.getItem(k)).arrows || [];
+    });
+    // arrow mode is sticky — enable once; clicking again would turn it off
+    await page.getByText("화살표", { exact: false }).click();
+    await page.waitForTimeout(150);
+    const drag = async (from, to) => {
+      await page.mouse.move(from.x, from.y);
+      await page.mouse.down();
+      await page.waitForTimeout(50);
+      for (let i = 1; i <= 4; i++) {
+        await page.mouse.move(from.x + (to.x - from.x) * i / 4, from.y + (to.y - from.y) * i / 4);
+        await page.waitForTimeout(50);
+      }
+      await page.mouse.up();
+      await page.waitForTimeout(250);
+    };
+    const cardPt = (c) => ({ x: c.x + c.w / 2, y: c.y + 8 });
+    const notePt = (n) => ({ x: n.x + n.w / 2, y: n.y + 20 });
+
+    await drag(cardPt(cards[0]), cardPt(cards[1]));
+    await drag(cardPt(cards[1]), notePt(notes[0]));
+    await drag(notePt(notes[0]), { x: cb.x + cb.width * 0.80, y: cb.y + cb.height * 0.75 });
+    await drag({ x: cb.x + cb.width * 0.85, y: cb.y + cb.height * 0.25 }, cardPt(cards[0]));
+    const a = await stored();
+    check(a.length === 4, "four arrows created", ` (${a.length})`);
+    check(a[0] && a[0].from.k === "card" && a[0].to.k === "card", "card -> card");
+    check(a[1] && a[1].to.k === "note", "card -> note");
+    check(a[2] && a[2].from.k === "note" && a[2].to.k === "pt", "note -> empty space");
+    check(a[3] && a[3].from.k === "pt" && a[3].to.k === "card", "empty space -> card");
+
+    const arrowLines = () => page.evaluate(() => {
+      const sv = [...document.querySelectorAll("svg")].find((x) => x.getAttribute("width") === "5000");
+      return !sv ? [] : [...sv.querySelectorAll("line")]
+        .filter((l) => l.getAttribute("stroke") !== "transparent" && !l.getAttribute("stroke-dasharray"))
+        .map((l) => ({ x1: +l.getAttribute("x1"), y1: +l.getAttribute("y1"), x2: +l.getAttribute("x2"), y2: +l.getAttribute("y2") }));
+    });
+    const L = await arrowLines();
+    check(L.length === 4, "four arrows rendered", ` (${L.length})`);
+    check(L.every((l) => [l.x1, l.y1, l.x2, l.y2].every(isFinite)), "all endpoints finite");
+    check(L.every((l) => Math.hypot(l.x2 - l.x1, l.y2 - l.y1) > 5), "no zero-length arrows");
+    if (SHOTS) await page.screenshot({ path: `${SHOTS}/arrows.png` });
+
+    // boards saved before the schema change stored bare card ids — they must still work
+    await page.evaluate(() => {
+      const k = Object.keys(localStorage).find((x) => x.includes("llm-guardrail") && x.endsWith(":A1"));
+      const d = JSON.parse(localStorage.getItem(k));
+      d.arrows = [{ id: "old1", from: d.cards[0].id, to: d.cards[1].id }];
+      localStorage.setItem(k, JSON.stringify(d));
+    });
+    await page.reload({ waitUntil: "load", timeout: 120000 });
+    await page.waitForSelector('input[placeholder="P00"]', { timeout: 60000 });
+    await page.fill('input[placeholder="P00"]', "A1");
+    await page.getByText("시작하기", { exact: false }).click();
+    await page.waitForTimeout(1200);
+    const L2 = await arrowLines();
+    check(L2.length === 1 && Math.hypot(L2[0].x2 - L2[0].x1, L2[0].y2 - L2[0].y1) > 5,
+      "pre-change arrow (bare card ids) still renders", ` (${L2.length})`);
+    check(errors.length === 0, "no console errors", errors.length ? ` (${errors[0]})` : "");
+    await page.close();
+  }
+
   // ------------------------------------------------- 4. ?ui=1 escape hatch
   console.log("\n?ui=1 escape hatch");
   {
