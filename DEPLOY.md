@@ -134,10 +134,15 @@ While viewing:
 
 | blocked | still works |
 |---|---|
-| local save, autosave, any POST to the sheet | pan, zoom, reset view |
-| moving, editing, deleting, duplicating cards | switching Step 1 / Step 2 |
-| drawing arrows, adding notes | refresh, back to list |
-| the card panel and submit/clear buttons (hidden) | reading everything |
+| local save, autosave, any POST to the sheet | pan — drag the background, or scroll/trackpad |
+| moving, editing, deleting, duplicating cards | zoom (−/+, or ctrl/⌘+scroll) and **화면 맞춤 / Reset view** |
+| drawing arrows, adding notes | switching Step 1 / Step 2 |
+| the card panel and submit/clear buttons (hidden) | refresh, back to list, reading everything |
+
+Getting around a board: drag anywhere on the background to pan (cards are click-through
+while viewing, so you can drag over them too), scroll or two-finger swipe to pan,
+ctrl/⌘+scroll to zoom. If a board looks empty, the participant's cards are probably
+off to one side — press **화면 맞춤 / Reset view** to snap back to origin at 100%.
 
 Why this is belt-and-braces: `componentDidUpdate` fires on *any* state change and writes
 both localStorage and a queued sheet POST, and `latestState_()` returns the **newest** row

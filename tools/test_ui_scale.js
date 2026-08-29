@@ -241,6 +241,28 @@ console.log("\nview mode cannot write");
   const noops = (doc.match(/RO \? NOOP :/g) || []).length;
   check(noops >= 6, "mutating handlers swapped for no-ops", ` (${noops} found)`);
 
+  // 7d-bis. view controls must survive the canEdit guard, editing controls must not.
+  // resetView lives between the note and export buttons, so it is easy to sweep into
+  // the guard by accident — and it is the control that recovers off-screen content.
+  {
+    const gi = doc.indexOf('<sc-if value="{{ canEdit }}"');
+    const gEnd = doc.indexOf("</sc-if>", doc.indexOf("clearAll", gi));
+    const guarded = doc.slice(gi, gEnd);
+    const inGuard = (name) => guarded.includes("{{ " + name + " }}");
+    // still reachable while viewing
+    ["resetView", "zoomIn", "zoomOut"].forEach((n) =>
+      check(!inGuard(n), `${n} stays available in view mode`)
+    );
+    // correctly hidden while viewing
+    ["toggleArrowMode", "toggleNoteMode", "exportJson", "clearAll"].forEach((n) =>
+      check(inGuard(n), `${n} hidden in view mode`)
+    );
+    // panning does not depend on the card layer, which is pointer-events:none
+    check(/window\.addEventListener\('pointermove'/.test(doc), "pan listener is global");
+    check(/if \(this\.state\.step === 2\) this\.bindWheel\(\)/.test(doc),
+      "wheel pan binds on the board step");
+  }
+
   // 7e. the roster path
   check(/this\.jsonp\('list=1'\)/.test(doc), "roster fetched via ?list=1");
   check(/ADMIN_CODE/.test(doc), "admin code constant present");

@@ -68,10 +68,10 @@
           <button onClick="{{ onBackList }}" style="padding:7px 12px;border:1px solid #d6d3ca;border-radius:7px;background:#fff;font-size:13.5px;cursor:pointer" style-hover="background:#f1efe8">{{ t.backList }}</button>
           <button onClick="{{ onRefresh }}" style="padding:7px 12px;border:1px solid #d6d3ca;border-radius:7px;background:#fff;font-size:13.5px;cursor:pointer" style-hover="background:#f1efe8">{{ t.refreshBtn }}</button>
         </sc-if>
+        <button onClick="{{ resetView }}" style="padding:7px 12px;border:1px solid #d6d3ca;border-radius:7px;background:#fff;font-size:13.5px;cursor:pointer" style-hover="background:#f1efe8">{{ t.fit }}</button>
         <sc-if value="{{ canEdit }}" hint-placeholder-val="{{ true }}">
         <button onClick="{{ toggleArrowMode }}" title="{{ t.arrowTip }}" style="padding:7px 12px;border:1px solid #d6d3ca;border-radius:7px;background:{{ arrowBtnBg }};color:{{ arrowBtnColor }};font-size:13.5px;cursor:pointer">{{ t.arrow }}</button>
         <button onClick="{{ toggleNoteMode }}" title="{{ t.noteTip }}" style="padding:7px 12px;border:1px solid #d6d3ca;border-radius:7px;background:{{ noteBtnBg }};color:{{ noteBtnColor }};font-size:13.5px;cursor:pointer">{{ t.note }}</button>
-        <button onClick="{{ resetView }}" style="padding:7px 12px;border:1px solid #d6d3ca;border-radius:7px;background:#fff;font-size:13.5px;cursor:pointer" style-hover="background:#f1efe8">{{ t.fit }}</button>
         <button onClick="{{ exportJson }}" style="padding:7px 13px;border:1px solid transparent;border-radius:7px;background:#1b1a17;color:#faf8f3;font-size:13.5px;cursor:pointer" style-hover="background:#35332c">{{ t.exportBtn }}</button>
         <button onClick="{{ clearAll }}" title="{{ t.clearTip }}" style="padding:7px 10px;border:1px solid #e2dfd7;border-radius:7px;background:transparent;color:#98958c;font-size:13.5px;cursor:pointer" style-hover="color:#b03f34;border-color:#ddc0bb">{{ t.clear }}</button>
         </sc-if>
