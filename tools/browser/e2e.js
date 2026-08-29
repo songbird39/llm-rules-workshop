@@ -268,7 +268,7 @@ async function dragTileToBoard(page, title, fx = 0.45, fy = 0.4) {
     const ghost = await page.evaluate(() => {
       const g = [...document.querySelectorAll("div")].find((d) => d.style.position === "fixed" && d.style.zIndex === "50");
       const r = g.getBoundingClientRect();
-      return { x: r.x, y: r.y };
+      return { x: r.x, y: r.y, w: r.width, h: r.height };
     });
     await page.mouse.up();
     await page.waitForTimeout(200);
@@ -279,6 +279,11 @@ async function dragTileToBoard(page, title, fx = 0.45, fy = 0.4) {
     check(Math.abs(dx) <= tol && Math.abs(dy) <= tol,
       `lands where the ghost was at board zoom ${zoom.toFixed(2)}`,
       ` (off by ${dx.toFixed(1)},${dy.toFixed(1)}; tol ${tol.toFixed(0)})`);
+    // the ghost is position:fixed (UI zoom only) while the card is in the canvas layer
+    // (UI * board zoom), so without an explicit transform the preview is the wrong size
+    check(Math.abs(ghost.w - card.w) <= 2 && Math.abs(ghost.h - card.h) <= 2,
+      `ghost is the card's size at board zoom ${zoom.toFixed(2)}`,
+      ` (ghost ${ghost.w.toFixed(0)}x${ghost.h.toFixed(0)} vs card ${card.w.toFixed(0)}x${card.h.toFixed(0)})`);
     await page.close();
   }
 
