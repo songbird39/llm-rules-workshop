@@ -1,0 +1,9 @@
+# pre-edit backups of the generated bundle (22 MB each) — git history is the real backup
+*.bak
+
+# only present from ad-hoc tooling; the app itself has no build step
+node_modules/
+package.json
+package-lock.json
+
+.DS_Store

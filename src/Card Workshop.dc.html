@@ -279,12 +279,16 @@ const CARD = 168, STORE = 'llm-guardrail-workshop-v4';
 
 /* ─────────────────────────────────────────────────────────────────
    서버 저장 설정 / SERVER SAVE CONFIG
-   Google Apps Script 웹앱 URL을 여기에 붙여 넣으세요 (…/exec).
-   Paste your Apps Script web-app URL below, or set
-   window.WORKSHOP_SYNC_URL, or open the page with ?sync=<url>.
-   Empty = local-only (offline autosave still works).
+   Apps Script 웹앱(…/exec) URL이 아래에 고정되어 있습니다.
+   The Apps Script web-app URL is baked in below, so the plain
+   GitHub Pages link works with no query string.
+   Override order: ?sync=<url>  >  window.WORKSHOP_SYNC_URL  >  SYNC_URL.
+   Set it back to '' for local-only (offline autosave still works).
+   NOTE: must be the .../exec deployment URL. A
+   script.googleusercontent.com/macros/echo?user_content_key=... URL
+   is NOT an endpoint — it cannot POST and drops every write.
    ───────────────────────────────────────────────────────────────── */
-const SYNC_URL = '';
+const SYNC_URL = 'https://script.google.com/macros/s/AKfycbxsrbb98XMbg9jrRl5U8TdBJKnWvS5Fx5_uve26fdHFuKrd07huZYOn7k2YZDlEGCKQVQ/exec';
 const AUTOSAVE_MS = 2500;
 
 const I18N = {

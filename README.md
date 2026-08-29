@@ -14,7 +14,7 @@ niceties.**
 
 ## About the design files
 
-The files in `src/` and `prototype/` are **design references implemented in HTML** — a
+The files in `src/` are **design references implemented in HTML** — a
 working prototype of the intended look and behavior, not production code to lift
 wholesale. If you are moving this into an existing codebase (React/Vue/Svelte/native),
 **recreate the screens in that environment's established patterns**; if there is no
@@ -195,7 +195,8 @@ Only web font is Pretendard from jsDelivr — **self-host it** in production.
 ```
 src/Card Workshop.dc.html   the design + all logic (~1170 lines) — the source of truth
 src/support.js              prototype runtime; do NOT port
-prototype/index.html        self-contained 22 MB build, opens offline; what participants run
+index.html                  self-contained 22 MB build (repo root = GitHub Pages);
+                            opens offline; what participants run
 server/Code.gs              Apps Script backend — ships as-is
 DEPLOY.md                   GitHub Pages + Apps Script setup, and the pre-session checklist
 ```
