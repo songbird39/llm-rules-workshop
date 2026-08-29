@@ -7,3 +7,6 @@ package.json
 package-lock.json
 
 .DS_Store
+
+# browser harness artifacts
+tools/browser/node_modules/
