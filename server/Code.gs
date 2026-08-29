@@ -43,14 +43,17 @@ function doPost(e) {
   }
 }
 
-/** Health check + cross-device read.
+/** Health check + cross-device read + admin roster.
  *  ?participant=P01&callback=fn  → JSONP: fn({ok:true, state:{…}})
+ *  ?list=1&callback=fn           → JSONP: fn({ok:true, participants:[…]})
  *  (no params)                    → {ok:true, rows:N}
  */
 function doGet(e) {
   var p = (e && e.parameter) || {};
   var out;
-  if (p.participant) {
+  if (p.list) {
+    out = { ok: true, participants: roster_() };
+  } else if (p.participant) {
     out = { ok: true, participant: p.participant, state: latestState_(p.participant) };
   } else {
     out = { ok: true, rows: Math.max(0, sheet_().getLastRow() - 1) };
@@ -61,6 +64,38 @@ function doGet(e) {
       .setMimeType(ContentService.MimeType.JAVASCRIPT);
   }
   return json_(out);
+}
+
+/** One row per participant seen in the sheet, newest activity first.
+ *  Feeds the admin view-mode roster. Read-only: touches nothing.
+ */
+function roster_() {
+  var sh = sheet_();
+  var last = sh.getLastRow();
+  if (last < 2) return [];
+  var vals = sh.getRange(2, 1, last - 1, 3).getValues(); // receivedAt, participant, kind
+  var map = {}, order = [];
+  for (var i = 0; i < vals.length; i++) {
+    var pid = String(vals[i][1] || '').trim();
+    if (!pid) continue;
+    if (!map[pid]) { map[pid] = { participant: pid, rows: 0, submits: 0, lastAt: null }; order.push(pid); }
+    var rec = map[pid];
+    rec.rows++;
+    if (String(vals[i][2]) === 'submit') rec.submits++;
+    var ts = vals[i][0];
+    if (ts && (!rec.lastAt || ts > rec.lastAt)) rec.lastAt = ts;
+  }
+  var out = order.map(function (pid) {
+    var r = map[pid];
+    return {
+      participant: r.participant,
+      rows: r.rows,
+      submits: r.submits,
+      lastAt: r.lastAt ? new Date(r.lastAt).toISOString() : null
+    };
+  });
+  out.sort(function (a, b) { return String(b.lastAt || '').localeCompare(String(a.lastAt || '')); });
+  return out;
 }
 
 /** Newest saved board state for a participant, or null. */

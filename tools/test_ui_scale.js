@@ -193,5 +193,60 @@ console.log("\nrule card keeps its size on drop");
   check(linesFit >= worst, "longest rule description fits", ` (${linesFit} >= ${worst})`);
 }
 
+// ---- 7. view mode must not be able to write ----
+// The whole point: viewing P01 must never produce a localStorage write or a sheet
+// POST, because latestState_() takes the newest row and would adopt the accident.
+console.log("\nview mode cannot write");
+{
+  // 7a. the guard must be the FIRST statement of each write path — stronger than
+  // "appears somewhere in the body", and it is what makes the bail-out unconditional.
+  const guardedFirst = (signature) => {
+    const i = doc.indexOf("  " + signature + " {");
+    if (i < 0) return false;
+    const head = doc.slice(i + signature.length + 5, i + signature.length + 60);
+    return /^\s*if \(this\.isView\(\)\) return;/.test(head);
+  };
+  check(guardedFirst("scheduleAutosave()"), "scheduleAutosave bails on isView() first");
+  check(guardedFirst("enqueue(kind)"), "enqueue bails on isView() first");
+  check(guardedFirst("exportJson()"), "exportJson bails on isView() first");
+  check(/this\.state\.pid && !this\.isView\(\)/.test(doc),
+    "componentDidUpdate localStorage write checks isView()");
+
+  // 7b. admin mode must leave state.pid empty — that alone disables every path
+  check(/admin: true, viewPid: '', loginPid: '', pid: '', step: 0/.test(doc),
+    "admin login clears state.pid");
+  check(/openParticipant\(pid\) \{\s*this\.setState\(\{ viewPid: pid/.test(doc),
+    "viewed code goes to viewPid, not pid");
+
+  // 7c. simulate the guards for real
+  const isView = (admin) => !!admin;
+  const wouldWriteLocal = (st) => st.step > 0 && !!st.pid && !isView(st.admin);
+  const wouldAutosave = (st) => !isView(st.admin) && st.step >= 1 && !!st.pid;
+  const wouldEnqueue = wouldAutosave;
+  const participant = { admin: false, pid: "P01", step: 2 };
+  const viewing = { admin: true, pid: "", viewPid: "P01", step: 2 };
+  check(wouldWriteLocal(participant) && wouldAutosave(participant) && wouldEnqueue(participant),
+    "participant mode still saves normally");
+  check(!wouldWriteLocal(viewing) && !wouldAutosave(viewing) && !wouldEnqueue(viewing),
+    "view mode writes nothing");
+  // even if a future edit forgets to clear pid, isView() alone must stop it
+  const sloppy = { admin: true, pid: "P01", step: 2 };
+  check(!wouldWriteLocal(sloppy) && !wouldAutosave(sloppy) && !wouldEnqueue(sloppy),
+    "isView() alone stops writes even if pid leaks in");
+
+  // 7d. read-only UI
+  check(/layerPE: RO \? 'none' : 'auto'/.test(doc), "card layer goes pointer-events:none");
+  check(/showPanel: !RO/.test(doc), "card panel hidden while viewing");
+  check(/canEdit: !RO/.test(doc), "editing toolbar hidden while viewing");
+  const noops = (doc.match(/RO \? NOOP :/g) || []).length;
+  check(noops >= 6, "mutating handlers swapped for no-ops", ` (${noops} found)`);
+
+  // 7e. the roster path
+  check(/this\.jsonp\('list=1'\)/.test(doc), "roster fetched via ?list=1");
+  check(/ADMIN_CODE/.test(doc), "admin code constant present");
+  check(/isStep0: this\.state\.step === 0 && !this\.state\.admin/.test(doc),
+    "login screen suppressed in admin mode");
+}
+
 console.log(failures ? `\n${failures} FAILURE(S)` : "\nall passed");
 process.exit(failures ? 1 : 0);

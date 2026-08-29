@@ -106,6 +106,44 @@ Three checks before a session:
    fire-and-forget (`no-cors`), so the badge means "sent", not "stored" — the sheet is
    the only real confirmation.
 
+## View mode (admin)
+
+Sign in with the participant code **`admin`** instead of a real code. You get a list of
+everyone in the sheet — code, record count, whether they submitted, last activity — and
+clicking one opens their board **read-only**.
+
+⚠ **Requires an Apps Script redeploy.** The roster uses a new `?list=1` action in
+`server/Code.gs`. Paste the current file into the editor, then
+**Deploy ▸ Manage deployments ▸ Edit (pencil) ▸ Version: New version ▸ Deploy**. Editing
+the script without a new version leaves the old code live and the roster shows
+*"Could not load the list."* The `/exec` URL does not change.
+
+While viewing:
+
+| blocked | still works |
+|---|---|
+| local save, autosave, any POST to the sheet | pan, zoom, reset view |
+| moving, editing, deleting, duplicating cards | switching Step 1 / Step 2 |
+| drawing arrows, adding notes | refresh, back to list |
+| the card panel and submit/clear buttons (hidden) | reading everything |
+
+Why this is belt-and-braces: `componentDidUpdate` fires on *any* state change and writes
+both localStorage and a queued sheet POST, and `latestState_()` returns the **newest** row
+for a participant. So one accidental nudge while viewing P01 would silently become P01's
+canonical board. View mode therefore (a) keeps `state.pid` empty — the viewed code lives
+in `viewPid` — which by itself makes every write path a no-op, and (b) additionally bails
+out of `scheduleAutosave`, `enqueue` and `exportJson` on the first line. Cards are also
+`pointer-events:none` and every mutating handler is swapped for a no-op.
+
+**This is not access control.** `ADMIN_CODE` sits in client-side JS on a public page —
+anyone who reads the bundle can find it, and the Apps Script endpoint accepts writes from
+anyone regardless. It prevents *your own accidents*, which is what it is for. Change the
+code in `src/Card Workshop.dc.html` (`const ADMIN_CODE`) if you want a different word, and
+avoid handing a participant `admin` as their code.
+
+Re-run `node tools/test_ui_scale.js` after touching any of this — it asserts the write
+guards are the first statement in each path.
+
 ## Cross-device continuity
 
 Sign in with the same participant code on any device on the link and the board comes

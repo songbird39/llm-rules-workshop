@@ -35,6 +35,9 @@
       <div style="display:flex;align-items:center;gap:6px;margin-left:8px">
         <span style="font-size:11.5px;letter-spacing:0.04em;color:#98958c">{{ t.participant }}</span>
         <span style="padding:4px 10px;border:1px solid #dedbd3;border-radius:6px;background:#fdfcf9;font-size:13px;font-weight:600">{{ pid }}</span>
+        <sc-if value="{{ isViewing }}" hint-placeholder-val="{{ false }}">
+          <span style="padding:3px 9px;border-radius:20px;background:#f7f0dc;color:#8a6a1f;font-size:11.5px;font-weight:600;white-space:nowrap">{{ t.viewBadge }}</span>
+        </sc-if>
         <sc-if value="{{ showSync }}" hint-placeholder-val="{{ false }}">
           <span style="display:inline-flex;align-items:center;gap:5px;padding:3px 8px;border-radius:20px;background:{{ syncBg }};font-size:11.5px;color:{{ syncColor }};white-space:nowrap">
             <span style="width:6px;height:6px;border-radius:50%;background:{{ syncDot }}"></span>{{ syncLabel }}
@@ -61,11 +64,17 @@
           <div style="width:48px;text-align:center;font-family:ui-monospace,Menlo,monospace;font-size:11.5px;color:#7a776f;border-left:1px solid #e8e5dd;border-right:1px solid #e8e5dd;height:33px;line-height:33px">{{ zoomLabel }}</div>
           <button onClick="{{ zoomIn }}" style="width:32px;height:33px;border:none;background:transparent;cursor:pointer;font-size:16px;line-height:1" style-hover="background:#f1efe8">+</button>
         </div>
+        <sc-if value="{{ isViewing }}" hint-placeholder-val="{{ false }}">
+          <button onClick="{{ onBackList }}" style="padding:7px 12px;border:1px solid #d6d3ca;border-radius:7px;background:#fff;font-size:13.5px;cursor:pointer" style-hover="background:#f1efe8">{{ t.backList }}</button>
+          <button onClick="{{ onRefresh }}" style="padding:7px 12px;border:1px solid #d6d3ca;border-radius:7px;background:#fff;font-size:13.5px;cursor:pointer" style-hover="background:#f1efe8">{{ t.refreshBtn }}</button>
+        </sc-if>
+        <sc-if value="{{ canEdit }}" hint-placeholder-val="{{ true }}">
         <button onClick="{{ toggleArrowMode }}" title="{{ t.arrowTip }}" style="padding:7px 12px;border:1px solid #d6d3ca;border-radius:7px;background:{{ arrowBtnBg }};color:{{ arrowBtnColor }};font-size:13.5px;cursor:pointer">{{ t.arrow }}</button>
         <button onClick="{{ toggleNoteMode }}" title="{{ t.noteTip }}" style="padding:7px 12px;border:1px solid #d6d3ca;border-radius:7px;background:{{ noteBtnBg }};color:{{ noteBtnColor }};font-size:13.5px;cursor:pointer">{{ t.note }}</button>
         <button onClick="{{ resetView }}" style="padding:7px 12px;border:1px solid #d6d3ca;border-radius:7px;background:#fff;font-size:13.5px;cursor:pointer" style-hover="background:#f1efe8">{{ t.fit }}</button>
         <button onClick="{{ exportJson }}" style="padding:7px 13px;border:1px solid transparent;border-radius:7px;background:#1b1a17;color:#faf8f3;font-size:13.5px;cursor:pointer" style-hover="background:#35332c">{{ t.exportBtn }}</button>
         <button onClick="{{ clearAll }}" title="{{ t.clearTip }}" style="padding:7px 10px;border:1px solid #e2dfd7;border-radius:7px;background:transparent;color:#98958c;font-size:13.5px;cursor:pointer" style-hover="color:#b03f34;border-color:#ddc0bb">{{ t.clear }}</button>
+        </sc-if>
       </div>
     </sc-if>
   </div>
@@ -91,6 +100,32 @@
             </div>
           </div>
         </sc-if>
+      </div>
+    </div>
+  </sc-if>
+
+  <sc-if value="{{ isRoster }}" hint-placeholder-val="{{ false }}">
+    <div style="flex:1;min-height:0;overflow-y:auto;background:#f1efe8">
+      <div style="max-width:760px;margin:0 auto;padding:28px 32px 40px;display:flex;flex-direction:column;gap:16px">
+        <div style="display:flex;align-items:baseline;gap:10px;flex-wrap:wrap">
+          <div style="font-size:17px;font-weight:700;letter-spacing:-0.01em">{{ t.rosterTitle }}</div>
+          <div style="flex:1"></div>
+          <button onClick="{{ onRefresh }}" style="padding:6px 12px;border:1px solid #d6d3ca;border-radius:7px;background:#fff;font-size:13px;cursor:pointer" style-hover="background:#faf8f3">{{ t.refreshBtn }}</button>
+        </div>
+        <div style="font-size:12.5px;line-height:1.6;color:#7a776f">{{ t.viewBanner }}</div>
+        <sc-if value="{{ hasRosterNote }}" hint-placeholder-val="{{ false }}">
+          <div style="font-size:12.5px;line-height:1.6;color:#8a6a1f;background:#f7f0dc;border-radius:8px;padding:10px 13px">{{ rosterNote }}</div>
+        </sc-if>
+        <div style="display:flex;flex-direction:column;gap:8px">
+          <sc-for list="{{ rosterList }}" as="r" hint-placeholder-count="0">
+            <button onClick="{{ r.onOpen }}" style="display:flex;align-items:baseline;gap:12px;text-align:left;padding:12px 15px;border:1px solid #e2dfd7;border-radius:10px;background:#fffefb;cursor:pointer" style-hover="border-color:oklch(0.51 0.08 253);box-shadow:0 3px 12px rgba(0,0,0,0.07)">
+              <span style="font-size:14px;font-weight:700;letter-spacing:-0.01em;min-width:64px">{{ r.label }}</span>
+              <span style="font-size:12px;color:#7a776f">{{ r.meta }}</span>
+              <span style="flex:1"></span>
+              <span style="font-size:11.5px;color:#a7a49b;white-space:nowrap">{{ r.when }}</span>
+            </button>
+          </sc-for>
+        </div>
       </div>
     </div>
   </sc-if>
@@ -136,6 +171,7 @@
   <sc-if value="{{ isStep2 }}" hint-placeholder-val="{{ false }}">
   <div style="display:flex;flex:1;min-height:0">
 
+    <sc-if value="{{ showPanel }}" hint-placeholder-val="{{ true }}">
     <div style="flex:0 0 {{ panelW }}px;display:flex;flex-direction:column;background:#faf8f3;overflow-y:auto">
       <div style="padding:14px 16px 12px;font-size:13px;line-height:1.65;color:#7a776f;border-bottom:1px solid #ece9e1">
         {{ t.p1a }}<b style="color:#1b1a17;font-weight:600">{{ t.p1b }}</b>{{ t.p1c }}<b style="color:#1b1a17;font-weight:600">{{ t.p1d }}</b>{{ t.p1e }}<b style="color:#1b1a17;font-weight:600">{{ t.p1f }}</b>{{ t.p1g }}
@@ -195,12 +231,15 @@
       </div>
     </div>
 
+    </sc-if>
+    <sc-if value="{{ showPanel }}" hint-placeholder-val="{{ true }}">
     <div onPointerDown="{{ onResizeDown }}" title="{{ t.resizeTip }}" style="flex:0 0 7px;cursor:col-resize;background:#e2dfd7;border-left:1px solid #d6d3ca;border-right:1px solid #d6d3ca;display:flex;align-items:center;justify-content:center" style-hover="background:#d6d3ca">
       <div style="width:2px;height:34px;border-radius:1px;background:#b6b3aa"></div>
     </div>
 
+    </sc-if>
     <div ref="{{ canvasRef }}" onPointerDown="{{ onCanvasDown }}" style="position:relative;flex:1;min-width:0;overflow:hidden;cursor:{{ canvasCursor }};background-color:#ebe8e0;background-image:radial-gradient(#dad6cb 1px, transparent 1px);background-size:24px 24px">
-      <div style="position:absolute;left:0;top:0;width:5000px;height:5000px;transform-origin:0 0;transform:translate({{ panX }}px, {{ panY }}px) scale({{ zoom }})">
+      <div style="position:absolute;left:0;top:0;width:5000px;height:5000px;transform-origin:0 0;pointer-events:{{ layerPE }};transform:translate({{ panX }}px, {{ panY }}px) scale({{ zoom }})">
         {{ arrowsLayer }}
         <sc-if value="{{ selArrowInfo }}" hint-placeholder-val="{{ false }}">
           <button onPointerDown="{{ delSelArrow }}" title="{{ t.arrowDelTip }}" style="position:absolute;left:{{ selArrowX }}px;top:{{ selArrowY }}px;transform:translate(-50%,-50%);width:22px;height:22px;border:1px solid #d6d3ca;border-radius:50%;background:#fffefb;color:#b03f34;font-size:11px;line-height:1;cursor:pointer;box-shadow:0 2px 8px rgba(0,0,0,0.12);z-index:5">✕</button>
@@ -315,6 +354,17 @@ const UI = (function () {
 const SYNC_URL = 'https://script.google.com/macros/s/AKfycbxsrbb98XMbg9jrRl5U8TdBJKnWvS5Fx5_uve26fdHFuKrd07huZYOn7k2YZDlEGCKQVQ/exec';
 const AUTOSAVE_MS = 2500;
 
+/* ─────────────────────────────────────────────────────────────────
+   열람(관리자) 모드 / ADMIN VIEW MODE
+   이 코드로 로그인하면 참여자 목록을 열고 각자의 보드를 '읽기 전용'으로
+   볼 수 있습니다. 열람 중에는 로컬 저장·자동 저장·시트 전송이 모두 차단됩니다.
+   Sign in with this code to browse participants' boards read-only.
+   NOTE: this is accident prevention, not access control — the code sits in
+   client-side JS on a public page. Change it here if you need a different one.
+   ───────────────────────────────────────────────────────────────── */
+const ADMIN_CODE = 'admin';
+
+
 const I18N = {
   ko: {
     mark: { rule: '규칙', when: '언제', how: '어떻게' },
@@ -369,6 +419,12 @@ const I18N = {
       syncLocal: '⚠ 로컬 저장만 · 서버 미연결', syncReady: '서버 연결됨', syncLoading: '서버에서 불러오는 중…',
       fit: '화면 맞춤', note: '✎ 메모', exportBtn: '제출 · JSON 저장', clear: '초기화', confirmClear: '보드의 모든 카드를 지울까요?',
       arrow: '↗ 화살표', arrowTip: '카드에서 카드로 드래그해 화살표로 잇기', arrowDelTip: '화살표 삭제',
+      viewBadge: '열람 전용', viewBanner: '열람 모드입니다. 이 화면에서는 참여자의 작업이 수정되거나 저장되지 않습니다.',
+      rosterTitle: '참여자 목록', rosterSub: '열람할 참여자를 선택하세요.',
+      rosterLoading: '불러오는 중…', rosterEmpty: '아직 저장된 참여자가 없습니다.',
+      rosterError: '목록을 불러오지 못했습니다. Apps Script를 새 버전으로 다시 배포했는지 확인해 주세요.',
+      noSnap: '이 참여자의 저장된 보드가 없습니다.', backList: '← 목록', refreshBtn: '새로고침',
+      rowsSuffix: '개 기록', submittedTag: '제출됨', neverSaved: '기록 없음',
       step0: '참여자 로그인', loginTitle: '참여자 코드를 입력해 주세요', loginSub: '작업은 참여자 코드별로 자동 저장됩니다. 같은 코드로 다시 들어오면 이어서 할 수 있습니다.', start: '시작하기 →', continueAs: '이어서 하기', logout: '나가기',
       i1a: '지키고 싶은 ', i1b: '규칙 카드', i1c: '를 모두 골라 주세요. 여러 장을 고를 수 있고, 카드 위 글자를 눌러 내용을 직접 고치거나 ', i1d: '＋ 새 규칙', i1e: '으로 나만의 규칙을 추가할 수 있습니다.',
       p1a: '고른 ', p1b: '① 규칙 카드', p1c: '를 오른쪽 보드에 놓고, ', p1d: '② 언제 카드', p1e: '와 ', p1f: '③ 어떻게 카드', p1g: '를 한 줄로 나란히 놓으면 하나의 조합이 됩니다. 카드 위 글자는 눌러서 직접 고칠 수 있습니다.',
@@ -431,6 +487,12 @@ const I18N = {
       syncLocal: '⚠ Local only · no server', syncReady: 'Server connected', syncLoading: 'Loading from server…',
       fit: 'Reset view', note: '✎ Note', exportBtn: 'Submit · Save JSON', clear: 'Clear', confirmClear: 'Clear all cards on the board?',
       arrow: '↗ Arrow', arrowTip: 'Drag from one card to another to connect them', arrowDelTip: 'Delete arrow',
+      viewBadge: 'View only', viewBanner: 'View mode. Nothing on this screen is edited or saved to the participant record.',
+      rosterTitle: 'Participants', rosterSub: 'Choose a participant to view.',
+      rosterLoading: 'Loading…', rosterEmpty: 'No participants saved yet.',
+      rosterError: 'Could not load the list. Check that the Apps Script was redeployed as a new version.',
+      noSnap: 'No saved board for this participant.', backList: '← List', refreshBtn: 'Refresh',
+      rowsSuffix: ' records', submittedTag: 'submitted', neverSaved: 'no records',
       step0: 'Participant sign-in', loginTitle: 'Enter your participant code', loginSub: 'Work is saved automatically per participant code. Come back with the same code to continue where you left off.', start: 'Start →', continueAs: 'Continue as', logout: 'Exit',
       i1a: 'Choose all the ', i1b: 'rule cards', i1c: ' you want to keep. You can pick several, edit any text directly on a card, or add your own with ', i1d: '＋ New rule', i1e: '.',
       p1a: 'Place your chosen ', p1b: '① rule cards', p1c: ' on the board, then line up a ', p1d: '② when card', p1e: ' and a ', p1f: '③ how card', p1g: ' in the same row to form a combination. Tap any text on a card to edit it.',
@@ -448,7 +510,7 @@ function defaultRules(lang) {
 class Component extends DCLogic {
   constructor(props) {
     super(props);
-    this.state = { sync: '', step: 0, lang: 'ko', rules: defaultRules('ko'), pid: '', loginPid: '', cards: [], notes: [], arrows: [], arrowMode: false, pendingArrow: null, selArrow: null, noteMode: false, focusNote: null, pan: { x: 0, y: 0 }, zoom: 1, ghost: null, seq: 1, panelW: 566 };
+    this.state = { sync: '', step: 0, lang: 'ko', rules: defaultRules('ko'), pid: '', loginPid: '', cards: [], notes: [], arrows: [], arrowMode: false, pendingArrow: null, selArrow: null, noteMode: false, focusNote: null, pan: { x: 0, y: 0 }, zoom: 1, ghost: null, seq: 1, panelW: 566, admin: false, viewPid: '', roster: [], rosterMsg: '' };
     this.canvasRef = React.createRef();
     this.drag = null;
   }
@@ -497,7 +559,7 @@ class Component extends DCLogic {
     if (this.state.step === 2) this.bindWheel();
     try {
       localStorage.setItem(STORE + ':lang', this.state.lang);
-      if (this.state.step > 0 && this.state.pid) {
+      if (this.state.step > 0 && this.state.pid && !this.isView()) {
         localStorage.setItem(STORE + ':' + this.state.pid, JSON.stringify({ savedAt: Date.now(), pid: this.state.pid, cards: this.state.cards, notes: this.state.notes, arrows: this.state.arrows, seq: this.state.seq, panelW: this.state.panelW, step: this.state.step, lang: this.state.lang, rules: this.state.rules }));
       }
     } catch (e) {}
@@ -509,6 +571,7 @@ class Component extends DCLogic {
   }
 
   scheduleAutosave() {
+    if (this.isView()) return;   // 열람 모드에서는 절대 저장하지 않는다
     if (!this.syncUrl() || this.state.step < 1 || !this.state.pid) return;
     const sig = this.sig();
     if (sig === this._sig) return;
@@ -524,9 +587,50 @@ class Component extends DCLogic {
         .map((k) => k.slice((STORE + ':').length)).sort();
     } catch (e) { return []; }
   }
+  isView() { return !!this.state.admin; }
+
+  // 관리자 코드로 로그인하면 참여자 목록 화면으로 / admin code opens the roster
+  loginAdmin() {
+    this.setState({
+      admin: true, viewPid: '', loginPid: '', pid: '', step: 0,
+      cards: [], notes: [], arrows: [], roster: [], rosterMsg: 'loading'
+    }, () => this.refreshRoster());
+  }
+
+  refreshRoster() {
+    if (!this.syncUrl()) { this.setState({ rosterMsg: 'error' }); return; }
+    this.setState({ rosterMsg: 'loading' });
+    this.jsonp('list=1').then((res) => {
+      if (!this.state.admin) return;
+      if (res && res.ok && res.participants) {
+        this.setState({ roster: res.participants, rosterMsg: res.participants.length ? '' : 'empty' });
+      } else {
+        this.setState({ rosterMsg: 'error' });
+      }
+    });
+  }
+
+  // 참여자 보드를 읽기 전용으로 연다 / open one participant's board, read-only.
+  // pid는 viewPid에만 담고 state.pid는 비워 둔다 — 저장 경로가 전부 죽는다.
+  openParticipant(pid) {
+    this.setState({ viewPid: pid, rosterMsg: 'loading' });
+    this.loadRemote(pid).then((remote) => {
+      if (!this.state.admin || this.state.viewPid !== pid) return;
+      if (!remote) { this.setState({ rosterMsg: 'nosnap' }); return; }
+      this.setState({ rosterMsg: '' });
+      this.applyState(remote);
+    });
+  }
+
+  backToRoster() {
+    this.setState({ viewPid: '', step: 0, cards: [], notes: [], arrows: [], rosterMsg: '' },
+      () => this.refreshRoster());
+  }
+
   login(rawPid) {
     const pid = (rawPid || '').trim();
     if (!pid) return;
+    if (pid.toLowerCase() === ADMIN_CODE.toLowerCase()) { this.loginAdmin(); return; }
     let d = null;
     try { d = JSON.parse(localStorage.getItem(STORE + ':' + pid) || 'null'); } catch (e) {}
     if (!d) {
@@ -542,7 +646,7 @@ class Component extends DCLogic {
     else this.setState({ step: 1, rules: defaultRules(lang), cards: [], notes: [], arrows: [], seq: 1, panelW: 566, pan: { x: 0, y: 0 }, zoom: 1, noteMode: false }, () => this.seedSig());
     this.syncDown(pid, d ? d.savedAt || 0 : 0);
   }
-  logout() { this.setState({ pid: '', loginPid: '', step: 0, noteMode: false }); }
+  logout() { this.setState({ pid: '', loginPid: '', step: 0, noteMode: false, admin: false, viewPid: '', roster: [], rosterMsg: '' }); }
 
   toCanvas(cx, cy) {
     const r = this.canvasRef.current.getBoundingClientRect();
@@ -937,6 +1041,12 @@ class Component extends DCLogic {
 
   // 서버에서 참여자 상태 읽기 (JSONP — CORS 불필요) / read latest state for a participant
   loadRemote(pid) {
+    return this.jsonp('participant=' + encodeURIComponent(pid))
+      .then((res) => (res && res.ok && res.state ? res.state : null));
+  }
+
+  // 공용 JSONP 호출 / shared JSONP call — resolves the parsed object, or null
+  jsonp(query) {
     const url = this.syncUrl();
     if (!url) return Promise.resolve(null);
     return new Promise((resolve) => {
@@ -952,9 +1062,9 @@ class Component extends DCLogic {
         resolve(v);
       };
       const timer = setTimeout(() => finish(null), 9000);
-      window[cb] = (res) => finish(res && res.ok && res.state ? res.state : null);
+      window[cb] = (res) => finish(res || null);
       s.onerror = () => finish(null);
-      s.src = url + (url.indexOf('?') < 0 ? '?' : '&') + 'participant=' + encodeURIComponent(pid) + '&callback=' + cb;
+      s.src = url + (url.indexOf('?') < 0 ? '?' : '&') + query + '&callback=' + cb;
       document.head.appendChild(s);
     });
   }
@@ -1005,6 +1115,7 @@ class Component extends DCLogic {
   }
 
   enqueue(kind) {
+    if (this.isView()) return;   // 열람 모드에서는 시트에 아무것도 보내지 않는다
     if (!this.syncUrl() || !this.state.pid || this.state.step < 1) return;
     const q = this.queueRead().filter((it) => !(kind === 'autosave' && it.kind === 'autosave' && it.participant === this.state.pid));
     q.push({ id: this.state.pid + '-' + Date.now() + '-' + Math.random().toString(36).slice(2, 7), kind: kind, participant: this.state.pid, queuedAt: new Date().toISOString(), payload: this.snapshot() });
@@ -1045,6 +1156,7 @@ class Component extends DCLogic {
   }
 
   exportJson() {
+    if (this.isView()) return;   // 제출 버튼은 열람 모드에서 숨겨져 있지만 이중으로 막는다
     const data = this.snapshot();
     this.enqueue('submit');
     const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
@@ -1070,18 +1182,43 @@ class Component extends DCLogic {
       accent: ACC[type],
       tint: TINT[type],
       diagram: tpl.dia ? this.diagram(tpl.dia) : null,
-      onDown: (e) => this.startNew(type, tpl, e),
-      onAdd: () => this.quickAdd(type, tpl)
+      onDown: RO ? NOOP : (e) => this.startNew(type, tpl, e),
+      onAdd: RO ? NOOP : () => this.quickAdd(type, tpl)
     }));
+
+    const RO = this.isView();          // 읽기 전용 / read-only
+    const NOOP = () => {};
+    const viewing = RO && !!this.state.viewPid;
 
     return {
       t: t,
       lang: this.state.lang,
       onLang: (e) => this.setLang(e.target.value),
-      pid: this.state.pid,
-      isStep0: this.state.step === 0,
-      isLoggedIn: this.state.step > 0,
-      showSync: this.state.step > 0,
+      pid: viewing ? this.state.viewPid : this.state.pid,
+      isStep0: this.state.step === 0 && !this.state.admin,
+      isRoster: this.state.admin && !this.state.viewPid,
+      isViewing: viewing,
+      canEdit: !RO,
+      showPanel: !RO,
+      layerPE: RO ? 'none' : 'auto',
+      rosterList: (this.state.roster || []).map((r) => ({
+        key: r.participant,
+        label: r.participant,
+        meta: (r.rows || 0) + t.rowsSuffix + (r.submits ? ' · ' + t.submittedTag : ''),
+        when: r.lastAt ? new Date(r.lastAt).toLocaleString() : t.neverSaved,
+        onOpen: () => this.openParticipant(r.participant)
+      })),
+      rosterBusy: this.state.rosterMsg === 'loading',
+      rosterNote:
+        this.state.rosterMsg === 'loading' ? t.rosterLoading :
+        this.state.rosterMsg === 'empty' ? t.rosterEmpty :
+        this.state.rosterMsg === 'error' ? t.rosterError :
+        this.state.rosterMsg === 'nosnap' ? t.noSnap : '',
+      hasRosterNote: !!this.state.rosterMsg,
+      onRefresh: () => (this.state.viewPid ? this.openParticipant(this.state.viewPid) : this.refreshRoster()),
+      onBackList: () => this.backToRoster(),
+      isLoggedIn: this.state.step > 0 || viewing,
+      showSync: this.state.step > 0 && !RO,
       syncLabel: !this.syncUrl() ? t.syncLocal : this.state.loadingRemote ? t.syncLoading : this.state.sync === 'saved' ? t.syncSaved : this.state.sync === 'offline' ? t.syncOffline : this.state.sync ? t.syncPending : t.syncReady,
       syncColor: !this.syncUrl() ? '#8a6a1f' : this.state.sync === 'saved' ? '#5b7a5e' : this.state.sync === 'offline' ? '#b03f34' : '#98958c',
       syncBg: !this.syncUrl() ? '#f7f0dc' : '#f4f2eb',
@@ -1106,7 +1243,7 @@ class Component extends DCLogic {
         key: cat.id,
         label: cat.label,
         sub: cat.sub,
-        onAdd: () => this.addCustom(cat.id),
+        onAdd: RO ? NOOP : () => this.addCustom(cat.id),
         rules: rules.filter((r) => r.cat === cat.id).map((r) => ({
           key: r.id,
           title: r.title,
@@ -1119,9 +1256,9 @@ class Component extends DCLogic {
           ck: r.sel ? '✓' : '',
           ckBg: r.sel ? RB : 'transparent',
           ckBd: r.sel ? RB : '#c9c6bd',
-          onToggle: (e) => this.toggleRule(r.id, e),
-          onTitle: (e) => this.patchRule(r.id, 'title', e.target.value),
-          onDesc: (e) => this.patchRule(r.id, 'desc', e.target.value),
+          onToggle: RO ? NOOP : (e) => this.toggleRule(r.id, e),
+          onTitle: RO ? NOOP : (e) => this.patchRule(r.id, 'title', e.target.value),
+          onDesc: RO ? NOOP : (e) => this.patchRule(r.id, 'desc', e.target.value),
           onDel: () => this.setState((s) => ({ rules: s.rules.filter((k) => k.id !== r.id) }))
         }))
       })),
