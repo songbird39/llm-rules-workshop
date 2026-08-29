@@ -163,7 +163,10 @@ console.log("\nrule card keeps its size on drop");
   // the fold control must still exist — collapsing stays available, just not default
   check(/onFold: \(\) => this\.patch\(c\.id, 'collapsed', !c\.collapsed\)/.test(doc),
     "fold control still present");
-  check(/h: folded \? 90 : 168/.test(doc), "collapsed height still defined");
+  check(/h: c\.h \|\| \(folded \? 90 : 168\)/.test(doc),
+    "collapsed fallback height still defined (cards now measure their own height)");
+  check(/cardRect\(c\) \{ return \{ x: c\.x, y: c\.y, w: CARD, h: c\.h \|\|/.test(doc),
+    "cardRect uses the measured height so arrows follow tall cards");
 
   // text metrics parity between the panel card body and the board card textarea
   const grab = (re) => {

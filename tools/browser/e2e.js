@@ -134,31 +134,34 @@ async function dragTileToBoard(page, title, fx = 0.45, fy = 0.4) {
     await page.close();
   }
 
-  // ------------------------------------------------- 2. card text scrolls, board does not pan
-  console.log("\nwheel over card text scrolls the text, not the board");
+  // ------------------------------------------------- 2. nothing needs scrolling; the
+  // wheel guard still yields when something genuinely overflows
+  console.log("\ncard text never needs scrolling, and the wheel guard still works");
   {
     const { page } = await boot(browser);
     await toBoard(page);
-    await dragTileToBoard(page, "외부 도구 열기", 0.5, 0.45); // longest description
+    await dragTileToBoard(page, "외부 도구 열기", 0.5, 0.45); // longest shipped description
     const ta = page.locator("textarea").last();
-    const overflow = await ta.evaluate((el) => el.scrollHeight - el.clientHeight);
-    check(overflow > 0, "the description overflows its card", ` (${overflow}px hidden)`);
 
+    // since cards auto-grow, the description must NOT overflow any more
+    check(await ta.evaluate((el) => el.scrollHeight - el.clientHeight) <= 1,
+      "longest description does not overflow (card grew to fit)");
+
+    // with nothing to scroll, the wheel should pan the board as usual
     const box = await ta.boundingBox();
     const panBefore = await boardTransform(page);
     await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
     await page.mouse.wheel(0, 60);
     await page.waitForTimeout(150);
-    const scrolled = await ta.evaluate((el) => el.scrollTop);
-    const panAfter = await boardTransform(page);
-    check(scrolled > 0, "wheel scrolled the card text", ` (scrollTop ${scrolled})`);
-    check(panBefore === panAfter, "board did not pan while the text had room");
+    check(panBefore !== (await boardTransform(page)),
+      "wheel over a card pans the board when the text fits");
 
-    await ta.evaluate((el) => { el.scrollTop = el.scrollHeight; });
-    const panMid = await boardTransform(page);
-    await page.mouse.wheel(0, 60);
-    await page.waitForTimeout(150);
-    check(panMid !== (await boardTransform(page)), "board pans again once the text is at its end");
+    // The yield-to-overflowing-text branch of the wheel handler is NOT exercised here.
+    // Auto-growing cards mean the condition no longer arises naturally, and forcing it
+    // by shrinking the textarea from the test does not hold: autoGrow() resets the
+    // height on the next render, so the probe measures the wrong thing. That branch is
+    // covered instead in tools/test_ui_scale.js, which executes the real handler
+    // against fake targets (mid-text, at both edges, over empty canvas, ctrl+wheel).
     if (SHOTS) await page.screenshot({ path: `${SHOTS}/scroll.png` });
     await page.close();
   }
@@ -279,11 +282,63 @@ async function dragTileToBoard(page, title, fx = 0.45, fy = 0.4) {
     check(Math.abs(dx) <= tol && Math.abs(dy) <= tol,
       `lands where the ghost was at board zoom ${zoom.toFixed(2)}`,
       ` (off by ${dx.toFixed(1)},${dy.toFixed(1)}; tol ${tol.toFixed(0)})`);
-    // the ghost is position:fixed (UI zoom only) while the card is in the canvas layer
-    // (UI * board zoom), so without an explicit transform the preview is the wrong size
-    check(Math.abs(ghost.w - card.w) <= 2 && Math.abs(ghost.h - card.h) <= 2,
-      `ghost is the card's size at board zoom ${zoom.toFixed(2)}`,
-      ` (ghost ${ghost.w.toFixed(0)}x${ghost.h.toFixed(0)} vs card ${card.w.toFixed(0)}x${card.h.toFixed(0)})`);
+    // The ghost is position:fixed (UI zoom only) while the card is in the canvas layer
+    // (UI * board zoom), so without an explicit transform the preview is the wrong size.
+    // Width must match exactly. Height only approximately: the ghost is a simplified
+    // preview (title bar + one empty box, no diagram or description) and cards are now
+    // variable height, so an exact match is not a meaningful thing to ask for.
+    check(Math.abs(ghost.w - card.w) <= 2,
+      `ghost width matches the card at board zoom ${zoom.toFixed(2)}`,
+      ` (${ghost.w.toFixed(0)} vs ${card.w.toFixed(0)})`);
+    check(Math.abs(ghost.h - card.h) <= Math.max(10, 10 * zoom),
+      `ghost height is about the card's at board zoom ${zoom.toFixed(2)}`,
+      ` (${ghost.h.toFixed(0)} vs ${card.h.toFixed(0)})`);
+    await page.close();
+  }
+
+  // ------------------------------------------------- 3d. cards grow to fit their text
+  console.log("\ncards grow downward; geometry persists");
+  {
+    const { page, errors } = await boot(browser, { width: 1440, height: 900 });
+    await toBoard(page, "T06");
+    await dragTileToBoard(page, "학습 전", 0.35, 0.25);
+    const heights = () => page.evaluate(() => {
+      const L = [...document.querySelectorAll("div")].find((d) => d.style.width === "5000px");
+      return [...L.children].filter((c) => c.tagName === "DIV" && c.querySelector("input"))
+        .map((c) => c.offsetHeight);
+    });
+    let h = await heights();
+    // a full 3-line description no longer clips, which costs ~4px over the old fixed 168
+    check(h.length === 1 && h[0] >= 168 && h[0] <= 178,
+      "short text renders a card of about the old 168px", ` (${h[0]})`);
+
+    const ta = page.locator("textarea").last();
+    await ta.click();
+    await ta.fill("가나다라마바사아자차카타파하 ".repeat(12));
+    await page.waitForTimeout(500);
+    h = await heights();
+    check(h[0] > 200, "card grew downward to fit the text", ` (${h[0]}px)`);
+    check(await ta.evaluate((el) => el.scrollHeight - el.clientHeight) <= 1,
+      "no hidden overflow — scrolling is never needed");
+
+    const stored = await page.evaluate(() => {
+      const k = Object.keys(localStorage).find((x) => x.includes("llm-guardrail") && x.endsWith(":T06"));
+      return JSON.parse(localStorage.getItem(k)).cards.map((c) => c.h);
+    });
+    check(stored[0] > 200, "measured height persisted", ` (${stored[0]})`);
+
+    // reload the SAME page — browser.newPage() would give an isolated context with
+    // empty localStorage, which would not be a reload at all
+    await page.reload({ waitUntil: "load", timeout: 120000 });
+    await page.waitForSelector('input[placeholder="P00"]', { timeout: 60000 });
+    await page.fill('input[placeholder="P00"]', "T06");
+    await page.getByText("시작하기", { exact: false }).click();
+    await page.waitForTimeout(1200);
+    const h2 = await heights();
+    check(h2.length === 1 && Math.abs(h2[0] - stored[0]) <= 3,
+      "board reloads at exactly the same height", ` (${h2[0]} vs ${stored[0]})`);
+    if (SHOTS) await page.screenshot({ path: `${SHOTS}/grow.png` });
+    check(errors.length === 0, "no console errors", errors.length ? ` (${errors[0]})` : "");
     await page.close();
   }
 
