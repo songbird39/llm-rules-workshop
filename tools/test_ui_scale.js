@@ -111,5 +111,48 @@ console.log("\npatch sites");
   check(doc.split(needle).length - 1 === 1, label)
 );
 
+// ---- 5. card description must still fit its fixed-height box ----
+// Panel deck cards are 168x168 with overflow:hidden and read-only text, so anything
+// that does not fit is silently truncated for the participant. Enlarging the
+// description font eats this budget, so compute it rather than trusting it.
+console.log("\ncard description fits its box");
+{
+  const declared = doc.match(
+    /border-top:1px solid #eae7df;padding-top:4px;font-size:([\d.]+)px;line-height:([\d.]+)/
+  );
+  // must match the diagram box specifically — the rule deck card has no diagram and
+  // its body div otherwise looks the same up to the border.
+  const diagramFlex = parseFloat(
+    doc.match(/flex:([\d.]+);min-height:0;display:flex;align-items:center;justify-content:center;border:1px solid #eae7df;border-radius:5px;background:#f7f5f0;padding:1px 2px/)[1]
+  );
+  const fontPx = parseFloat(declared[1]);
+  const lineH = parseFloat(declared[2]);
+
+  const CARD = 168, PAD = 7, BORDER = 1, GAP = 5;
+  const content = CARD - 2 * PAD - 2 * BORDER;       // 152
+  const titleRow = 12.5 * 1.2 + 2 * 3;               // title text + its padding
+  const forBoth = content - titleRow - 2 * GAP;      // diagram + description share this
+  const descBox = forBoth * (1 / (diagramFlex + 1));
+  const textArea = descBox - 1 /*border-top*/ - 4 /*padding-top*/;
+  const linesThatFit = Math.floor(textArea / (fontPx * lineH));
+
+  // widest description actually shipped, in both languages
+  const descs = [...doc.matchAll(/desc:\s*'([^']*)'/g)].map((m) => m[1]);
+  // CJK glyphs are ~1em, Latin ~0.5em
+  const emWidth = (t) => [...t].reduce((n, c) => n + (c.codePointAt(0) > 0x1100 ? 1 : 0.5), 0);
+  const charsPerLine = content / fontPx;
+  const worst = descs.reduce(
+    (acc, d) => Math.max(acc, Math.ceil(emWidth(d) / charsPerLine)),
+    0
+  );
+
+  console.log(
+    `       font ${fontPx}px, diagram flex ${diagramFlex} -> ${textArea.toFixed(1)}px of text room ` +
+    `= ${linesThatFit} lines; longest of ${descs.length} descriptions needs ${worst}`
+  );
+  check(linesThatFit >= worst, "longest description is not truncated",
+    ` (${linesThatFit} >= ${worst})`);
+}
+
 console.log(failures ? `\n${failures} FAILURE(S)` : "\nall passed");
 process.exit(failures ? 1 : 0);

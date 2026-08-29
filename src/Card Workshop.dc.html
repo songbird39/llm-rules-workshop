@@ -170,8 +170,8 @@
               <span style="flex:1;min-width:0;font-size:12.5px;font-weight:600;letter-spacing:-0.01em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:{{ d.titleColor }}">{{ d.title }}</span>
               <span style="font-size:9px;letter-spacing:0.02em;color:{{ d.accent }};border:1px solid {{ d.accent }};border-radius:3px;padding:0 3px">{{ d.mark }}</span>
             </div>
-            <div style="flex:1.15;min-height:0;display:flex;align-items:center;justify-content:center;border:1px solid #eae7df;border-radius:5px;background:#f7f5f0;padding:1px 2px;overflow:hidden">{{ d.diagram }}</div>
-            <div style="flex:1;min-height:0;border-top:1px solid #eae7df;padding-top:4px;font-size:10.5px;line-height:1.45;color:#5b584f;overflow:hidden">{{ d.body }}</div>
+            <div style="flex:0.95;min-height:0;display:flex;align-items:center;justify-content:center;border:1px solid #eae7df;border-radius:5px;background:#f7f5f0;padding:1px 2px;overflow:hidden">{{ d.diagram }}</div>
+            <div style="flex:1;min-height:0;border-top:1px solid #eae7df;padding-top:4px;font-size:12px;line-height:1.45;color:#5b584f;overflow:hidden">{{ d.body }}</div>
           </div>
         </sc-for>
       </div>
@@ -188,8 +188,8 @@
               <span style="flex:1;min-width:0;font-size:12.5px;font-weight:600;letter-spacing:-0.01em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:{{ d.titleColor }}">{{ d.title }}</span>
               <span style="font-size:9px;letter-spacing:0.02em;color:{{ d.accent }};border:1px solid {{ d.accent }};border-radius:3px;padding:0 3px">{{ d.mark }}</span>
             </div>
-            <div style="flex:1.15;min-height:0;display:flex;align-items:center;justify-content:center;border:1px solid #eae7df;border-radius:5px;background:#f7f5f0;padding:1px 2px;overflow:hidden">{{ d.diagram }}</div>
-            <div style="flex:1;min-height:0;border-top:1px solid #eae7df;padding-top:4px;font-size:10.5px;line-height:1.45;color:#5b584f;overflow:hidden">{{ d.body }}</div>
+            <div style="flex:0.95;min-height:0;display:flex;align-items:center;justify-content:center;border:1px solid #eae7df;border-radius:5px;background:#f7f5f0;padding:1px 2px;overflow:hidden">{{ d.diagram }}</div>
+            <div style="flex:1;min-height:0;border-top:1px solid #eae7df;padding-top:4px;font-size:12px;line-height:1.45;color:#5b584f;overflow:hidden">{{ d.body }}</div>
           </div>
         </sc-for>
       </div>
@@ -228,14 +228,14 @@
               </div>
             </sc-if>
             <sc-if value="{{ c.isRuleClosed }}" hint-placeholder-val="{{ false }}">
-              <div style="flex:1;min-height:0;font-size:10.5px;line-height:1.4;color:#5b584f;overflow:hidden;padding:0 2px">{{ c.desc }}</div>
+              <div style="flex:1;min-height:0;font-size:12px;line-height:1.4;color:#5b584f;overflow:hidden;padding:0 2px">{{ c.desc }}</div>
             </sc-if>
             <sc-if value="{{ c.hasDiagram }}" hint-placeholder-val="{{ true }}">
-              <div style="flex:1.15;min-height:0;display:flex;align-items:center;justify-content:center;border:1px solid #eae7df;border-radius:5px;background:#f7f5f0;padding:1px 2px;overflow:hidden">{{ c.diagram }}</div>
+              <div style="flex:0.95;min-height:0;display:flex;align-items:center;justify-content:center;border:1px solid #eae7df;border-radius:5px;background:#f7f5f0;padding:1px 2px;overflow:hidden">{{ c.diagram }}</div>
             </sc-if>
             <sc-if value="{{ c.hasDiagram }}" hint-placeholder-val="{{ true }}">
               <div style="flex:1;min-height:0;border-top:1px solid #eae7df;padding-top:4px">
-                <textarea value="{{ c.desc }}" onChange="{{ c.onDesc }}" placeholder="{{ t.descPh }}" style="width:100%;height:100%;border:none;background:transparent;font-size:10.5px;line-height:1.45;color:#5b584f;outline:none;padding:0"></textarea>
+                <textarea value="{{ c.desc }}" onChange="{{ c.onDesc }}" placeholder="{{ t.descPh }}" style="width:100%;height:100%;border:none;background:transparent;font-size:12px;line-height:1.45;color:#5b584f;outline:none;padding:0"></textarea>
               </div>
             </sc-if>
             <div style="display:flex;align-items:center;gap:5px;height:13px">
