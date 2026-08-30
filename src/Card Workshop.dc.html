@@ -67,6 +67,9 @@
         <sc-if value="{{ isViewing }}" hint-placeholder-val="{{ false }}">
           <button onClick="{{ onBackList }}" style="padding:7px 12px;border:1px solid #d6d3ca;border-radius:7px;background:#fff;font-size:13.5px;cursor:pointer" style-hover="background:#f1efe8">{{ t.backList }}</button>
           <button onClick="{{ onRefresh }}" style="padding:7px 12px;border:1px solid #d6d3ca;border-radius:7px;background:#fff;font-size:13.5px;cursor:pointer" style-hover="background:#f1efe8">{{ t.refreshBtn }}</button>
+          <button onClick="{{ onDupAll }}" style="padding:7px 12px;border:1px dashed oklch(0.62 0.11 62);border-radius:7px;background:#fdfbf5;color:#7a5a1f;font-size:13.5px;cursor:pointer">{{ t.dupAllBtn }}</button>
+          <button onClick="{{ onDupSel }}" style="padding:7px 12px;border:1px dashed oklch(0.62 0.11 62);border-radius:7px;background:#fdfbf5;color:#7a5a1f;font-size:13.5px;cursor:pointer">{{ t.dupSelBtn }}</button>
+          <button onClick="{{ onClearSense }}" style="padding:7px 10px;border:1px solid #e2dfd7;border-radius:7px;background:transparent;color:#98958c;font-size:13.5px;cursor:pointer" style-hover="color:#b03f34">{{ t.clearSenseBtn }}</button>
         </sc-if>
         <button onClick="{{ onHistory }}" style="padding:7px 12px;border:1px solid #d6d3ca;border-radius:7px;background:#fff;font-size:13.5px;cursor:pointer" style-hover="background:#f1efe8">{{ t.histBtn }}</button>
         <button onClick="{{ resetView }}" style="padding:7px 12px;border:1px solid #d6d3ca;border-radius:7px;background:#fff;font-size:13.5px;cursor:pointer" style-hover="background:#f1efe8">{{ t.fit }}</button>
@@ -253,6 +256,11 @@
     </sc-if>
     <div ref="{{ canvasRef }}" onPointerDown="{{ onCanvasDown }}" style="position:relative;flex:1;min-width:0;overflow:hidden;cursor:{{ canvasCursor }};background-color:#ebe8e0;background-image:radial-gradient(#dad6cb 1px, transparent 1px);background-size:24px 24px">
       <div style="position:absolute;left:0;top:0;width:5000px;height:5000px;transform-origin:0 0;pointer-events:{{ layerPE }};transform:translate({{ panX }}px, {{ panY }}px) scale({{ zoom }})">
+        <sc-if value="{{ senseRegion }}" hint-placeholder-val="{{ false }}">
+          <div style="position:absolute;left:{{ regionX }}px;top:{{ regionY }}px;width:{{ regionW }}px;height:{{ regionH }}px;border:1.5px dashed #c9c6bd;border-radius:14px;background:rgba(255,255,255,0.35);pointer-events:none">
+            <div style="position:absolute;left:10px;top:-9px;padding:1px 8px;background:#f1efe8;border:1px solid #d6d3ca;border-radius:10px;font-size:11px;color:#7a776f;white-space:nowrap">{{ t.regionLabel }}</div>
+          </div>
+        </sc-if>
         {{ arrowsLayer }}
         <sc-if value="{{ marq }}" hint-placeholder-val="{{ false }}">
           <div style="position:absolute;left:{{ marqX }}px;top:{{ marqY }}px;width:{{ marqW }}px;height:{{ marqH }}px;border:1px solid oklch(0.51 0.08 253);background:oklch(0.51 0.08 253 / 0.10);border-radius:2px;pointer-events:none"></div>
@@ -261,7 +269,7 @@
           <button onPointerDown="{{ delSelArrow }}" title="{{ t.arrowDelTip }}" style="position:absolute;left:{{ selArrowX }}px;top:{{ selArrowY }}px;transform:translate(-50%,-50%);width:22px;height:22px;border:1px solid #d6d3ca;border-radius:50%;background:#fffefb;color:#b03f34;font-size:11px;line-height:1;cursor:pointer;box-shadow:0 2px 8px rgba(0,0,0,0.12);z-index:5">✕</button>
         </sc-if>
         <sc-for list="{{ notes }}" as="n" hint-placeholder-count="0">
-          <div onPointerDown="{{ n.onDown }}" style="position:absolute;left:{{ n.x }}px;top:{{ n.y }}px;width:168px;padding:0 8px 8px;display:flex;flex-direction:column;gap:2px;outline:{{ n.outline }};outline-offset:2px;cursor:grab">
+          <div onPointerDown="{{ n.onDown }}" style="position:absolute;left:{{ n.x }}px;top:{{ n.y }}px;width:168px;padding:0 8px 8px;display:flex;flex-direction:column;gap:2px;border-radius:10px;background:{{ n.bg }};box-shadow:{{ n.ring }};outline:{{ n.outline }};outline-offset:2px;pointer-events:{{ n.pe }};cursor:grab">
             <textarea value="{{ n.text }}" onChange="{{ n.onText }}" autoFocus="{{ n.autoFocus }}" data-grow="1" placeholder="{{ t.notePh }}" rows="3" style="width:100%;height:auto;min-height:62px;overflow:hidden;resize:none;border:1px dashed #c2beb2;border-radius:7px;background:rgba(255,254,251,0.7);font-size:12px;line-height:1.55;color:#44423b;outline:none;padding:8px 10px;font-family:inherit;pointer-events:auto" style-focus="border-color:oklch(0.51 0.08 253);background:#fffefb"></textarea>
             <div style="display:flex;align-items:center;gap:5px;height:13px">
               <div style="flex:1"></div>
@@ -270,7 +278,7 @@
           </div>
         </sc-for>
         <sc-for list="{{ cards }}" as="c" hint-placeholder-count="0">
-          <div onPointerDown="{{ c.onDown }}" style="position:absolute;left:{{ c.x }}px;top:{{ c.y }}px;width:168px;display:flex;flex-direction:column;gap:5px;background:#fffefb;border:1px solid #e2dfd7;border-radius:10px;padding:7px;box-shadow:0 3px 12px rgba(0,0,0,0.08);outline:{{ c.outline }};outline-offset:2px;cursor:{{ c.cursor }}">
+          <div onPointerDown="{{ c.onDown }}" style="position:absolute;left:{{ c.x }}px;top:{{ c.y }}px;width:168px;display:flex;flex-direction:column;gap:5px;background:{{ c.bg }};border:1px {{ c.bstyle }} {{ c.bd }};border-radius:10px;padding:7px;box-shadow:0 3px 12px rgba(0,0,0,0.08);outline:{{ c.outline }};outline-offset:2px;pointer-events:{{ c.pe }};cursor:{{ c.cursor }}">
             <div style="display:flex;align-items:center;gap:5px;background:{{ c.tint }};border-radius:5px;padding:3px 5px">
               <input value="{{ c.title }}" onChange="{{ c.onTitle }}" placeholder="{{ c.titlePlaceholder }}" style="flex:1;min-width:0;border:none;background:transparent;font-size:12.5px;font-weight:600;letter-spacing:-0.01em;outline:none;padding:0;pointer-events:auto" />
               <sc-if value="{{ c.isRule }}" hint-placeholder-val="{{ false }}">
@@ -479,6 +487,8 @@ const I18N = {
       syncLocal: '⚠ 로컬 저장만 · 서버 미연결', syncReady: '서버 연결됨', syncLoading: '서버에서 불러오는 중…',
       fit: '화면 맞춤', note: '✎ 메모', exportBtn: '제출 · JSON 저장', clear: '초기화', confirmClear: '보드의 모든 카드를 지울까요?',
       arrow: '↗ 화살표', arrowTip: '카드에서 카드로 드래그해 화살표로 잇기', arrowDelTip: '화살표 삭제',
+      dupAllBtn: '전체 복제', dupSelBtn: '선택 복제', clearSenseBtn: '해석 지우기',
+      regionLabel: '참여자 산출물 (수정 불가)',
       histBtn: '기록', histTitle: '저장 기록', histSub: '되돌아갈 시점을 선택하세요. 지금 작업은 그대로 남아 있습니다.',
       histLoading: '불러오는 중…', histEmpty: '아직 저장 기록이 없습니다.',
       histError: '기록을 불러오지 못했습니다. Apps Script를 새 버전으로 다시 배포했는지 확인해 주세요.',
@@ -556,6 +566,8 @@ const I18N = {
       syncLocal: '⚠ Local only · no server', syncReady: 'Server connected', syncLoading: 'Loading from server…',
       fit: 'Reset view', note: '✎ Note', exportBtn: 'Submit · Save JSON', clear: 'Clear', confirmClear: 'Clear all cards on the board?',
       arrow: '↗ Arrow', arrowTip: 'Drag from one card to another to connect them', arrowDelTip: 'Delete arrow',
+      dupAllBtn: 'Duplicate all', dupSelBtn: 'Duplicate selection', clearSenseBtn: 'Clear workspace',
+      regionLabel: "Participant's output (read-only)",
       histBtn: 'History', histTitle: 'Saved versions', histSub: 'Pick a point to go back to. Your current work stays where it is.',
       histLoading: 'Loading…', histEmpty: 'No saved versions yet.',
       histError: 'Could not load history. Check that the Apps Script was redeployed as a new version.',
@@ -588,7 +600,7 @@ function defaultRules(lang) {
 class Component extends DCLogic {
   constructor(props) {
     super(props);
-    this.state = { sync: '', step: 0, lang: 'ko', rules: defaultRules('ko'), pid: '', loginPid: '', cards: [], notes: [], arrows: [], arrowMode: false, pendingArrow: null, selArrow: null, noteMode: false, focusNote: null, pan: { x: 0, y: 0 }, zoom: 1, ghost: null, seq: 1, panelW: 566, sel: [], marquee: null, finish: null, hist: null, histList: [], travel: null, admin: false, viewPid: '', roster: [], rosterMsg: '' };
+    this.state = { sync: '', step: 0, lang: 'ko', rules: defaultRules('ko'), pid: '', loginPid: '', cards: [], notes: [], arrows: [], arrowMode: false, pendingArrow: null, selArrow: null, noteMode: false, focusNote: null, pan: { x: 0, y: 0 }, zoom: 1, ghost: null, seq: 1, panelW: 566, sel: [], marquee: null, finish: null, hist: null, histList: [], travel: null, senseOn: true, admin: false, viewPid: '', roster: [], rosterMsg: '' };
     this.canvasRef = React.createRef();
     this.drag = null;
   }
@@ -662,6 +674,12 @@ class Component extends DCLogic {
     // forced layout on every pointermove starves the main thread — pointer events stop
     // being delivered mid-drag and the drag dies after one step.
     if (this.state.step === 2 && !this.drag) { this.autoGrow(); this.measureCards(); }
+    // 해석 레이어만 따로 저장 / persist the sensemaking layer on its own key
+    if (this.isView() && this.state.viewPid) {
+      const sg = this.senseSig();
+      if (this._ssig === undefined) this._ssig = sg;
+      else if (sg !== this._ssig) { this._ssig = sg; this.scheduleSense(); }
+    }
     try {
       localStorage.setItem(STORE + ':lang', this.state.lang);
       if (this.state.step > 0 && this.state.pid && !this.frozen()) {
@@ -744,6 +762,141 @@ class Component extends DCLogic {
     this.loadRemote(pid).then((st) => { if (st) this.applyState(st); });
   }
 
+  // ── 관리자 해석 레이어 / admin sensemaking ────────────────────────────
+  // 참여자가 쓴 영역 / the rectangle enclosing the participant's own work
+  senseBounds() {
+    const rs = [];
+    this.state.cards.forEach((c) => { if (!c.sm) rs.push(this.cardRect(c)); });
+    (this.state.notes || []).forEach((n) => { if (!n.sm) rs.push({ x: n.x, y: n.y, w: CARD, h: n.h || 70 }); });
+    if (!rs.length) return null;
+    let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
+    rs.forEach((r) => {
+      x0 = Math.min(x0, r.x); y0 = Math.min(y0, r.y);
+      x1 = Math.max(x1, r.x + r.w); y1 = Math.max(y1, r.y + r.h);
+    });
+    const M = 24;
+    return { x: x0 - M, y: y0 - M, w: (x1 - x0) + 2 * M, h: (y1 - y0) + 2 * M };
+  }
+
+  // 참여자 영역과 겹치면 오른쪽으로 밀어낸다 / an sm object released over the
+  // participant's area is pushed clear, so their board stays visually intact
+  keepOutOfRegion() {
+    const b = this.senseBounds();
+    if (!b) return;
+    const hit = (x, y, w, h) => x < b.x + b.w && x + w > b.x && y < b.y + b.h && y + h > b.y;
+    this.setState((s) => ({
+      cards: s.cards.map((c) => {
+        if (!c.sm) return c;
+        const r = this.cardRect(c);
+        return hit(c.x, c.y, r.w, r.h) ? Object.assign({}, c, { x: b.x + b.w + 20 }) : c;
+      }),
+      notes: (s.notes || []).map((n) => {
+        if (!n.sm) return n;
+        return hit(n.x, n.y, CARD, n.h || 70) ? Object.assign({}, n, { x: b.x + b.w + 20 }) : n;
+      })
+    }));
+  }
+
+  // 참여자 산출물을 해석 영역으로 복제 / copy participant objects into the sensemaking area
+  duplicateIntoSense(all) {
+    if (!this.isView() || !this.state.viewPid) return;
+    const b = this.senseBounds();
+    const off = b ? b.w + 80 : 400;
+    const sel = this.state.sel || [];
+    const take = (o) => !o.sm && (all || sel.indexOf(o.id) >= 0);
+    let seq = this.state.seq;
+    const idmap = {}, cards = [], notes = [], arrows = [];
+    this.state.cards.forEach((c) => {
+      if (!take(c)) return;
+      const id = 's' + (seq++); idmap[c.id] = id;
+      cards.push(Object.assign({}, c, { id: id, sm: true, x: c.x + off }));
+    });
+    (this.state.notes || []).forEach((n) => {
+      if (!take(n)) return;
+      const id = 's' + (seq++); idmap[n.id] = id;
+      notes.push(Object.assign({}, n, { id: id, sm: true, x: n.x + off }));
+    });
+    // 복제된 것들 사이의 화살표만 따라온다 / only arrows whose BOTH ends were copied
+    (this.state.arrows || []).forEach((a) => {
+      const f = this.endpoint(a.from), t = this.endpoint(a.to);
+      if (!f || !t) return;
+      const m = (e) => (e.k === 'pt' ? { k: 'pt', x: e.x + off, y: e.y } : (idmap[e.id] ? { k: e.k, id: idmap[e.id] } : null));
+      const nf = m(f), nt = m(t);
+      if (nf && nt) arrows.push({ id: 's' + (seq++), from: nf, to: nt, sm: true });
+    });
+    if (!cards.length && !notes.length) return;
+    this.setState((s) => ({
+      cards: s.cards.concat(cards),
+      notes: (s.notes || []).concat(notes),
+      arrows: (s.arrows || []).concat(arrows),
+      seq: seq, sel: []
+    }));
+  }
+
+  clearSense() {
+    if (!this.isView()) return;
+    this.setState((s) => ({
+      cards: s.cards.filter((c) => !c.sm),
+      notes: (s.notes || []).filter((n) => !n.sm),
+      arrows: (s.arrows || []).filter((a) => !a.sm),
+      sel: []
+    }));
+  }
+
+  loadSense(pid) {
+    this.jsonp('participant=' + encodeURIComponent('sm:' + pid)).then((res) => {
+      const st = res && res.ok && res.state;
+      if (!st || this.state.viewPid !== pid) return;
+      const tag = (arr) => (arr || []).map((o) => Object.assign({}, o, { sm: true }));
+      this.setState((s) => ({
+        cards: s.cards.concat(tag(st.cards)),
+        notes: (s.notes || []).concat(tag(st.notes)),
+        arrows: (s.arrows || []).concat(tag(st.arrows)),
+        seq: Math.max(s.seq || 1, st.seq || 1)
+      }), () => { this._ssig = this.senseSig(); });
+    });
+  }
+
+  senseSig() {
+    return JSON.stringify([
+      this.state.cards.filter((c) => c.sm),
+      (this.state.notes || []).filter((n) => n.sm),
+      (this.state.arrows || []).filter((a) => a.sm)
+    ]);
+  }
+
+  scheduleSense() {
+    if (!this.isView() || !this.state.viewPid) return;
+    if (this._st) clearTimeout(this._st);
+    this._st = setTimeout(() => { this._st = null; this.pushSense(); }, 1500);
+  }
+
+  // 반드시 'sm:' 키로만 저장한다 / writes ONLY ever to the 'sm:' key, never a bare id
+  pushSense() {
+    const pid = this.state.viewPid, url = this.syncUrl();
+    if (!this.isView() || !pid || !url) return;
+    const key = 'sm:' + pid;
+    if (key.indexOf('sm:') !== 0) return;                 // assertion, not decoration
+    const state = {
+      savedAt: Date.now(), pid: key, step: 2, lang: this.state.lang, rules: [],
+      cards: this.state.cards.filter((c) => c.sm),
+      notes: (this.state.notes || []).filter((n) => n.sm),
+      arrows: (this.state.arrows || []).filter((a) => a.sm),
+      seq: this.state.seq, panelW: this.state.panelW
+    };
+    try {
+      fetch(url, {
+        method: 'POST', mode: 'no-cors',
+        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+        body: JSON.stringify({
+          participant: key, kind: 'sensemaking',
+          queuedAt: new Date().toISOString(),
+          payload: { participant: key, state: state }
+        })
+      });
+    } catch (e) {}
+  }
+
   refreshRoster() {
     if (!this.syncUrl()) { this.setState({ rosterMsg: 'error' }); return; }
     this.setState({ rosterMsg: 'loading' });
@@ -766,6 +919,8 @@ class Component extends DCLogic {
       if (!remote) { this.setState({ rosterMsg: 'nosnap' }); return; }
       this.setState({ rosterMsg: '' });
       this.applyState(remote);
+      this._ssig = undefined;
+      this.loadSense(pid);
     });
   }
 
@@ -1321,6 +1476,7 @@ class Component extends DCLogic {
     this.drag = null;
     if (!d) return;
     if (d.kind === 'marq') { this.setState({ marquee: null }); return; }
+    if (d.kind === 'move' || d.kind === 'note') { this.keepOutOfRegion(); }
     if (d.kind === 'multi') {
       // 드래그가 끝나면 한 번만 정수로 / round once, at the end
       this.setState((s) => ({
@@ -1643,7 +1799,15 @@ class Component extends DCLogic {
       isViewing: viewing,
       canEdit: !RO,
       showPanel: !RO,
-      layerPE: RO ? 'none' : 'auto',
+      layerPE: 'auto',
+      senseRegion: RO && !!this.state.viewPid && !!this.senseBounds(),
+      regionX: (this.senseBounds() || {}).x || 0,
+      regionY: (this.senseBounds() || {}).y || 0,
+      regionW: (this.senseBounds() || {}).w || 0,
+      regionH: (this.senseBounds() || {}).h || 0,
+      onDupAll: () => this.duplicateIntoSense(true),
+      onDupSel: () => this.duplicateIntoSense(false),
+      onClearSense: () => this.clearSense(),
       marq: !!this.state.marquee,
       marqX: this.state.marquee ? this.state.marquee.x : 0,
       marqY: this.state.marquee ? this.state.marquee.y : 0,
@@ -1776,9 +1940,12 @@ class Component extends DCLogic {
         key: n.id,
         x: n.x, y: n.y,
         outline: this.isSel(n.id) ? '2px solid oklch(0.51 0.08 253)' : 'none',
+        pe: (!RO || n.sm) ? 'auto' : 'none',
+        bg: n.sm ? '#fdfbf5' : 'transparent',
+        ring: n.sm ? '0 0 0 1.5px oklch(0.62 0.11 62)' : 'none',
         text: n.text,
         autoFocus: this.state.focusNote === n.id,
-        onDown: (e) => this.startNoteMove(n.id, e),
+        onDown: (!RO || n.sm) ? (e) => this.startNoteMove(n.id, e) : NOOP,
         onText: (e) => this.setState((s) => ({ notes: s.notes.map((k) => k.id === n.id ? Object.assign({}, k, { text: e.target.value }) : k) })),
         onDel: () => this.setState((s) => ({ notes: s.notes.filter((k) => k.id !== n.id) }))
       })),
@@ -1790,6 +1957,11 @@ class Component extends DCLogic {
         return {
           key: c.id,
           x: c.x, y: c.y,
+          // 해석 레이어 카드만 조작 가능 / only sensemaking objects are interactive in admin
+          pe: (!RO || c.sm) ? 'auto' : 'none',
+          bg: c.sm ? '#fdfbf5' : '#fffefb',
+          bstyle: c.sm ? 'dashed' : 'solid',
+          bd: c.sm ? 'oklch(0.62 0.11 62)' : '#e2dfd7',
           outline: this.isSel(c.id) ? '2px solid oklch(0.51 0.08 253)' : 'none',
           h: c.h || (folded ? 90 : 168),
           accent: ACC[c.type],
@@ -1806,7 +1978,7 @@ class Component extends DCLogic {
           titlePlaceholder: isRule ? t.ruleName : t.cardName,
           diagram: c.dia ? this.diagram(c.dia) : null,
           cursor: this.state.arrowMode ? 'crosshair' : 'grab',
-          onDown: (e) => this.startMove(c.id, e),
+          onDown: (!RO || c.sm) ? (e) => this.startMove(c.id, e) : NOOP,
           onTitle: (e) => this.patch(c.id, 'title', e.target.value),
           onDesc: (e) => this.patch(c.id, 'desc', e.target.value),
           onDup: () => this.dup(c.id),

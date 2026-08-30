@@ -695,6 +695,97 @@ async function dragTileToBoard(page, title, fx = 0.45, fy = 0.4) {
     await page.close();
   }
 
+  // ------------------------------------------------- 3i. admin sensemaking layer
+  // The property that matters: nothing here may ever write to the participant's own
+  // record. Every POST is inspected, not just counted.
+  console.log("\nadmin sensemaking: edits go to sm:PID, never the participant record");
+  {
+    const EP = "https://script.google.com/macros/s/FAKE/exec";
+    const board = {
+      savedAt: Date.now(), pid: "P9", step: 2, lang: "ko", rules: [],
+      cards: [{ id: "c1", type: "when", title: "P-A", desc: "a", dia: "w_before", collapsed: false, x: 200, y: 200 },
+              { id: "c2", type: "when", title: "P-B", desc: "b", dia: "w_during", collapsed: false, x: 400, y: 200 }],
+      notes: [{ id: "n1", x: 200, y: 420, text: "참여자 메모" }], arrows: [], seq: 5, panelW: 566,
+    };
+    const page = await browser.newPage({ viewport: { width: 1440, height: 900 } });
+    const errors = [];
+    page.on("pageerror", (e) => errors.push(e.message));
+    const posted = [];
+    await page.route("**/macros/s/**", async (route) => {
+      const u = new URL(route.request().url());
+      if (route.request().method() === "POST") {
+        try { posted.push(JSON.parse(route.request().postData() || "{}")); } catch (e) { posted.push({ parseError: true }); }
+        return route.fulfill({ status: 200, body: "{}" });
+      }
+      const cbn = u.searchParams.get("callback");
+      const reply = (o) => route.fulfill({ status: 200, contentType: "application/javascript", body: cbn + "(" + JSON.stringify(o) + ");" });
+      if (u.searchParams.get("list")) return reply({ ok: true, participants: [{ participant: "P9", rows: 3, submits: 1, lastAt: "2026-08-29T10:00:00Z" }] });
+      const who = u.searchParams.get("participant");
+      if (who === "P9") return reply({ ok: true, state: board });
+      if (who && who.indexOf("sm:") === 0) return reply({ ok: true, state: null });
+      return reply({ ok: true, rows: 0 });
+    });
+    await page.goto(APP + "?sync=" + encodeURIComponent(EP), { waitUntil: "load", timeout: 120000 });
+    await page.waitForSelector('input[placeholder="P00"]', { timeout: 120000 });
+    await page.fill('input[placeholder="P00"]', "admin");
+    await page.getByText("시작하기", { exact: false }).click();
+    await page.waitForTimeout(900);
+    await page.getByText("P9", { exact: true }).first().click();
+    await page.waitForTimeout(1200);
+
+    const objs = () => page.evaluate(() => {
+      const L = [...document.querySelectorAll("div")].find((d) => d.style.width === "5000px");
+      return [...L.children].filter((c) => c.tagName === "DIV" && (c.querySelector("input") || c.querySelector("textarea")))
+        .map((c) => ({
+          pe: c.style.pointerEvents,
+          sm: /dashed/.test(c.style.border) || /oklch\(0.62 0.11 62\)/.test(c.style.boxShadow),
+        }));
+    });
+    let o = await objs();
+    check(o.length === 3 && o.every((x) => x.pe === "none"), "participant objects load and are inert");
+    check(await page.evaluate(() => document.body.innerText.includes("참여자 산출물")), "protected region is labelled");
+
+    await page.getByText("전체 복제", { exact: true }).click();
+    await page.waitForTimeout(800);
+    o = await objs();
+    const sm = o.filter((x) => x.sm);
+    check(o.length === 6, "duplicate all created copies", ` (${o.length})`);
+    check(sm.length === 3 && sm.every((x) => x.pe === "auto"), "copies are marked and interactive");
+
+    await page.waitForTimeout(2200);
+    const keys = posted.map((x) => x && x.participant);
+    check(posted.length > 0, "the workspace was saved", ` (${posted.length})`);
+    check(keys.every((k) => k === "sm:P9"), "every POST targets sm:P9", ` (${JSON.stringify(keys)})`);
+    check(!keys.some((k) => k === "P9"), "NO POST targets the participant's own record");
+    check(posted.every((x) => x.kind === "sensemaking"), "every POST is kind sensemaking");
+    const sent = posted[posted.length - 1].payload.state;
+    check(sent.cards.every((c) => c.sm) && sent.notes.every((n) => n.sm),
+      "payload contains only sm-flagged objects");
+
+    const rect = (isSm) => page.evaluate((d) => {
+      const L = [...document.querySelectorAll("div")].find((x) => x.style.width === "5000px");
+      const el = [...L.children].filter((c) => c.tagName === "DIV" && c.querySelector("input"))
+        .find((c) => /dashed/.test(c.style.border) === d);
+      const r = el.getBoundingClientRect();
+      return { x: r.x, y: r.y, left: el.offsetLeft };
+    }, isSm);
+    const drag = async (r) => {
+      await page.mouse.move(r.x + 80, r.y + 6);
+      await page.mouse.down();
+      await page.waitForTimeout(50);
+      for (let i = 1; i <= 4; i++) { await page.mouse.move(r.x + 80 + 15 * i, r.y + 6 + 10 * i); await page.waitForTimeout(50); }
+      await page.mouse.up();
+      await page.waitForTimeout(450);
+    };
+    const b0 = await rect(true); await drag(b0);
+    check(Math.abs((await rect(true)).left - b0.left) > 30, "a sensemaking card can be dragged");
+    const p0 = await rect(false); await drag(p0);
+    check((await rect(false)).left === p0.left, "a participant card cannot be dragged");
+    if (SHOTS) await page.screenshot({ path: `${SHOTS}/sense.png` });
+    check(errors.length === 0, "no console errors", errors.length ? ` (${errors[0]})` : "");
+    await page.close();
+  }
+
   // ------------------------------------------------- 4. ?ui=1 escape hatch
   console.log("\n?ui=1 escape hatch");
   {

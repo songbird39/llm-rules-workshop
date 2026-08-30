@@ -248,7 +248,14 @@ console.log("\nview mode cannot write");
     "browsing an old version freezes writes for participants too");
 
   // 7d. read-only UI
-  check(/layerPE: RO \? 'none' : 'auto'/.test(doc), "card layer goes pointer-events:none");
+  // Protection is per-object now, not a blanket layer setting: that is what lets the
+  // admin sensemaking objects be editable while the participant's stay inert.
+  check(/pe: \(!RO \|\| c\.sm\) \? 'auto' : 'none'/.test(doc),
+    "participant cards are inert in admin; sensemaking cards are not");
+  check(/pe: \(!RO \|\| n\.sm\) \? 'auto' : 'none'/.test(doc),
+    "same for notes");
+  check(/onDown: \(!RO \|\| c\.sm\) \? \(e\) => this\.startMove\(c\.id, e\) : NOOP/.test(doc),
+    "card drag handler gated per object");
   check(/showPanel: !RO/.test(doc), "card panel hidden while viewing");
   check(/canEdit: !RO/.test(doc), "editing toolbar hidden while viewing");
   const noops = (doc.match(/RO \? NOOP :/g) || []).length;
@@ -317,6 +324,15 @@ console.log("\nview mode cannot write");
     check(run(bare, 60).panned, "over empty canvas it pans");
     check(run(mk(0), 60, true).zoomed, "ctrl+wheel still zooms over a card");
   }
+
+  // 7f. the sensemaking layer must never write to a participant's own record
+  check(/const key = 'sm:' \+ pid;/.test(doc), "sensemaking writes build an sm: key");
+  check(/if \(key\.indexOf\('sm:'\) !== 0\) return;/.test(doc), "and assert the prefix before sending");
+  check(/participant: key, kind: 'sensemaking'/.test(doc), "posted as kind sensemaking under that key");
+  check(/if \(!this\.isView\(\) \|\| !pid \|\| !url\) return;/.test(doc),
+    "pushSense refuses outside admin view mode");
+  check(/cards: this\.state\.cards\.filter\(\(c\) => c\.sm\)/.test(doc),
+    "only sm-flagged objects are sent, participant objects are filtered out");
 
   // 7e. the roster path
   check(/this\.jsonp\('list=1'\)/.test(doc), "roster fetched via ?list=1");

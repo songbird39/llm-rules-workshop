@@ -15,6 +15,12 @@
  */
 
 var SHEET_NAME = 'responses';
+// 관리자 해석(sensemaking) 레코드는 'sm:' 접두어가 붙은 별도 키로 저장한다.
+// Admin sensemaking records live under a separate key, 'sm:' + participant. They are
+// never a participant's own record: roster_ skips them and latestState_ refuses to
+// return one for a bare participant id, so a participant can never load an admin's
+// experiment as their board.
+var SENSE_PREFIX = 'sm:';
 var HEADERS = ['receivedAt', 'participant', 'kind', 'queuedAt', 'step', 'selectedRules', 'combinations', 'annotations', 'arrows', 'json'];
 
 function doPost(e) {
@@ -82,6 +88,9 @@ function roster_() {
   for (var i = 0; i < vals.length; i++) {
     var pid = String(vals[i][1] || '').trim();
     if (!pid) continue;
+    // 관리자 해석용 레코드는 참여자 목록에 넣지 않는다 / admin sensemaking records are
+    // stored under a "sm:" key and are not participants
+    if (pid.indexOf(SENSE_PREFIX) === 0) continue;
     if (!map[pid]) { map[pid] = { participant: pid, rows: 0, submits: 0, lastAt: null }; order.push(pid); }
     var rec = map[pid];
     rec.rows++;
@@ -145,8 +154,12 @@ function latestState_(pid) {
   if (last < 2) return null;
   var pidCol = sh.getRange(2, 2, last - 1, 1).getValues();   // participant
   var jsonCol = sh.getRange(2, 10, last - 1, 1).getValues(); // json
+  var kindCol = sh.getRange(2, 3, last - 1, 1).getValues();   // kind
   for (var i = pidCol.length - 1; i >= 0; i--) {             // newest first
     if (String(pidCol[i][0]) !== String(pid)) continue;
+    // 이중 안전장치 / belt and braces: even if a sensemaking row were somehow written
+    // under a bare participant id, never hand it back as that participant's board.
+    if (String(kindCol[i][0]) === 'sensemaking' && String(pid).indexOf(SENSE_PREFIX) !== 0) continue;
     try {
       var body = JSON.parse(jsonCol[i][0]);
       var st = body && body.payload && body.payload.state;

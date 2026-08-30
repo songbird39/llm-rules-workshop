@@ -167,6 +167,42 @@ avoid handing a participant `admin` as their code.
 Re-run `node tools/test_ui_scale.js` after touching any of this — it asserts the write
 guards are the first statement in each path.
 
+## Sensemaking workspace (admin only)
+
+Open a participant in view mode and you get an editable area beside their board, for
+rebuilding and experimenting with a different arrangement.
+
+- The participant's own objects stay **inert** — each is individually
+  `pointer-events:none` with no-op handlers — and the rectangle enclosing their work is
+  drawn and labelled *참여자 산출물 (수정 불가)*.
+- **전체 복제 / Duplicate all** copies their whole board to the right of that rectangle.
+  **선택 복제 / Duplicate selection** copies only what you marquee-selected (drag on
+  empty canvas to select; participant objects can be selected even though they can't be
+  edited). Arrows come along when both of their ends were copied.
+- Copies are marked with an amber dashed border, and are fully editable: drag, retype,
+  connect, delete. Drop one over the participant's rectangle and it is pushed clear.
+- **해석 지우기 / Clear workspace** removes your copies and leaves their board untouched.
+- All of it is admin-only; participants never see the region or the copies.
+
+**Where it is stored, and why that matters.** The workspace saves to a *separate* key —
+`sm:` + the participant code — never their own record. Three independent guards, because
+getting this wrong would mean a participant reopening their board and finding your
+experiment instead:
+
+1. the client asserts the `sm:` prefix before every send, and only sm-flagged objects go
+   in the payload;
+2. `roster_()` skips `sm:` keys, so they never appear as participants;
+3. `latestState_()` refuses to return a `kind:'sensemaking'` row for a bare participant id.
+
+The e2e suite inspects **every** outbound POST and fails if any targets a bare code.
+
+One deliberate limitation: this write is best-effort and bypasses the offline retry
+queue, because that queue belongs to the participant session and is frozen in admin
+mode. If the network drops mid-experiment the workspace simply isn't saved — the right
+trade for never touching participant data.
+
+⚠ Needs the same Apps Script redeploy as version history.
+
 ## Version history
 
 The **기록 / History** button (next to the zoom controls, available to participants and
