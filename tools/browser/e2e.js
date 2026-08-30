@@ -535,6 +535,72 @@ async function dragTileToBoard(page, title, fx = 0.45, fy = 0.4) {
     await page.close();
   }
 
+  // ------------------------------------------------- 3g. Finish, with JSON as fallback
+  // Writes are fire-and-forget (no-cors), so the only honest signal that the work did
+  // not go out is a leftover item in the outbound queue. These stub the endpoint at
+  // the network layer to exercise both paths.
+  console.log("\nFinish submits; JSON download only when the server is unreachable");
+  {
+    const EP = "https://script.google.com/macros/s/FAKE/exec";
+    const dialogText = (pg) => pg.evaluate(() => {
+      const ov = [...document.querySelectorAll("div")].find((d) => d.style.position === "fixed" && d.style.zIndex === "60");
+      return ov ? ov.innerText.replace(/\s+/g, " ").trim() : null;
+    });
+    const start = async (fail) => {
+      const pg = await browser.newPage({ viewport: { width: 1440, height: 900 }, acceptDownloads: true });
+      await pg.route("**/macros/s/**", (r) => (fail ? r.abort() : r.fulfill({ status: 200, body: "{}" })));
+      await pg.goto(APP + "?sync=" + encodeURIComponent(EP), { waitUntil: "load", timeout: 120000 });
+      await pg.waitForSelector('input[placeholder="P00"]', { timeout: 120000 });
+      await pg.fill('input[placeholder="P00"]', "F1");
+      await pg.getByText("시작하기", { exact: false }).click();
+      await pg.waitForTimeout(400);
+      for (const t of ["브레인스토밍 · 초안", "먼저 직접 시도"]) {
+        const l = pg.locator(`input[value="${t}"]`).first();
+        if (await l.count()) await l.evaluate((el) => {
+          let n = el;
+          while (n && !(n.getAttribute("style") || "").includes("cursor:pointer")) n = n.parentElement;
+          (n || el.parentElement.parentElement).click();
+        });
+      }
+      const nx = pg.getByText("다음", { exact: false });
+      if (await nx.count()) await nx.click();
+      await pg.waitForTimeout(500);
+      return pg;
+    };
+
+    let pg = await start(false);
+    check(await pg.getByText("완료", { exact: true }).count() > 0, "toolbar shows Finish");
+    check(await pg.getByText("제출 · JSON 저장", { exact: false }).count() === 0, "old Submit-and-save label gone");
+    let dl = null;
+    pg.on("download", (d) => { dl = d; });
+    await pg.getByText("완료", { exact: true }).click();
+    await pg.waitForTimeout(2200);
+    const okText = await dialogText(pg);
+    check(!!okText && okText.includes("제출했습니다"), "success dialog when the endpoint answers");
+    check(dl === null, "no JSON downloaded on a successful finish");
+    check(await pg.getByText("JSON 내려받기", { exact: false }).count() === 0, "no download button on success");
+    if (SHOTS) await pg.screenshot({ path: `${SHOTS}/finish-ok.png` });
+    await pg.close();
+
+    pg = await start(true);
+    await pg.getByText("완료", { exact: true }).click();
+    await pg.waitForTimeout(2500);
+    const failText = await dialogText(pg);
+    check(!!failText && failText.includes("보내지 못했습니다"), "failure dialog when unreachable");
+    const btn = pg.getByText("JSON 내려받기", { exact: false });
+    check(await btn.count() > 0, "download offered as the fallback");
+    const [got] = await Promise.all([
+      pg.waitForEvent("download", { timeout: 8000 }).catch(() => null),
+      btn.click(),
+    ]);
+    check(got !== null, "download actually fires", got ? ` (${got.suggestedFilename()})` : "");
+    const q = await pg.evaluate(() => JSON.parse(localStorage.getItem("llm-guardrail-workshop-v4:queue") || "[]"));
+    check(q.some((it) => it.kind === "submit" && it.participant === "F1"),
+      "the unsent submit stays queued for retry", ` (${q.length} queued)`);
+    if (SHOTS) await pg.screenshot({ path: `${SHOTS}/finish-fail.png` });
+    await pg.close();
+  }
+
   // ------------------------------------------------- 4. ?ui=1 escape hatch
   console.log("\n?ui=1 escape hatch");
   {

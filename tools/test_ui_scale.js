@@ -212,7 +212,8 @@ console.log("\nview mode cannot write");
   };
   check(guardedFirst("scheduleAutosave()"), "scheduleAutosave bails on isView() first");
   check(guardedFirst("enqueue(kind)"), "enqueue bails on isView() first");
-  check(guardedFirst("exportJson()"), "exportJson bails on isView() first");
+  check(guardedFirst("finish()"), "finish bails on isView() first");
+  check(guardedFirst("downloadJson()"), "downloadJson bails on isView() first");
   check(/this\.state\.pid && !this\.isView\(\)/.test(doc),
     "componentDidUpdate localStorage write checks isView()");
 
@@ -258,7 +259,7 @@ console.log("\nview mode cannot write");
       check(!inGuard(n), `${n} stays available in view mode`)
     );
     // correctly hidden while viewing
-    ["toggleArrowMode", "toggleNoteMode", "exportJson", "clearAll"].forEach((n) =>
+    ["toggleArrowMode", "toggleNoteMode", "doFinish", "clearAll"].forEach((n) =>
       check(inGuard(n), `${n} hidden in view mode`)
     );
     // panning does not depend on the card layer, which is pointer-events:none

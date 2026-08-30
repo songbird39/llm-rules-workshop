@@ -72,7 +72,7 @@
         <sc-if value="{{ canEdit }}" hint-placeholder-val="{{ true }}">
         <button onClick="{{ toggleArrowMode }}" title="{{ t.arrowTip }}" style="padding:7px 12px;border:1px solid #d6d3ca;border-radius:7px;background:{{ arrowBtnBg }};color:{{ arrowBtnColor }};font-size:13.5px;cursor:pointer">{{ t.arrow }}</button>
         <button onClick="{{ toggleNoteMode }}" title="{{ t.noteTip }}" style="padding:7px 12px;border:1px solid #d6d3ca;border-radius:7px;background:{{ noteBtnBg }};color:{{ noteBtnColor }};font-size:13.5px;cursor:pointer">{{ t.note }}</button>
-        <button onClick="{{ exportJson }}" style="padding:7px 13px;border:1px solid transparent;border-radius:7px;background:#1b1a17;color:#faf8f3;font-size:13.5px;cursor:pointer" style-hover="background:#35332c">{{ t.exportBtn }}</button>
+        <button onClick="{{ doFinish }}" style="padding:7px 13px;border:1px solid transparent;border-radius:7px;background:#1b1a17;color:#faf8f3;font-size:13.5px;cursor:pointer" style-hover="background:#35332c">{{ t.finishBtn }}</button>
         <button onClick="{{ clearAll }}" title="{{ t.clearTip }}" style="padding:7px 10px;border:1px solid #e2dfd7;border-radius:7px;background:transparent;color:#98958c;font-size:13.5px;cursor:pointer" style-hover="color:#b03f34;border-color:#ddc0bb">{{ t.clear }}</button>
         </sc-if>
       </div>
@@ -305,6 +305,21 @@
     </div>
   </div>
   </sc-if>
+
+  <sc-if value="{{ finishOpen }}" hint-placeholder-val="{{ false }}">
+    <div style="position:fixed;left:0;top:0;right:0;bottom:0;background:rgba(27,26,23,0.35);display:flex;align-items:center;justify-content:center;z-index:60">
+      <div style="width:390px;max-width:86vw;background:#fffefb;border:1px solid #e2dfd7;border-radius:14px;padding:26px 28px;box-shadow:0 12px 36px rgba(0,0,0,0.18);display:flex;flex-direction:column;gap:12px">
+        <div style="font-size:16px;font-weight:700;letter-spacing:-0.01em">{{ finishTitle }}</div>
+        <div style="font-size:13px;line-height:1.65;color:#7a776f">{{ finishBody }}</div>
+        <div style="display:flex;gap:8px;justify-content:flex-end;padding-top:4px">
+          <sc-if value="{{ finishFallback }}" hint-placeholder-val="{{ false }}">
+            <button onClick="{{ onDownload }}" style="padding:8px 14px;border:1px solid #d6d3ca;border-radius:8px;background:#fff;font-size:13px;cursor:pointer" style-hover="background:#f1efe8">{{ t.downloadBtn }}</button>
+          </sc-if>
+          <button onClick="{{ onCloseFinish }}" style="padding:8px 16px;border:1px solid transparent;border-radius:8px;background:#1b1a17;color:#faf8f3;font-size:13px;cursor:pointer" style-hover="background:#35332c">{{ t.closeBtn }}</button>
+        </div>
+      </div>
+    </div>
+  </sc-if>
 </div>
 </x-dc>
 <script type="text/x-dc" data-dc-script data-props="{&quot;snapToGrid&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:true,&quot;tsType&quot;:&quot;boolean&quot;,&quot;section&quot;:&quot;Canvas&quot;},&quot;syncUrl&quot;:{&quot;editor&quot;:&quot;text&quot;,&quot;default&quot;:&quot;&quot;,&quot;tsType&quot;:&quot;string&quot;,&quot;section&quot;:&quot;Server&quot;}}">
@@ -427,6 +442,10 @@ const I18N = {
       syncLocal: '⚠ 로컬 저장만 · 서버 미연결', syncReady: '서버 연결됨', syncLoading: '서버에서 불러오는 중…',
       fit: '화면 맞춤', note: '✎ 메모', exportBtn: '제출 · JSON 저장', clear: '초기화', confirmClear: '보드의 모든 카드를 지울까요?',
       arrow: '↗ 화살표', arrowTip: '카드에서 카드로 드래그해 화살표로 잇기', arrowDelTip: '화살표 삭제',
+      finishBtn: '완료', finishWait: '보내는 중…', finishWaitBody: '작업을 서버로 보내고 있습니다.',
+      finishOkTitle: '제출했습니다', finishOkBody: '작업을 서버로 보냈습니다. 이 창을 닫아도 됩니다.',
+      finishFailTitle: '서버에 보내지 못했습니다', finishFailBody: '인터넷 연결이 끊겼을 수 있습니다. 아래에서 JSON 파일을 내려받아 연구자에게 전달해 주세요. 연결이 돌아오면 자동으로 다시 시도합니다.',
+      downloadBtn: 'JSON 내려받기', closeBtn: '닫기',
       viewBadge: '열람 전용', viewBanner: '열람 모드입니다. 이 화면에서는 참여자의 작업이 수정되거나 저장되지 않습니다.',
       rosterTitle: '참여자 목록', rosterSub: '열람할 참여자를 선택하세요.',
       rosterLoading: '불러오는 중…', rosterEmpty: '아직 저장된 참여자가 없습니다.',
@@ -495,6 +514,10 @@ const I18N = {
       syncLocal: '⚠ Local only · no server', syncReady: 'Server connected', syncLoading: 'Loading from server…',
       fit: 'Reset view', note: '✎ Note', exportBtn: 'Submit · Save JSON', clear: 'Clear', confirmClear: 'Clear all cards on the board?',
       arrow: '↗ Arrow', arrowTip: 'Drag from one card to another to connect them', arrowDelTip: 'Delete arrow',
+      finishBtn: 'Finish', finishWait: 'Sending…', finishWaitBody: 'Sending your work to the server.',
+      finishOkTitle: 'Submitted', finishOkBody: 'Your work was sent to the server. You can close this.',
+      finishFailTitle: "Couldn't reach the server", finishFailBody: 'You may be offline. Download the JSON below and send it to the researcher. It will also retry automatically once the connection is back.',
+      downloadBtn: 'Download JSON', closeBtn: 'Close',
       viewBadge: 'View only', viewBanner: 'View mode. Nothing on this screen is edited or saved to the participant record.',
       rosterTitle: 'Participants', rosterSub: 'Choose a participant to view.',
       rosterLoading: 'Loading…', rosterEmpty: 'No participants saved yet.',
@@ -518,7 +541,7 @@ function defaultRules(lang) {
 class Component extends DCLogic {
   constructor(props) {
     super(props);
-    this.state = { sync: '', step: 0, lang: 'ko', rules: defaultRules('ko'), pid: '', loginPid: '', cards: [], notes: [], arrows: [], arrowMode: false, pendingArrow: null, selArrow: null, noteMode: false, focusNote: null, pan: { x: 0, y: 0 }, zoom: 1, ghost: null, seq: 1, panelW: 566, sel: [], marquee: null, admin: false, viewPid: '', roster: [], rosterMsg: '' };
+    this.state = { sync: '', step: 0, lang: 'ko', rules: defaultRules('ko'), pid: '', loginPid: '', cards: [], notes: [], arrows: [], arrowMode: false, pendingArrow: null, selArrow: null, noteMode: false, focusNote: null, pan: { x: 0, y: 0 }, zoom: 1, ghost: null, seq: 1, panelW: 566, sel: [], marquee: null, finish: null, admin: false, viewPid: '', roster: [], rosterMsg: '' };
     this.canvasRef = React.createRef();
     this.drag = null;
   }
@@ -1471,10 +1494,25 @@ class Component extends DCLogic {
     this._retry = setTimeout(() => { this._retry = null; this.flush(); }, 20000);
   }
 
-  exportJson() {
-    if (this.isView()) return;   // 제출 버튼은 열람 모드에서 숨겨져 있지만 이중으로 막는다
+  // 완료: 서버로 보내고, 보내지 못했을 때만 JSON 내려받기를 제안한다
+  // Finish: submit, and offer the JSON download only if it could not be sent.
+  finish() {
+    if (this.isView()) return;
+    this.enqueue('submit');          // queues and flushes
+    if (!this.syncUrl()) { this.setState({ finish: 'fallback' }); return; }
+    this.setState({ finish: 'wait' });
+    setTimeout(() => {
+      if (!this.state.finish) return;                 // closed in the meantime
+      // 큐에 남아 있으면 나가지 못한 것 / anything still queued did not go out
+      const stuck = this.queueRead().some((it) => it.participant === this.state.pid);
+      this.setState({ finish: (stuck || this.state.sync === 'offline') ? 'fallback' : 'ok' });
+    }, 1200);
+  }
+
+  // 제출과 분리 — 내려받기만 한다 / download only; does not enqueue another submit
+  downloadJson() {
+    if (this.isView()) return;
     const data = this.snapshot();
-    this.enqueue('submit');
     const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
     const a = document.createElement('a');
     a.href = URL.createObjectURL(blob);
@@ -1554,6 +1592,15 @@ class Component extends DCLogic {
       doLogin: () => this.login(this.state.loginPid),
       startOpacity: this.state.loginPid.trim() ? 1 : 0.4,
       doLogout: () => this.logout(),
+      doFinish: () => this.finish(),
+      finishOpen: !!this.state.finish,
+      finishFallback: this.state.finish === 'fallback',
+      finishTitle: this.state.finish === 'wait' ? t.finishWait
+        : this.state.finish === 'fallback' ? t.finishFailTitle : t.finishOkTitle,
+      finishBody: this.state.finish === 'wait' ? t.finishWaitBody
+        : this.state.finish === 'fallback' ? t.finishFailBody : t.finishOkBody,
+      onDownload: () => this.downloadJson(),
+      onCloseFinish: () => this.setState({ finish: null }),
       savedList: this.savedPids().map((p) => ({ key: p, label: p, onPick: () => this.login(p) })),
       hasSaved: this.savedPids().length > 0,
       selLabel: selCount ? selCount + t.selSuffix : t.choose,
