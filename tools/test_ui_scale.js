@@ -204,18 +204,22 @@ console.log("\nview mode cannot write");
 {
   // 7a. the guard must be the FIRST statement of each write path — stronger than
   // "appears somewhere in the body", and it is what makes the bail-out unconditional.
-  const guardedFirst = (signature) => {
+  // frozen() = isView() || travel — the write paths bail on the wider guard, so that
+  // browsing version history cannot push an old board over the newest one either.
+  const guardedFirst = (signature, guard = "frozen") => {
     const i = doc.indexOf("  " + signature + " {");
     if (i < 0) return false;
     const head = doc.slice(i + signature.length + 5, i + signature.length + 60);
-    return /^\s*if \(this\.isView\(\)\) return;/.test(head);
+    return new RegExp("^\\s*if \\(this\\." + guard + "\\(\\)\\) return;").test(head);
   };
-  check(guardedFirst("scheduleAutosave()"), "scheduleAutosave bails on isView() first");
-  check(guardedFirst("enqueue(kind)"), "enqueue bails on isView() first");
-  check(guardedFirst("finish()"), "finish bails on isView() first");
-  check(guardedFirst("downloadJson()"), "downloadJson bails on isView() first");
-  check(/this\.state\.pid && !this\.isView\(\)/.test(doc),
-    "componentDidUpdate localStorage write checks isView()");
+  check(guardedFirst("scheduleAutosave()"), "scheduleAutosave bails on frozen() first");
+  check(guardedFirst("enqueue(kind)"), "enqueue bails on frozen() first");
+  check(guardedFirst("finish()", "isView"), "finish bails on isView() first");
+  check(guardedFirst("downloadJson()", "isView"), "downloadJson bails on isView() first");
+  check(/this\.state\.pid && !this\.frozen\(\)/.test(doc),
+    "componentDidUpdate localStorage write checks frozen()");
+  check(/frozen\(\) \{ return this\.isView\(\) \|\| !!this\.state\.travel; \}/.test(doc),
+    "frozen() covers both view mode and version browsing");
 
   // 7b. admin mode must leave state.pid empty — that alone disables every path
   check(/admin: true, viewPid: '', loginPid: '', pid: '', step: 0/.test(doc),
@@ -224,9 +228,9 @@ console.log("\nview mode cannot write");
     "viewed code goes to viewPid, not pid");
 
   // 7c. simulate the guards for real
-  const isView = (admin) => !!admin;
-  const wouldWriteLocal = (st) => st.step > 0 && !!st.pid && !isView(st.admin);
-  const wouldAutosave = (st) => !isView(st.admin) && st.step >= 1 && !!st.pid;
+  const frozen = (st) => !!st.admin || !!st.travel;
+  const wouldWriteLocal = (st) => st.step > 0 && !!st.pid && !frozen(st);
+  const wouldAutosave = (st) => !frozen(st) && st.step >= 1 && !!st.pid;
   const wouldEnqueue = wouldAutosave;
   const participant = { admin: false, pid: "P01", step: 2 };
   const viewing = { admin: true, pid: "", viewPid: "P01", step: 2 };
@@ -238,6 +242,10 @@ console.log("\nview mode cannot write");
   const sloppy = { admin: true, pid: "P01", step: 2 };
   check(!wouldWriteLocal(sloppy) && !wouldAutosave(sloppy) && !wouldEnqueue(sloppy),
     "isView() alone stops writes even if pid leaks in");
+  // browsing history as a PARTICIPANT must not overwrite their newest work
+  const browsing = { admin: false, pid: "P01", step: 2, travel: { row: 12 } };
+  check(!wouldWriteLocal(browsing) && !wouldAutosave(browsing) && !wouldEnqueue(browsing),
+    "browsing an old version freezes writes for participants too");
 
   // 7d. read-only UI
   check(/layerPE: RO \? 'none' : 'auto'/.test(doc), "card layer goes pointer-events:none");

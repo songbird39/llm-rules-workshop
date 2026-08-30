@@ -167,6 +167,31 @@ avoid handing a participant `admin` as their code.
 Re-run `node tools/test_ui_scale.js` after touching any of this — it asserts the write
 guards are the first statement in each path.
 
+## Version history
+
+The **기록 / History** button (next to the zoom controls, available to participants and
+in admin view mode) lists saved versions and loads any of them back onto the board.
+
+Every autosave already lands in the sheet, so history is a read problem, not a capture
+one. Autosaves fire every 2.5s of activity, so the list is thinned server-side to **one
+per ~2 minutes plus every submit** — a deliberate finish is never thinned away.
+
+**Browsing never overwrites.** While a version is open the board is frozen: no
+localStorage write, no autosave, no POST. Coming back out is explicit:
+
+| | what it does |
+|---|---|
+| **이 버전으로 되돌리기 / Restore** | adopts that version as current; saving resumes and pushes it as a **new** row |
+| **최신으로 돌아가기 / Back to latest** | discards it and reloads the newest state |
+
+Nothing in the sheet is ever rewritten or deleted — history is append-only, so a restore
+is just another entry. In admin view mode only *Back to latest* is offered, because
+Restore would be a write and view mode never writes.
+
+⚠ **Needs the Apps Script redeploy** (see §2) — `?versions=` and `?row=` are new server
+actions, alongside `?list=`. Without it the History dialog shows *"Could not load
+history."*
+
 ## Cross-device continuity
 
 Sign in with the same participant code on any device on the link and the board comes

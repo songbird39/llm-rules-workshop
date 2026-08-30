@@ -68,6 +68,7 @@
           <button onClick="{{ onBackList }}" style="padding:7px 12px;border:1px solid #d6d3ca;border-radius:7px;background:#fff;font-size:13.5px;cursor:pointer" style-hover="background:#f1efe8">{{ t.backList }}</button>
           <button onClick="{{ onRefresh }}" style="padding:7px 12px;border:1px solid #d6d3ca;border-radius:7px;background:#fff;font-size:13.5px;cursor:pointer" style-hover="background:#f1efe8">{{ t.refreshBtn }}</button>
         </sc-if>
+        <button onClick="{{ onHistory }}" style="padding:7px 12px;border:1px solid #d6d3ca;border-radius:7px;background:#fff;font-size:13.5px;cursor:pointer" style-hover="background:#f1efe8">{{ t.histBtn }}</button>
         <button onClick="{{ resetView }}" style="padding:7px 12px;border:1px solid #d6d3ca;border-radius:7px;background:#fff;font-size:13.5px;cursor:pointer" style-hover="background:#f1efe8">{{ t.fit }}</button>
         <sc-if value="{{ canEdit }}" hint-placeholder-val="{{ true }}">
         <button onClick="{{ toggleArrowMode }}" title="{{ t.arrowTip }}" style="padding:7px 12px;border:1px solid #d6d3ca;border-radius:7px;background:{{ arrowBtnBg }};color:{{ arrowBtnColor }};font-size:13.5px;cursor:pointer">{{ t.arrow }}</button>
@@ -78,6 +79,18 @@
       </div>
     </sc-if>
   </div>
+
+  <sc-if value="{{ travelling }}" hint-placeholder-val="{{ false }}">
+    <div style="flex:0 0 auto;display:flex;flex-wrap:wrap;align-items:center;gap:10px;padding:8px 18px;background:#f7f0dc;border-bottom:1px solid #e6dcc0">
+      <span style="font-size:12.5px;font-weight:600;color:#8a6a1f">{{ t.travelPrefix }}{{ travelLabel }}</span>
+      <span style="font-size:12.5px;color:#8a6a1f">{{ t.travelBody }}</span>
+      <div style="flex:1"></div>
+      <sc-if value="{{ canRestore }}" hint-placeholder-val="{{ false }}">
+        <button onClick="{{ onRestore }}" style="padding:6px 12px;border:1px solid transparent;border-radius:7px;background:#1b1a17;color:#faf8f3;font-size:12.5px;cursor:pointer">{{ t.restoreBtn }}</button>
+      </sc-if>
+      <button onClick="{{ onCancelTravel }}" style="padding:6px 12px;border:1px solid #d6d3ca;border-radius:7px;background:#fff;font-size:12.5px;cursor:pointer">{{ t.cancelTravelBtn }}</button>
+    </div>
+  </sc-if>
 
   <sc-if value="{{ isStep0 }}" hint-placeholder-val="{{ true }}">
     <div style="flex:1;min-height:0;display:flex;align-items:center;justify-content:center;background:#f1efe8">
@@ -306,6 +319,30 @@
   </div>
   </sc-if>
 
+  <sc-if value="{{ histOpen }}" hint-placeholder-val="{{ false }}">
+    <div style="position:fixed;left:0;top:0;right:0;bottom:0;background:rgba(27,26,23,0.35);display:flex;align-items:center;justify-content:center;z-index:60">
+      <div style="width:420px;max-width:88vw;max-height:76vh;background:#fffefb;border:1px solid #e2dfd7;border-radius:14px;padding:24px 26px;box-shadow:0 12px 36px rgba(0,0,0,0.18);display:flex;flex-direction:column;gap:12px">
+        <div style="font-size:16px;font-weight:700;letter-spacing:-0.01em">{{ t.histTitle }}</div>
+        <div style="font-size:12.5px;line-height:1.6;color:#7a776f">{{ t.histSub }}</div>
+        <sc-if value="{{ hasHistNote }}" hint-placeholder-val="{{ true }}">
+          <div style="font-size:12.5px;line-height:1.6;color:#8a6a1f;background:#f7f0dc;border-radius:8px;padding:10px 13px">{{ histNote }}</div>
+        </sc-if>
+        <div style="flex:1;min-height:0;overflow-y:auto;display:flex;flex-direction:column;gap:6px">
+          <sc-for list="{{ versions }}" as="v" hint-placeholder-count="0">
+            <button onClick="{{ v.onOpen }}" style="display:flex;align-items:baseline;gap:10px;text-align:left;padding:9px 12px;border:1px solid #e2dfd7;border-radius:9px;background:#fff;cursor:pointer" style-hover="border-color:oklch(0.51 0.08 253)">
+              <span style="font-size:12.5px;color:#44423b">{{ v.when }}</span>
+              <span style="flex:1"></span>
+              <span style="font-size:11px;color:{{ v.tagColor }}">{{ v.tag }}</span>
+            </button>
+          </sc-for>
+        </div>
+        <div style="display:flex;justify-content:flex-end;padding-top:2px">
+          <button onClick="{{ onCloseHist }}" style="padding:8px 16px;border:1px solid #d6d3ca;border-radius:8px;background:#fff;font-size:13px;cursor:pointer">{{ t.closeBtn }}</button>
+        </div>
+      </div>
+    </div>
+  </sc-if>
+
   <sc-if value="{{ finishOpen }}" hint-placeholder-val="{{ false }}">
     <div style="position:fixed;left:0;top:0;right:0;bottom:0;background:rgba(27,26,23,0.35);display:flex;align-items:center;justify-content:center;z-index:60">
       <div style="width:390px;max-width:86vw;background:#fffefb;border:1px solid #e2dfd7;border-radius:14px;padding:26px 28px;box-shadow:0 12px 36px rgba(0,0,0,0.18);display:flex;flex-direction:column;gap:12px">
@@ -442,6 +479,11 @@ const I18N = {
       syncLocal: '⚠ 로컬 저장만 · 서버 미연결', syncReady: '서버 연결됨', syncLoading: '서버에서 불러오는 중…',
       fit: '화면 맞춤', note: '✎ 메모', exportBtn: '제출 · JSON 저장', clear: '초기화', confirmClear: '보드의 모든 카드를 지울까요?',
       arrow: '↗ 화살표', arrowTip: '카드에서 카드로 드래그해 화살표로 잇기', arrowDelTip: '화살표 삭제',
+      histBtn: '기록', histTitle: '저장 기록', histSub: '되돌아갈 시점을 선택하세요. 지금 작업은 그대로 남아 있습니다.',
+      histLoading: '불러오는 중…', histEmpty: '아직 저장 기록이 없습니다.',
+      histError: '기록을 불러오지 못했습니다. Apps Script를 새 버전으로 다시 배포했는지 확인해 주세요.',
+      autoTag: '자동 저장', travelPrefix: '기록 보는 중 · ', travelBody: '이 시점의 보드입니다. 저장은 멈춰 있습니다.',
+      restoreBtn: '이 버전으로 되돌리기', cancelTravelBtn: '최신으로 돌아가기',
       finishBtn: '완료', finishWait: '보내는 중…', finishWaitBody: '작업을 서버로 보내고 있습니다.',
       finishOkTitle: '제출했습니다', finishOkBody: '작업을 서버로 보냈습니다. 이 창을 닫아도 됩니다.',
       finishFailTitle: '서버에 보내지 못했습니다', finishFailBody: '인터넷 연결이 끊겼을 수 있습니다. 아래에서 JSON 파일을 내려받아 연구자에게 전달해 주세요. 연결이 돌아오면 자동으로 다시 시도합니다.',
@@ -514,6 +556,11 @@ const I18N = {
       syncLocal: '⚠ Local only · no server', syncReady: 'Server connected', syncLoading: 'Loading from server…',
       fit: 'Reset view', note: '✎ Note', exportBtn: 'Submit · Save JSON', clear: 'Clear', confirmClear: 'Clear all cards on the board?',
       arrow: '↗ Arrow', arrowTip: 'Drag from one card to another to connect them', arrowDelTip: 'Delete arrow',
+      histBtn: 'History', histTitle: 'Saved versions', histSub: 'Pick a point to go back to. Your current work stays where it is.',
+      histLoading: 'Loading…', histEmpty: 'No saved versions yet.',
+      histError: 'Could not load history. Check that the Apps Script was redeployed as a new version.',
+      autoTag: 'autosave', travelPrefix: 'Viewing history · ', travelBody: 'This is the board at that moment. Saving is paused.',
+      restoreBtn: 'Restore this version', cancelTravelBtn: 'Back to latest',
       finishBtn: 'Finish', finishWait: 'Sending…', finishWaitBody: 'Sending your work to the server.',
       finishOkTitle: 'Submitted', finishOkBody: 'Your work was sent to the server. You can close this.',
       finishFailTitle: "Couldn't reach the server", finishFailBody: 'You may be offline. Download the JSON below and send it to the researcher. It will also retry automatically once the connection is back.',
@@ -541,7 +588,7 @@ function defaultRules(lang) {
 class Component extends DCLogic {
   constructor(props) {
     super(props);
-    this.state = { sync: '', step: 0, lang: 'ko', rules: defaultRules('ko'), pid: '', loginPid: '', cards: [], notes: [], arrows: [], arrowMode: false, pendingArrow: null, selArrow: null, noteMode: false, focusNote: null, pan: { x: 0, y: 0 }, zoom: 1, ghost: null, seq: 1, panelW: 566, sel: [], marquee: null, finish: null, admin: false, viewPid: '', roster: [], rosterMsg: '' };
+    this.state = { sync: '', step: 0, lang: 'ko', rules: defaultRules('ko'), pid: '', loginPid: '', cards: [], notes: [], arrows: [], arrowMode: false, pendingArrow: null, selArrow: null, noteMode: false, focusNote: null, pan: { x: 0, y: 0 }, zoom: 1, ghost: null, seq: 1, panelW: 566, sel: [], marquee: null, finish: null, hist: null, histList: [], travel: null, admin: false, viewPid: '', roster: [], rosterMsg: '' };
     this.canvasRef = React.createRef();
     this.drag = null;
   }
@@ -617,7 +664,7 @@ class Component extends DCLogic {
     if (this.state.step === 2 && !this.drag) { this.autoGrow(); this.measureCards(); }
     try {
       localStorage.setItem(STORE + ':lang', this.state.lang);
-      if (this.state.step > 0 && this.state.pid && !this.isView()) {
+      if (this.state.step > 0 && this.state.pid && !this.frozen()) {
         localStorage.setItem(STORE + ':' + this.state.pid, JSON.stringify({ savedAt: Date.now(), pid: this.state.pid, cards: this.state.cards, notes: this.state.notes, arrows: this.state.arrows, seq: this.state.seq, panelW: this.state.panelW, step: this.state.step, lang: this.state.lang, rules: this.state.rules }));
       }
     } catch (e) {}
@@ -629,7 +676,7 @@ class Component extends DCLogic {
   }
 
   scheduleAutosave() {
-    if (this.isView()) return;   // 열람 모드에서는 절대 저장하지 않는다
+    if (this.frozen()) return;   // 열람 모드·기록 열람 중에는 절대 저장하지 않는다
     if (!this.syncUrl() || this.state.step < 1 || !this.state.pid) return;
     const sig = this.sig();
     if (sig === this._sig) return;
@@ -647,12 +694,54 @@ class Component extends DCLogic {
   }
   isView() { return !!this.state.admin; }
 
+  // 저장이 멈춘 상태 / writes are frozen: admin view mode, or while browsing an old
+  // version. Browsing history must never push the old board over the newest one.
+  frozen() { return this.isView() || !!this.state.travel; }
+
   // 관리자 코드로 로그인하면 참여자 목록 화면으로 / admin code opens the roster
   loginAdmin() {
     this.setState({
       admin: true, viewPid: '', loginPid: '', pid: '', step: 0,
       cards: [], notes: [], arrows: [], roster: [], rosterMsg: 'loading'
     }, () => this.refreshRoster());
+  }
+
+  // ── 기록 / version history ────────────────────────────────────────────
+  openHistory() {
+    const pid = this.state.viewPid || this.state.pid;
+    if (!pid || !this.syncUrl()) { this.setState({ hist: 'error', histList: [] }); return; }
+    this.setState({ hist: 'loading', histList: [] });
+    this.jsonp('versions=' + encodeURIComponent(pid)).then((res) => {
+      if (res && res.ok && res.versions) {
+        this.setState({ hist: 'open', histList: res.versions });
+      } else {
+        this.setState({ hist: 'error' });
+      }
+    });
+  }
+
+  // 그 시점의 보드를 불러온다 — 저장은 얼어 있다 / load that snapshot; writes stay frozen
+  travelTo(v) {
+    this.setState({ hist: 'loading' });
+    this.jsonp('row=' + encodeURIComponent(v.row)).then((res) => {
+      if (!res || !res.ok || !res.state) { this.setState({ hist: 'error' }); return; }
+      this.setState({ travel: { row: v.row, at: v.at }, hist: null });
+      this.applyState(res.state);
+    });
+  }
+
+  // 이 버전을 현재 상태로 채택 / adopt it as current. History is append-only, so this
+  // adds a new row rather than rewriting anything.
+  restoreTravel() {
+    if (this.isView()) return;
+    this.setState({ travel: null }, () => { this.seedSig(); this.scheduleAutosave(); });
+  }
+
+  cancelTravel() {
+    const pid = this.state.viewPid || this.state.pid;
+    this.setState({ travel: null });
+    if (!pid) return;
+    this.loadRemote(pid).then((st) => { if (st) this.applyState(st); });
   }
 
   refreshRoster() {
@@ -1454,7 +1543,7 @@ class Component extends DCLogic {
   }
 
   enqueue(kind) {
-    if (this.isView()) return;   // 열람 모드에서는 시트에 아무것도 보내지 않는다
+    if (this.frozen()) return;   // 열람 모드·기록 열람 중에는 시트에 아무것도 보내지 않는다
     if (!this.syncUrl() || !this.state.pid || this.state.step < 1) return;
     const q = this.queueRead().filter((it) => !(kind === 'autosave' && it.kind === 'autosave' && it.participant === this.state.pid));
     q.push({ id: this.state.pid + '-' + Date.now() + '-' + Math.random().toString(36).slice(2, 7), kind: kind, participant: this.state.pid, queuedAt: new Date().toISOString(), payload: this.snapshot() });
@@ -1593,6 +1682,27 @@ class Component extends DCLogic {
       startOpacity: this.state.loginPid.trim() ? 1 : 0.4,
       doLogout: () => this.logout(),
       doFinish: () => this.finish(),
+      onHistory: () => this.openHistory(),
+      histOpen: !!this.state.hist,
+      histBusy: this.state.hist === 'loading',
+      histNote: this.state.hist === 'loading' ? t.histLoading
+        : this.state.hist === 'error' ? t.histError
+        : (this.state.histList || []).length ? '' : t.histEmpty,
+      hasHistNote: this.state.hist !== 'open' || !(this.state.histList || []).length,
+      onCloseHist: () => this.setState({ hist: null }),
+      versions: (this.state.histList || []).map((v) => ({
+        key: 'v' + v.row,
+        when: v.at ? new Date(v.at).toLocaleString() : '-',
+        tag: v.kind === 'submit' ? t.submittedTag : t.autoTag,
+        tagColor: v.kind === 'submit' ? 'oklch(0.51 0.08 253)' : '#a7a49b',
+        onOpen: () => this.travelTo(v)
+      })),
+      travelling: !!this.state.travel,
+      travelLabel: this.state.travel && this.state.travel.at
+        ? new Date(this.state.travel.at).toLocaleString() : '',
+      canRestore: !!this.state.travel && !RO,
+      onRestore: () => this.restoreTravel(),
+      onCancelTravel: () => this.cancelTravel(),
       finishOpen: !!this.state.finish,
       finishFallback: this.state.finish === 'fallback',
       finishTitle: this.state.finish === 'wait' ? t.finishWait

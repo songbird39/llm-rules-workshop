@@ -601,6 +601,100 @@ async function dragTileToBoard(page, title, fx = 0.45, fy = 0.4) {
     await pg.close();
   }
 
+  // ------------------------------------------------- 3h. version history and travel
+  // The endpoint is stubbed at the network layer so history, travel, restore and cancel
+  // can be exercised without a live sheet. The property that matters: browsing an old
+  // version must not write anything, or looking at history would destroy the newest work.
+  console.log("\nversion history: travel is read-only until restored");
+  {
+    const EP = "https://script.google.com/macros/s/FAKE/exec";
+    const V = [{ row: 9, at: "2026-08-29T10:00:00.000Z", kind: "autosave" },
+               { row: 4, at: "2026-08-29T09:30:00.000Z", kind: "submit" }];
+    const mk = (n) => ({
+      savedAt: Date.now(), pid: "H1", step: 2, lang: "ko", rules: [],
+      cards: Array.from({ length: n }, (_, i) => ({
+        id: "c" + (i + 1), type: "when", title: "V" + n + "-" + (i + 1), desc: "x",
+        dia: "w_before", collapsed: false, x: 200 + i * 200, y: 200 })),
+      notes: [], arrows: [], seq: 9, panelW: 566,
+    });
+    const page = await browser.newPage({ viewport: { width: 1440, height: 900 } });
+    const errors = [];
+    page.on("pageerror", (e) => errors.push(e.message));
+    let posts = 0;
+    await page.route("**/macros/s/**", async (route) => {
+      const u = new URL(route.request().url());
+      if (route.request().method() === "POST") { posts++; return route.fulfill({ status: 200, body: "{}" }); }
+      const cbn = u.searchParams.get("callback");
+      const reply = (o) => route.fulfill({ status: 200, contentType: "application/javascript", body: cbn + "(" + JSON.stringify(o) + ");" });
+      if (u.searchParams.get("versions")) return reply({ ok: true, versions: V });
+      if (u.searchParams.get("row")) return reply({ ok: true, row: +u.searchParams.get("row"), state: mk(u.searchParams.get("row") === "9" ? 2 : 1) });
+      if (u.searchParams.get("participant")) return reply({ ok: true, state: mk(2) });
+      return reply({ ok: true, rows: 0 });
+    });
+    await page.goto(APP + "?sync=" + encodeURIComponent(EP), { waitUntil: "load", timeout: 120000 });
+    await page.waitForSelector('input[placeholder="P00"]', { timeout: 120000 });
+    await page.fill('input[placeholder="P00"]', "H1");
+    await page.getByText("시작하기", { exact: false }).click();
+    await page.waitForTimeout(1200);
+    const nCards = () => page.evaluate(() => {
+      const L = [...document.querySelectorAll("div")].find((d) => d.style.width === "5000px");
+      return L ? [...L.children].filter((c) => c.tagName === "DIV" && c.querySelector("input")).length : 0;
+    });
+    const pickSubmit = () => page.evaluate(() => {
+      const o = [...document.querySelectorAll("div")].find((d) => d.style.position === "fixed" && d.style.zIndex === "60");
+      [...o.querySelectorAll("button")].find((x) => /제출됨/.test(x.innerText)).click();
+    });
+    check(await nCards() === 2, "latest board loaded");
+
+    await page.getByText("기록", { exact: true }).click();
+    await page.waitForTimeout(700);
+    const dlg = await page.evaluate(() => {
+      const o = [...document.querySelectorAll("div")].find((d) => d.style.position === "fixed" && d.style.zIndex === "60");
+      return o ? o.innerText.replace(/\s+/g, " ").trim() : null;
+    });
+    check(!!dlg && dlg.includes("저장 기록"), "history dialog opens");
+    check(!!dlg && dlg.includes("제출됨") && dlg.includes("자동 저장"), "submits and autosaves are labelled");
+
+    await pickSubmit();
+    await page.waitForTimeout(900);
+    check(await nCards() === 1, "travelled to the older version");
+    check(await page.evaluate(() => document.body.innerText.includes("기록 보는 중")), "history banner shown");
+
+    posts = 0;
+    const ta = page.locator("textarea").first();
+    await ta.click();
+    await ta.type("edited while browsing");
+    await page.waitForTimeout(3500);
+    check(posts === 0, "no POST while browsing history", ` (${posts})`);
+    const kept = await page.evaluate(() => {
+      const k = Object.keys(localStorage).find((x) => x.includes("llm-guardrail") && x.endsWith(":H1"));
+      return k ? JSON.parse(localStorage.getItem(k)).cards.length : null;
+    });
+    check(kept === null || kept === 2, "localStorage still holds the NEWEST board", ` (${kept})`);
+
+    await page.getByText("최신으로 돌아가기", { exact: false }).click();
+    await page.waitForTimeout(900);
+    check(await nCards() === 2, "cancel returns to the latest board");
+    check(await page.evaluate(() => !document.body.innerText.includes("기록 보는 중")), "banner cleared after cancel");
+
+    await page.getByText("기록", { exact: true }).click();
+    await page.waitForTimeout(700);
+    await pickSubmit();
+    await page.waitForTimeout(900);
+    posts = 0;
+    await page.getByText("이 버전으로 되돌리기", { exact: false }).click();
+    await page.waitForTimeout(600);
+    const ta2 = page.locator("textarea").first();
+    await ta2.click();
+    await ta2.type("after restore");
+    await page.waitForTimeout(3800);
+    check(posts > 0, "after restore, editing saves again", ` (${posts} posts)`);
+    check(await nCards() === 1, "the restored board is the old one");
+    if (SHOTS) await page.screenshot({ path: `${SHOTS}/history.png` });
+    check(errors.length === 0, "no console errors", errors.length ? ` (${errors[0]})` : "");
+    await page.close();
+  }
+
   // ------------------------------------------------- 4. ?ui=1 escape hatch
   console.log("\n?ui=1 escape hatch");
   {

@@ -53,6 +53,10 @@ function doGet(e) {
   var out;
   if (p.list) {
     out = { ok: true, participants: roster_() };
+  } else if (p.versions) {
+    out = { ok: true, participant: p.versions, versions: versions_(p.versions, Number(p.every) || 120000) };
+  } else if (p.row) {
+    out = { ok: true, row: Number(p.row), state: stateAtRow_(Number(p.row)) };
   } else if (p.participant) {
     out = { ok: true, participant: p.participant, state: latestState_(p.participant) };
   } else {
@@ -96,6 +100,42 @@ function roster_() {
   });
   out.sort(function (a, b) { return String(b.lastAt || '').localeCompare(String(a.lastAt || '')); });
   return out;
+}
+
+/** Version index for one participant, newest first.
+ *  Autosaves fire every 2.5s of activity, so a session can be hundreds of rows. Keep
+ *  one per `everyMs` window plus EVERY submit, which is the deliberate finish and must
+ *  never be thinned away. Returns only metadata; fetch a state with ?row=.
+ */
+function versions_(pid, everyMs) {
+  var sh = sheet_();
+  var last = sh.getLastRow();
+  if (last < 2) return [];
+  var vals = sh.getRange(2, 1, last - 1, 3).getValues(); // receivedAt, participant, kind
+  var out = [], lastKept = 0;
+  for (var i = 0; i < vals.length; i++) {
+    if (String(vals[i][1] || '').trim() !== String(pid)) continue;
+    var kind = String(vals[i][2] || '');
+    var t = vals[i][0] ? new Date(vals[i][0]).getTime() : 0;
+    if (kind !== 'submit' && lastKept && (t - lastKept) < everyMs) continue;
+    lastKept = t;
+    out.push({ row: i + 2, at: vals[i][0] ? new Date(vals[i][0]).toISOString() : null, kind: kind });
+  }
+  out.reverse();
+  return out;
+}
+
+/** The board state stored in one specific row, or null. Read-only. */
+function stateAtRow_(row) {
+  var sh = sheet_();
+  if (!row || row < 2 || row > sh.getLastRow()) return null;
+  try {
+    var body = JSON.parse(sh.getRange(row, 10).getValue());
+    var st = body && body.payload && body.payload.state;
+    return (st && st.cards) ? st : null;
+  } catch (err) {
+    return null;
+  }
 }
 
 /** Newest saved board state for a participant, or null. */
