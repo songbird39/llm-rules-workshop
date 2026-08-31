@@ -69,6 +69,8 @@
           <button onClick="{{ onRefresh }}" style="padding:7px 12px;border:1px solid #d6d3ca;border-radius:7px;background:#fff;font-size:13.5px;cursor:pointer" style-hover="background:#f1efe8">{{ t.refreshBtn }}</button>
           <button onClick="{{ onDupAll }}" style="padding:7px 12px;border:1px dashed oklch(0.62 0.11 62);border-radius:7px;background:#fdfbf5;color:#7a5a1f;font-size:13.5px;cursor:pointer">{{ t.dupAllBtn }}</button>
           <button onClick="{{ onDupSel }}" style="padding:7px 12px;border:1px dashed oklch(0.62 0.11 62);border-radius:7px;background:#fdfbf5;color:#7a5a1f;font-size:13.5px;cursor:pointer">{{ t.dupSelBtn }}</button>
+          <button onClick="{{ onImg }}" style="padding:7px 12px;border:1px solid #d6d3ca;border-radius:7px;background:#fff;font-size:13.5px;cursor:pointer" style-hover="background:#f1efe8">{{ t.imgBtn }}</button>
+          <button onClick="{{ onImgSense }}" style="padding:7px 12px;border:1px dashed oklch(0.62 0.11 62);border-radius:7px;background:#fdfbf5;color:#7a5a1f;font-size:13.5px;cursor:pointer">{{ t.imgSenseBtn }}</button>
           <button onClick="{{ onClearSense }}" style="padding:7px 10px;border:1px solid #e2dfd7;border-radius:7px;background:transparent;color:#98958c;font-size:13.5px;cursor:pointer" style-hover="color:#b03f34">{{ t.clearSenseBtn }}</button>
         </sc-if>
         <button onClick="{{ onHistory }}" style="padding:7px 12px;border:1px solid #d6d3ca;border-radius:7px;background:#fff;font-size:13.5px;cursor:pointer" style-hover="background:#f1efe8">{{ t.histBtn }}</button>
@@ -303,6 +305,11 @@
                 <textarea value="{{ c.desc }}" onChange="{{ c.onDesc }}" data-grow="1" placeholder="{{ t.descPh }}" style="width:100%;height:auto;min-height:{{ c.dmin }};overflow:hidden;resize:none;border:none;background:transparent;font-size:12px;line-height:1.45;color:#5b584f;outline:none;padding:0;pointer-events:auto"></textarea>
               </div>
             </sc-if>
+            <sc-if value="{{ c.isTag }}" hint-placeholder-val="{{ false }}">
+              <div onPointerDown="{{ c.onWidth }}" title="{{ t.widthTip }}" style="position:absolute;right:0;top:0;bottom:0;width:12px;cursor:ew-resize;opacity:0;display:flex;align-items:center;justify-content:center" style-hover="opacity:1">
+                <div style="width:3px;height:22px;border-radius:2px;background:#b6b3aa"></div>
+              </div>
+            </sc-if>
             <div style="display:flex;align-items:center;gap:5px;height:13px">
               <div style="flex:1"></div>
               <button onClick="{{ c.onDup }}" title="{{ t.dupTip }}" style="border:none;background:transparent;color:#bfbcb3;font-size:11px;line-height:13px;cursor:pointer;padding:0 2px" style-hover="color:#1b1a17">⧉</button>
@@ -505,6 +512,7 @@ const I18N = {
       syncLocal: '⚠ 로컬 저장만 · 서버 미연결', syncReady: '서버 연결됨', syncLoading: '서버에서 불러오는 중…',
       fit: '화면 맞춤', note: '✎ 메모', exportBtn: '제출 · JSON 저장', clear: '초기화', confirmClear: '보드의 모든 카드를 지울까요?',
       arrow: '↗ 화살표', arrowTip: '카드에서 카드로 드래그해 화살표로 잇기', arrowDelTip: '화살표 삭제',
+      imgBtn: '이미지 저장', imgSenseBtn: '이미지 (해석 포함)',
       dupAllBtn: '전체 복제', dupSelBtn: '선택 복제', clearSenseBtn: '해석 지우기',
       regionLabel: '참여자 산출물 (수정 불가)',
       histBtn: '기록', histTitle: '저장 기록', histSub: '되돌아갈 시점을 선택하세요. 지금 작업은 그대로 남아 있습니다.',
@@ -531,6 +539,7 @@ const I18N = {
       conCards: '제약', conCardsSub: '시스템이 어떻게 개입하나요?', whenCards: '언제', whenCardsSub: '활동의 어느 구간인가요?',
       trigCards: '발동 사건', trigCardsSub: '무엇이 개입을 불러오나요?',
       empty1: '왼쪽에서 고른 규칙 카드를 이 보드에 놓아 보세요.', empty2: '규칙 · 언제 · 어떻게 카드를 한 줄로 놓으면 조합이 됩니다.',
+      widthTip: '드래그해서 폭 조절',
       dragTip: '드래그해서 보드에 놓기 (더블클릭으로 추가)', noteTip: '보드 빈 곳을 눌러 메모 만들기', resizeTip: '드래그해서 폭 조절', dupTip: '복제', delTip: '삭제', foldTip: '펼치기 / 접기', noteDelTip: '메모 삭제', clearTip: '보드 비우기'
     }
   },
@@ -596,6 +605,7 @@ const I18N = {
       syncLocal: '⚠ Local only · no server', syncReady: 'Server connected', syncLoading: 'Loading from server…',
       fit: 'Reset view', note: '✎ Note', exportBtn: 'Submit · Save JSON', clear: 'Clear', confirmClear: 'Clear all cards on the board?',
       arrow: '↗ Arrow', arrowTip: 'Drag from one card to another to connect them', arrowDelTip: 'Delete arrow',
+      imgBtn: 'Save image', imgSenseBtn: 'Image (with workspace)',
       dupAllBtn: 'Duplicate all', dupSelBtn: 'Duplicate selection', clearSenseBtn: 'Clear workspace',
       regionLabel: "Participant's output (read-only)",
       histBtn: 'History', histTitle: 'Saved versions', histSub: 'Pick a point to go back to. Your current work stays where it is.',
@@ -622,6 +632,7 @@ const I18N = {
       conCards: 'Constraint', conCardsSub: 'how the system steps in', whenCards: 'When', whenCardsSub: 'which part of the activity',
       trigCards: 'Trigger', trigCardsSub: 'what brings the intervention',
       empty1: 'Drag your rule cards from the left onto this board.', empty2: 'Line up rule · when · how cards in a row to form a combination.',
+      widthTip: 'Drag to resize',
       dragTip: 'Drag onto the board (double-click to add)', noteTip: 'Click an empty spot on the board to add a note', resizeTip: 'Drag to resize', dupTip: 'Duplicate', delTip: 'Delete', foldTip: 'Expand / collapse', noteDelTip: 'Delete note', clearTip: 'Clear the board'
     }
   }
@@ -1482,6 +1493,16 @@ class Component extends DCLogic {
 
   // 선택된 것들을 함께 이동 / move the whole selection by one shared delta, so the
   // arrangement is preserved exactly (per-item snapping would distort it)
+  // 태그 폭 조절 / drag a tag's right edge. Deliberately invisible until the pointer is
+  // on it: participants who never look for it are never bothered by it.
+  startWidth(id, e) {
+    e.stopPropagation();
+    e.preventDefault();
+    const c = this.state.cards.find((k) => k.id === id);
+    if (!c) return;
+    this.drag = { kind: 'tagw', id: id, sx: e.clientX, w0: c.w || TAG_W };
+  }
+
   startGroup(p) {
     const set = {};
     (this.state.sel || []).forEach((id) => { set[id] = true; });
@@ -1536,6 +1557,11 @@ class Component extends DCLogic {
         cards: s.cards.map((c) => (set[c.id] ? Object.assign({}, c, { x: c.x + dx, y: c.y + dy }) : c)),
         notes: (s.notes || []).map((n) => (set[n.id] ? Object.assign({}, n, { x: n.x + dx, y: n.y + dy }) : n))
       }));
+    } else if (d.kind === 'tagw') {
+      // 화면 px -> 캔버스 px / screen px to canvas px: the board carries both zooms
+      const k = (this.state.zoom || 1) * UI;
+      const w = Math.max(TAG_MIN, Math.min(TAG_MAX, d.w0 + (e.clientX - d.sx) / k));
+      this.setState((s) => ({ cards: s.cards.map((c) => (c.id === d.id ? Object.assign({}, c, { w: Math.round(w) }) : c)) }));
     } else if (d.kind === 'resize') {
       this.setState({ panelW: Math.min(940, Math.max(210, d.pw + (e.clientX - d.sx) / UI)) });
     } else if (d.kind === 'pan') {
@@ -1810,6 +1836,177 @@ class Component extends DCLogic {
     this._retry = setTimeout(() => { this._retry = null; this.flush(); }, 20000);
   }
 
+  // ── 보드 이미지 저장 / board image export ────────────────────────────────
+  // 해석은 이미지로 한다고 했으니, 화면 밖까지 포함한 보드 전체를 그려서 내보낸다.
+  // Analysis happens from the image, so this draws the WHOLE board - including anything
+  // off-screen - rather than capturing the viewport. Painted onto a canvas rather than
+  // serialising the DOM: no external fetches, nothing to taint the canvas, and the page's
+  // own Pretendard is available to canvas text, so Korean renders as it does on screen.
+  // 화면에 이미 그려진 아이콘 SVG를 그대로 가져와 이미지에 넣는다.
+  // Lift the icons straight off the page: diagram() returns React elements, so rather
+  // than re-implementing them for canvas, serialise the <svg> already rendered for each
+  // card. Keyed by the icon name, so one load covers every card sharing it.
+  iconImages() {
+    const layer = this.cardsLayer();
+    const out = {};
+    if (!layer) return Promise.resolve(out);
+    const els = [];
+    for (let i = 0; i < layer.children.length; i++) {
+      const el = layer.children[i];
+      if (el.tagName === 'DIV' && el.querySelector('input')) els.push(el);
+    }
+    const jobs = [];
+    this.state.cards.forEach((c, i) => {
+      if (!c.dia || out[c.dia] || !els[i]) return;
+      const svg = els[i].querySelector('svg');
+      if (!svg) return;
+      out[c.dia] = null;
+      const clone = svg.cloneNode(true);
+      clone.setAttribute('xmlns', 'http://www.w3.org/2000/svg');
+      clone.setAttribute('width', '240');
+      clone.setAttribute('height', '104');
+      const url = 'data:image/svg+xml;charset=utf-8,' +
+        encodeURIComponent(new XMLSerializer().serializeToString(clone));
+      jobs.push(new Promise((res) => {
+        const img = new Image();
+        img.onload = () => { out[c.dia] = img; res(); };
+        img.onerror = () => res();          // an icon that will not load is just skipped
+        img.src = url;
+      }));
+    });
+    return Promise.all(jobs).then(() => out);
+  }
+
+  exportImage(withSense) {
+    this.iconImages().then((icons) => this.paintImage(withSense, icons));
+  }
+
+  paintImage(withSense, icons) {
+    const pid = this.state.viewPid || this.state.pid || 'board';
+    const keep = (o) => (withSense ? true : !o.sm);
+    const cards = this.state.cards.filter(keep);
+    const notes = (this.state.notes || []).filter(keep);
+    if (!cards.length && !notes.length) return;
+
+    const rects = cards.map((c) => this.cardRect(c))
+      .concat(notes.map((n) => ({ x: n.x, y: n.y, w: CARD, h: n.h || 70 })));
+    const PAD = 40;
+    let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
+    rects.forEach((r) => {
+      x0 = Math.min(x0, r.x); y0 = Math.min(y0, r.y);
+      x1 = Math.max(x1, r.x + r.w); y1 = Math.max(y1, r.y + r.h);
+    });
+    x0 -= PAD; y0 -= PAD; x1 += PAD; y1 += PAD;
+
+    const S = 2;                                  // 2x so text stays crisp
+    const cv = document.createElement('canvas');
+    cv.width = Math.ceil((x1 - x0) * S);
+    cv.height = Math.ceil((y1 - y0) * S);
+    const g = cv.getContext('2d');
+    g.scale(S, S);
+    g.translate(-x0, -y0);
+    g.fillStyle = '#ebe8e0';
+    g.fillRect(x0, y0, x1 - x0, y1 - y0);
+
+    const font = (px, w) => (w || 400) + ' ' + px + "px Pretendard, -apple-system, 'Apple SD Gothic Neo', system-ui, sans-serif";
+    const round = (x, y, w, h, r) => {
+      g.beginPath();
+      if (g.roundRect) g.roundRect(x, y, w, h, r); else g.rect(x, y, w, h);
+      return g;
+    };
+    // 줄바꿈 / wrap text to a width, returning the y after the last line
+    const wrap = (text, x, y, maxW, lh, max) => {
+      const paras = String(text || '').split('\n');
+      let line = '', n = 0;
+      for (let pi = 0; pi < paras.length; pi++) {
+        const words = paras[pi].split(/(\s+)/);
+        line = '';
+        for (let i = 0; i < words.length; i++) {
+          const t = line + words[i];
+          if (g.measureText(t).width > maxW && line) {
+            g.fillText(line.trim(), x, y + n * lh); n++; line = words[i].trim();
+            if (max && n >= max) return y + n * lh;
+          } else line = t;
+        }
+        if (line.trim()) { g.fillText(line.trim(), x, y + n * lh); n++; }
+        if (max && n >= max) return y + n * lh;
+      }
+      return y + n * lh;
+    };
+
+    // 화살표 먼저 (카드 아래로) / arrows first, so cards sit on top of them
+    g.lineWidth = 2.2; g.lineCap = 'round';
+    (this.state.arrows || []).filter(keep).forEach((a) => {
+      const e = this.arrowEnds(a);
+      if (!e) return;
+      g.strokeStyle = '#8a877e';
+      g.beginPath(); g.moveTo(e.p1.x, e.p1.y); g.lineTo(e.p2.x, e.p2.y); g.stroke();
+      const ang = Math.atan2(e.p2.y - e.p1.y, e.p2.x - e.p1.x), L = 9;
+      g.beginPath();
+      g.moveTo(e.p2.x, e.p2.y);
+      g.lineTo(e.p2.x - L * Math.cos(ang - 0.4), e.p2.y - L * Math.sin(ang - 0.4));
+      g.lineTo(e.p2.x - L * Math.cos(ang + 0.4), e.p2.y - L * Math.sin(ang + 0.4));
+      g.closePath(); g.fillStyle = '#8a877e'; g.fill();
+    });
+
+    notes.forEach((n) => {
+      const h = n.h || 70;
+      g.setLineDash([5, 4]); g.strokeStyle = n.sm ? 'oklch(0.62 0.11 62)' : '#c2beb2'; g.lineWidth = 1.5;
+      g.fillStyle = 'rgba(255,254,251,0.75)';
+      round(n.x, n.y, CARD, h, 8).fill(); round(n.x, n.y, CARD, h, 8).stroke();
+      g.setLineDash([]);
+      g.fillStyle = '#44423b'; g.font = font(12);
+      wrap(n.text, n.x + 10, n.y + 20, CARD - 20, 17, Math.max(1, Math.floor((h - 16) / 17)));
+    });
+
+    cards.forEach((c) => {
+      const r = this.cardRect(c), tag = c.type === 'act';
+      g.fillStyle = c.sm ? '#fdfbf5' : '#fffefb';
+      g.strokeStyle = c.sm ? 'oklch(0.62 0.11 62)' : '#e2dfd7';
+      g.lineWidth = 1.4;
+      g.setLineDash(c.sm ? [5, 4] : []);
+      round(r.x, r.y, r.w, r.h, 10).fill(); round(r.x, r.y, r.w, r.h, 10).stroke();
+      g.setLineDash([]);
+      // 제목 줄 / title bar, tinted by deck
+      g.fillStyle = TINT[c.type] || '#eeece5';
+      round(r.x + 7, r.y + 7, r.w - 14, tag ? 24 : 21, 5).fill();
+      g.fillStyle = '#1b1a17'; g.font = font(tag ? 15 : 12.5, 600);
+      const title = String(c.title || '');
+      let t = title;
+      while (t && g.measureText(t).width > r.w - 60) t = t.slice(0, -1);
+      g.fillText(t + (t.length < title.length ? '…' : ''), r.x + 13, r.y + (tag ? 24 : 22));
+      // 덱 표시 / deck badge
+      g.fillStyle = ACC[c.type] || '#6f6b62'; g.font = font(9, 500);
+      const mk = (I18N[this.state.lang] || I18N.ko).mark[c.type] || '';
+      g.fillText(mk, r.x + r.w - 13 - g.measureText(mk).width, r.y + (tag ? 23 : 21));
+      // 설명 / description
+      g.fillStyle = '#5b584f'; g.font = font(12);
+      wrap(c.desc, r.x + 12, r.y + (tag ? 45 : 42) + (c.dia ? 52 : 0), r.w - 24, 17,
+        Math.max(1, Math.floor((r.h - (tag ? 52 : 49) - (c.dia ? 52 : 0)) / 17)));
+      if (c.dia) {           // 아이콘 / the card's own icon, lifted off the page
+        g.strokeStyle = '#eae7df'; g.lineWidth = 1; g.fillStyle = '#f7f5f0';
+        round(r.x + 8, r.y + 34, r.w - 16, 46, 5).fill(); round(r.x + 8, r.y + 34, r.w - 16, 46, 5).stroke();
+        const im = icons && icons[c.dia];
+        if (im) {
+          // viewBox 120x52 이므로 비율을 지켜 가운데 / keep the 120:52 ratio, centred
+          const bw = r.w - 20, bh = 40;
+          const sc = Math.min(bw / 120, bh / 52);
+          const dw = 120 * sc, dh = 52 * sc;
+          g.drawImage(im, r.x + 10 + (bw - dw) / 2, r.y + 37 + (bh - dh) / 2, dw, dh);
+        }
+      }
+    });
+
+    cv.toBlob((blob) => {
+      if (!blob) return;
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = pid + '-board' + (withSense ? '-sense' : '') + '.png';
+      a.click();
+      URL.revokeObjectURL(a.href);
+    }, 'image/png');
+  }
+
   // 완료: 서버로 보내고, 보내지 못했을 때만 JSON 내려받기를 제안한다
   // Finish: submit, and offer the JSON download only if it could not be sent.
   finish() {
@@ -1879,6 +2076,8 @@ class Component extends DCLogic {
       onDupAll: () => this.duplicateIntoSense(true),
       onDupSel: () => this.duplicateIntoSense(false),
       onClearSense: () => this.clearSense(),
+      onImg: () => this.exportImage(false),
+      onImgSense: () => this.exportImage(true),
       marq: !!this.state.marquee,
       marqX: this.state.marquee ? this.state.marquee.x : 0,
       marqY: this.state.marquee ? this.state.marquee.y : 0,
@@ -2051,6 +2250,7 @@ class Component extends DCLogic {
           diagram: c.dia ? this.diagram(c.dia) : null,
           cursor: this.state.arrowMode ? 'crosshair' : 'grab',
           onDown: (!RO || c.sm) ? (e) => this.startMove(c.id, e) : NOOP,
+          onWidth: (!RO || c.sm) ? (e) => this.startWidth(c.id, e) : NOOP,
           onTitle: (!RO || c.sm) ? (e) => this.patch(c.id, 'title', e.target.value) : NOOP,
           onDesc: (!RO || c.sm) ? (e) => this.patch(c.id, 'desc', e.target.value) : NOOP,
           onFold: (!RO || c.sm) ? () => this.patch(c.id, 'collapsed', !c.collapsed) : NOOP,

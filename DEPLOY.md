@@ -25,6 +25,23 @@ That is the participant link. Nothing to append.
 
 Works on phones, tablets and laptops; participants just open the link.
 
+### What a session looks like
+
+**1단계 · 워크플로 만들기** — participants lay ① **활동** tags left to right in the order
+they study, and attach ② **수단** post-its saying what each is done with. Tags are wider
+than cards with a larger title, so the timeline reads as a different level from the cards
+placed under it. A tag's width can be dragged from its right edge; the handle is
+invisible until the pointer is over it, so nobody who isn't looking for it is bothered by
+it. 다음 unlocks once at least one activity is on the board.
+
+**2단계 · 가드레일 붙이기** — the same board, with ③ **제약** · ④ **언제** · ⑤ **발동 사건**
+cards placed under each activity. The **① 활동 · ② 수단** tab reopens the workflow decks
+without leaving the board.
+
+Phase (활동 전 → 중 → 후) is framed in the hint line rather than enforced with lanes or
+bands: participants are free to wrap to another row when a workflow branches or gets long,
+and a horizontal phase axis would stop meaning anything the moment they did.
+
 ### Interface size
 
 Every size in the app is a hardcoded px value (fonts run 9–17px), which is unreadably
@@ -166,6 +183,22 @@ avoid handing a participant `admin` as their code.
 
 Re-run `node tools/test_ui_scale.js` after touching any of this — it asserts the write
 guards are the first statement in each path.
+
+## Board image export (admin only)
+
+Two buttons appear while viewing a participant:
+
+- **이미지 저장 / Save image** — the participant's board only
+- **이미지 (해석 포함) / Image (with workspace)** — including your sensemaking copies
+
+It captures the **whole board**, not the viewport, so work spread across several rows or
+sitting off-screen is included. The board is painted onto a canvas at 2× rather than
+screenshotted or serialised from the DOM: nothing is fetched, so the canvas is never
+tainted, and the page's own Pretendard is available to canvas text, so Korean renders as
+it does on screen. Card icons are lifted from the SVGs already on the page.
+
+To capture what a participant actually **submitted** rather than their latest state, open
+History first, travel to the submit, then export.
 
 ## Sensemaking workspace (admin only)
 

@@ -69,34 +69,50 @@ async function boot(browser, { width = 2560, height = 1440, query = "" } = {}) {
   return { page, errors };
 }
 
-async function toBoard(page, code = "T01") {
+// Log in and stop on step 1: the workflow board (활동 / 수단 in the panel).
+async function toStep1(page, code = "T01") {
   await page.fill('input[placeholder="P00"]', code);
   await page.getByText("시작하기", { exact: false }).click();
-  await page.waitForSelector("text=규칙 카드", { timeout: 30000 });
-  for (const t of ["브레인스토밍 · 초안", "먼저 직접 시도"]) {
-    await page.locator(`input[value="${t}"]`).first().evaluate((el) => {
-      let n = el;
-      while (n && !(n.getAttribute("style") || "").includes("cursor:pointer")) n = n.parentElement;
-      (n || el.parentElement.parentElement).click();
-    });
-  }
-  await page.getByText("다음", { exact: false }).click();
-  await page.waitForSelector("text=언제 카드", { timeout: 30000 });
+  await page.waitForSelector("text=무엇을 하나요?", { timeout: 30000 });
 }
 
-// drag a panel tile (identified by its visible title) onto the board
+// Log in, lay one activity tag (다음 is gated on having one), and advance to step 2,
+// where the guardrail decks live. The board therefore starts with ONE tag on it.
+async function toBoard(page, code = "T01") {
+  await toStep1(page, code);
+  await dragTileToBoard(page, "계획 세우기", 0.12, 0.10);
+  await page.getByRole("button", { name: /다음/ }).click();
+  await page.waitForSelector("text=시스템이 어떻게 개입하나요?", { timeout: 30000 });
+}
+
+// Drag a panel tile onto the board. Matched by prefix on the tile's own text, not
+// getByText(exact): a 활동 tag renders its title and subtitle as two spans, so an exact
+// match never resolves. Scrolls the tile into view first — decks below the panel fold
+// report an off-viewport box and the synthetic drag silently does nothing.
 async function dragTileToBoard(page, title, fx = 0.45, fy = 0.4) {
   const cb = await (await page.$('div[style*="radial-gradient"]')).boundingBox();
-  const tile = page.getByText(title, { exact: true }).first();
-  // the "how" deck sits below the panel fold; without this the tile's box is
-  // off-viewport and the synthetic drag silently does nothing
-  await tile.scrollIntoViewIfNeeded();
-  const tb = await tile.boundingBox();
-  await page.mouse.move(tb.x + tb.width / 2, tb.y + tb.height / 2);
+  await page.evaluate((q) => {
+    const d = [...document.querySelectorAll("div")]
+      .filter((x) => getComputedStyle(x).cursor === "grab")
+      .find((x) => x.innerText.replace(/\s+/g, " ").trim().startsWith(q));
+    if (d) d.scrollIntoView({ block: "center" });
+  }, title);
+  await page.waitForTimeout(150);
+  const t = await page.evaluate((q) => {
+    const d = [...document.querySelectorAll("div")]
+      .filter((x) => getComputedStyle(x).cursor === "grab")
+      .find((x) => x.innerText.replace(/\s+/g, " ").trim().startsWith(q));
+    if (!d) return null;
+    const r = d.getBoundingClientRect();
+    return { x: r.x, y: r.y, h: r.height };
+  }, title);
+  if (!t) throw new Error("deck tile not found: " + title);
+  await page.mouse.move(t.x + 40, t.y + t.h / 2);
   await page.mouse.down();
-  await page.mouse.move(cb.x + cb.width * fx, cb.y + cb.height * fy, { steps: 12 });
+  await page.waitForTimeout(40);
+  await page.mouse.move(cb.x + cb.width * fx, cb.y + cb.height * fy, { steps: 8 });
   await page.mouse.up();
-  await page.waitForTimeout(200);
+  await page.waitForTimeout(250);
 }
 
 (async () => {
@@ -110,8 +126,9 @@ async function dragTileToBoard(page, title, fx = 0.45, fy = 0.4) {
     check(near(scale, want, 0.001), `${w}px viewport resolves UI ${want}`, ` (got ${scale})`);
 
     await toBoard(page);
-    await dragTileToBoard(page, "학습 전");
+    await dragTileToBoard(page, "활동 전");
     let cards = await boardCards(page);
+    // one 활동 tag from toBoard, plus the card just dropped
     check(cards.length === 1, "card dropped onto the board", ` (${cards.length})`);
 
     if (cards.length) {
@@ -166,19 +183,25 @@ async function dragTileToBoard(page, title, fx = 0.45, fy = 0.4) {
     await page.close();
   }
 
-  // ------------------------------------------------- 3. rule cards land expanded
-  console.log("\nrule card keeps its size on drop");
+  // ------------------------------------------------- 3. a guardrail card lands card-sized
+  console.log("\nguardrail cards land at card size, tags do not");
   {
     const { page } = await boot(browser);
     await toBoard(page);
-    await dragTileToBoard(page, "브레인스토밍 · 초안", 0.3, 0.3);
-    const cards = await boardCards(page);
+    await dragTileToBoard(page, "규칙 상기", 0.3, 0.3);
+    const cards = await boardCards(page);           // width 168 only, so tags are excluded
     const scale = await uiScale(page);
-    check(cards.length === 1, "rule card dropped", ` (${cards.length})`);
+    check(cards.length === 1, "one card on the board", ` (${cards.length})`);
     if (cards.length) {
-      check(near(cards[0].h / scale, 168, 3), "lands at full 168px, not collapsed to 90",
-        ` (${(cards[0].h / scale).toFixed(0)}px)`);
+      check(near(cards[0].w / scale, 168, 2), "card is CARD wide", ` (${(cards[0].w / scale).toFixed(0)})`);
+      check(cards[0].h / scale > 150, "and card-height, not a bar", ` (${(cards[0].h / scale).toFixed(0)})`);
     }
+    const tagW = await page.evaluate(() => {
+      const L = [...document.querySelectorAll("div")].find((d) => d.style.width === "5000px");
+      const t = [...L.children].find((c) => c.tagName === "DIV" && c.querySelector("input") && c.offsetWidth !== 168);
+      return t ? t.offsetWidth : null;
+    });
+    check(tagW === 352, "the 활동 tag beside it is TAG_W", ` (${tagW})`);
     if (SHOTS) await page.screenshot({ path: `${SHOTS}/rulecard.png` });
     await page.close();
   }
@@ -188,8 +211,8 @@ async function dragTileToBoard(page, title, fx = 0.45, fy = 0.4) {
   {
     const { page, errors } = await boot(browser, { width: 1440, height: 900 });
     await toBoard(page, "T02");
-    await dragTileToBoard(page, "학습 전", 0.3, 0.35);
-    await dragTileToBoard(page, "학습 중", 0.55, 0.35);
+    await dragTileToBoard(page, "활동 전", 0.3, 0.35);
+    await dragTileToBoard(page, "활동 중", 0.55, 0.35);
     const cb = await (await page.$('div[style*="radial-gradient"]')).boundingBox();
     await page.getByText("메모", { exact: false }).click();
     await page.mouse.click(cb.x + cb.width * 0.42, cb.y + cb.height * 0.7);
@@ -261,7 +284,7 @@ async function dragTileToBoard(page, title, fx = 0.45, fy = 0.4) {
     }
     const zoom = await readZoom();
 
-    const tile = page.getByText("학습 전", { exact: true }).first();
+    const tile = page.getByText("활동 전", { exact: true }).first();
     await tile.scrollIntoViewIfNeeded();
     const tb = await tile.boundingBox();
     await page.mouse.move(tb.x + tb.width / 2, tb.y + tb.height / 2);
@@ -301,10 +324,11 @@ async function dragTileToBoard(page, title, fx = 0.45, fy = 0.4) {
   {
     const { page, errors } = await boot(browser, { width: 1440, height: 900 });
     await toBoard(page, "T06");
-    await dragTileToBoard(page, "학습 전", 0.35, 0.25);
+    await dragTileToBoard(page, "활동 전", 0.35, 0.25);
     const heights = () => page.evaluate(() => {
       const L = [...document.querySelectorAll("div")].find((d) => d.style.width === "5000px");
-      return [...L.children].filter((c) => c.tagName === "DIV" && c.querySelector("input"))
+      // exclude 활동 tags (they are TAG_W wide) — these assertions are about cards
+      return [...L.children].filter((c) => c.tagName === "DIV" && c.querySelector("input") && c.offsetWidth === 168)
         .map((c) => c.offsetHeight);
     });
     let h = await heights();
@@ -323,7 +347,8 @@ async function dragTileToBoard(page, title, fx = 0.45, fy = 0.4) {
 
     const stored = await page.evaluate(() => {
       const k = Object.keys(localStorage).find((x) => x.includes("llm-guardrail") && x.endsWith(":T06"));
-      return JSON.parse(localStorage.getItem(k)).cards.map((c) => c.h);
+      // skip the 활동 tag toBoard drops to unlock 다음 — this is about the card
+      return JSON.parse(localStorage.getItem(k)).cards.filter((c) => c.type !== "act").map((c) => c.h);
     });
     check(stored[0] > 200, "measured height persisted", ` (${stored[0]})`);
 
@@ -350,22 +375,22 @@ async function dragTileToBoard(page, title, fx = 0.45, fy = 0.4) {
   {
     const { page, errors } = await boot(browser, { width: 1440, height: 900 });
     await toBoard(page, "T11");
-    await dragTileToBoard(page, "학습 전", 0.25, 0.20);
-    await dragTileToBoard(page, "학습 중", 0.45, 0.20);
-    await dragTileToBoard(page, "학습 후", 0.65, 0.20);
+    await dragTileToBoard(page, "활동 전", 0.25, 0.35);
+    await dragTileToBoard(page, "활동 중", 0.45, 0.35);
+    await dragTileToBoard(page, "활동 후", 0.65, 0.35);
     const cb = await (await page.$('div[style*="radial-gradient"]')).boundingBox();
     const geo = () => page.evaluate(() => {
       const L = [...document.querySelectorAll("div")].find((d) => d.style.width === "5000px");
-      return [...L.children].filter((c) => c.tagName === "DIV" && c.querySelector("input"))
+      return [...L.children].filter((c) => c.tagName === "DIV" && c.querySelector("input") && c.offsetWidth === 168)
         .map((c) => ({ t: c.querySelector("input").value, x: c.offsetLeft, y: c.offsetTop,
                        sel: !!c.style.outline && c.style.outline !== "none" }));
     });
 
     // marquee across the row
-    await page.mouse.move(cb.x + cb.width * 0.15, cb.y + cb.height * 0.10);
+    await page.mouse.move(cb.x + cb.width * 0.15, cb.y + cb.height * 0.26);
     await page.mouse.down();
     for (const f of [0.3, 0.5, 0.65, 0.80]) {
-      await page.mouse.move(cb.x + cb.width * f, cb.y + cb.height * 0.45);
+      await page.mouse.move(cb.x + cb.width * f, cb.y + cb.height * 0.60);
       await page.waitForTimeout(40);
     }
     const marqDrawn = await page.evaluate(() =>
@@ -381,7 +406,7 @@ async function dragTileToBoard(page, title, fx = 0.45, fy = 0.4) {
     const before = g.map((c) => ({ t: c.t, x: c.x, y: c.y }));
     const first = await page.evaluate(() => {
       const L = [...document.querySelectorAll("div")].find((d) => d.style.width === "5000px");
-      const c = [...L.children].filter((e) => e.tagName === "DIV" && e.querySelector("input"))[0];
+      const c = [...L.children].filter((e) => e.tagName === "DIV" && e.querySelector("input") && e.offsetWidth === 168)[0];
       const r = c.getBoundingClientRect();
       return { x: r.x, y: r.y };
     });
@@ -414,7 +439,7 @@ async function dragTileToBoard(page, title, fx = 0.45, fy = 0.4) {
     // ctrl-click adds
     const rects = await page.evaluate(() => {
       const L = [...document.querySelectorAll("div")].find((d) => d.style.width === "5000px");
-      return [...L.children].filter((e) => e.tagName === "DIV" && e.querySelector("input"))
+      return [...L.children].filter((e) => e.tagName === "DIV" && e.querySelector("input") && e.offsetWidth === 168)
         .map((c) => { const r = c.getBoundingClientRect(); return { x: r.x, y: r.y }; });
     });
     await page.keyboard.down("Control");
@@ -457,8 +482,8 @@ async function dragTileToBoard(page, title, fx = 0.45, fy = 0.4) {
   {
     const { page, errors } = await boot(browser, { width: 1440, height: 900 });
     await toBoard(page, "A1");
-    await dragTileToBoard(page, "학습 전", 0.20, 0.18);
-    await dragTileToBoard(page, "학습 중", 0.55, 0.18);
+    await dragTileToBoard(page, "활동 전", 0.20, 0.18);
+    await dragTileToBoard(page, "활동 중", 0.55, 0.18);
     const cb = await (await page.$('div[style*="radial-gradient"]')).boundingBox();
     await page.getByText("메모", { exact: false }).click();
     await page.mouse.click(cb.x + cb.width * 0.25, cb.y + cb.height * 0.62);
@@ -468,7 +493,8 @@ async function dragTileToBoard(page, title, fx = 0.45, fy = 0.4) {
       const L = [...document.querySelectorAll("div")].find((d) => d.style.width === "5000px");
       return [...L.children].filter((c) => c.tagName === "DIV").map((c) => {
         const r = c.getBoundingClientRect();
-        return { kind: c.querySelector("input") ? "card" : "note", x: r.x, y: r.y, w: r.width, h: r.height };
+        return { kind: c.querySelector("input") ? (c.offsetWidth === 168 ? "card" : "tag") : "note",
+                 x: r.x, y: r.y, w: r.width, h: r.height };
       });
     });
     const cards = rects.filter((r) => r.kind === "card"), notes = rects.filter((r) => r.kind === "note");
@@ -551,20 +577,7 @@ async function dragTileToBoard(page, title, fx = 0.45, fy = 0.4) {
       await pg.route("**/macros/s/**", (r) => (fail ? r.abort() : r.fulfill({ status: 200, body: "{}" })));
       await pg.goto(APP + "?sync=" + encodeURIComponent(EP), { waitUntil: "load", timeout: 120000 });
       await pg.waitForSelector('input[placeholder="P00"]', { timeout: 120000 });
-      await pg.fill('input[placeholder="P00"]', "F1");
-      await pg.getByText("시작하기", { exact: false }).click();
-      await pg.waitForTimeout(400);
-      for (const t of ["브레인스토밍 · 초안", "먼저 직접 시도"]) {
-        const l = pg.locator(`input[value="${t}"]`).first();
-        if (await l.count()) await l.evaluate((el) => {
-          let n = el;
-          while (n && !(n.getAttribute("style") || "").includes("cursor:pointer")) n = n.parentElement;
-          (n || el.parentElement.parentElement).click();
-        });
-      }
-      const nx = pg.getByText("다음", { exact: false });
-      if (await nx.count()) await nx.click();
-      await pg.waitForTimeout(500);
+      await toBoard(pg, "F1");     // login, lay one activity, advance to step 2
       return pg;
     };
 
@@ -782,6 +795,119 @@ async function dragTileToBoard(page, title, fx = 0.45, fy = 0.4) {
     const p0 = await rect(false); await drag(p0);
     check((await rect(false)).left === p0.left, "a participant card cannot be dragged");
     if (SHOTS) await page.screenshot({ path: `${SHOTS}/sense.png` });
+    check(errors.length === 0, "no console errors", errors.length ? ` (${errors[0]})` : "");
+    await page.close();
+  }
+
+  // ------------------------------------------------- 3j. tag width handle
+  console.log("\ntag width: hidden until hovered, then draggable");
+  {
+    const { page, errors } = await boot(browser, { width: 1500, height: 950 });
+    await page.fill('input[placeholder="P00"]', "TW");
+    await page.getByText("시작하기", { exact: false }).click();
+    await page.waitForTimeout(700);
+    const tile = await page.evaluate(() => {
+      const d = [...document.querySelectorAll("div")].filter((x) => getComputedStyle(x).cursor === "grab")
+        .find((x) => x.innerText.trim().startsWith("계획"));
+      const r = d.getBoundingClientRect();
+      return { x: r.x, y: r.y, h: r.height };
+    });
+    const cb = await (await page.$('div[style*="radial-gradient"]')).boundingBox();
+    await page.mouse.move(tile.x + 40, tile.y + tile.h / 2);
+    await page.mouse.down();
+    await page.mouse.move(cb.x + 240, cb.y + 160, { steps: 8 });
+    await page.mouse.up();
+    await page.waitForTimeout(300);
+    const tag = () => page.evaluate(() => {
+      const L = [...document.querySelectorAll("div")].find((d) => d.style.width === "5000px");
+      const c = [...L.children].find((x) => x.tagName === "DIV" && x.querySelector("input"));
+      const hb = c.querySelector("div[title]");
+      const hr = hb ? hb.getBoundingClientRect() : null;
+      return { w: c.offsetWidth, op: hb ? getComputedStyle(hb).opacity : null,
+               hx: hr ? hr.x + hr.width / 2 : null, hy: hr ? hr.y + hr.height / 2 : null };
+    });
+    let g = await tag();
+    check(g.w === 352, "tag starts at TAG_W", ` (${g.w})`);
+    check(g.op === "0", "handle is invisible until hovered", ` (opacity ${g.op})`);
+    await page.mouse.move(g.hx, g.hy);
+    await page.waitForTimeout(200);
+    check((await tag()).op === "1", "hovering the right edge reveals it");
+    await page.mouse.down();
+    await page.waitForTimeout(60);
+    for (let i = 1; i <= 5; i++) { await page.mouse.move(g.hx + 24 * i, g.hy); await page.waitForTimeout(50); }
+    await page.mouse.up();
+    await page.waitForTimeout(300);
+    const w2 = (await tag()).w;
+    check(Math.abs(w2 - 472) <= 6, "dragging widens the tag", ` (352 -> ${w2})`);
+    check(errors.length === 0, "no console errors", errors.length ? ` (${errors[0]})` : "");
+    await page.close();
+  }
+
+  // ------------------------------------------------- 3k. admin image export
+  // Analysis happens from the image, so this must capture the WHOLE board rather than
+  // the viewport, and the clean version must not contain the sensemaking layer.
+  console.log("\nadmin image export: clean board and workspace board");
+  {
+    const EP = "https://script.google.com/macros/s/FAKE/exec";
+    const board = {
+      savedAt: Date.now(), pid: "IMG", step: 2, lang: "ko", rules: [],
+      cards: [
+        { id: "c1", type: "act", title: "첫 학습", desc: "처음 배우는 개념", dia: null, collapsed: false, w: 352, x: 120, y: 120 },
+        { id: "c2", type: "con", title: "단계별 힌트", desc: "직접적으로 제공하는 대신 단계별 힌트를 제공한다", dia: "h_hint", collapsed: false, x: 120, y: 260 },
+        { id: "c3", type: "trig", title: "시간 제한 시", desc: "", dia: "w_time", collapsed: false, x: 320, y: 260 }],
+      notes: [{ id: "n1", x: 520, y: 130, text: "참여자 메모입니다" }],
+      arrows: [{ id: "a1", from: { k: "card", id: "c2" }, to: { k: "card", id: "c3" } }],
+      seq: 9, panelW: 566,
+    };
+    const page = await browser.newPage({ viewport: { width: 1500, height: 950 }, acceptDownloads: true });
+    const errors = [];
+    page.on("pageerror", (e) => errors.push(e.message));
+    await page.route("**/macros/s/**", async (route) => {
+      const u = new URL(route.request().url());
+      if (route.request().method() === "POST") return route.fulfill({ status: 200, body: "{}" });
+      const cbn = u.searchParams.get("callback");
+      const reply = (o) => route.fulfill({ status: 200, contentType: "application/javascript", body: cbn + "(" + JSON.stringify(o) + ");" });
+      if (u.searchParams.get("list")) return reply({ ok: true, participants: [{ participant: "IMG", rows: 2, submits: 1, lastAt: "2026-08-29T10:00:00Z" }] });
+      const who = u.searchParams.get("participant");
+      if (who === "IMG") return reply({ ok: true, state: board });
+      if (who && who.indexOf("sm:") === 0) return reply({ ok: true, state: null });
+      return reply({ ok: true, rows: 0 });
+    });
+    await page.goto(APP + "?sync=" + encodeURIComponent(EP), { waitUntil: "load", timeout: 120000 });
+    await page.waitForSelector('input[placeholder="P00"]', { timeout: 120000 });
+    await page.fill('input[placeholder="P00"]', "admin");
+    await page.getByText("시작하기", { exact: false }).click();
+    await page.waitForTimeout(900);
+    await page.getByText("IMG", { exact: true }).first().click();
+    await page.waitForTimeout(1200);
+
+    const fs2 = require("fs");
+    const [dl] = await Promise.all([
+      page.waitForEvent("download", { timeout: 15000 }).catch(() => null),
+      page.getByRole("button", { name: /이미지 저장/ }).click(),
+    ]);
+    check(dl !== null, "clean image downloads", dl ? ` (${dl.suggestedFilename()})` : "");
+    let cleanSize = 0;
+    if (dl) {
+      const f = "/tmp/ws-board.png";
+      await dl.saveAs(f);
+      cleanSize = fs2.statSync(f).size;
+      check(fs2.readFileSync(f).slice(1, 4).toString() === "PNG", "it is a PNG");
+      check(cleanSize > 3000, "png has real content", ` (${cleanSize} bytes)`);
+    }
+    await page.getByText("전체 복제", { exact: true }).click();
+    await page.waitForTimeout(700);
+    const [dl2] = await Promise.all([
+      page.waitForEvent("download", { timeout: 15000 }).catch(() => null),
+      page.getByRole("button", { name: /해석 포함/ }).click(),
+    ]);
+    check(dl2 !== null, "workspace image downloads", dl2 ? ` (${dl2.suggestedFilename()})` : "");
+    if (dl2) {
+      const f2 = "/tmp/ws-board-sense.png";
+      await dl2.saveAs(f2);
+      check(fs2.statSync(f2).size > cleanSize,
+        "the workspace image carries more than the clean one");
+    }
     check(errors.length === 0, "no console errors", errors.length ? ` (${errors[0]})` : "");
     await page.close();
   }
