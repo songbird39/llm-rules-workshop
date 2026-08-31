@@ -10,3 +10,5 @@ package-lock.json
 
 # browser harness artifacts
 tools/browser/node_modules/
+__pycache__/
+*.pyc
