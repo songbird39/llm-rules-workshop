@@ -27,6 +27,24 @@ Works on phones, tablets and laptops; participants just open the link.
 
 ### What a session looks like
 
+**로그인 화면** — the IRB information sheet and consent form sit open beside the
+participant-code box, so it can be read without clicking anything first. Two buttons
+download the **last page** — the sheet that actually gets signed — as a PDF or as a
+200dpi PNG for printing.
+
+The pages are baked in as images, not as an embedded PDF: `<embed>`/`<iframe>` PDF
+rendering varies by browser (Safari and iOS show only the first page, or nothing), and a
+consent document that silently fails to display is not an acceptable failure mode. They
+are attached through a stylesheet injected at mount rather than written into the markup,
+because the browser resolves `url()` while parsing — before the template engine
+substitutes anything — so an interpolated `src` is fetched literally and 404s on every
+load. If the IRB document changes, replace `assets/동의서-참여자배포용.pdf`, then:
+
+```bash
+python3 tools/consent.py     # re-rasterise into src (--check tells you if it is stale)
+python3 tools/build.py       # splice src into index.html
+```
+
 **1단계 · 워크플로 만들기** — participants lay ① **활동** tags left to right in the order
 they study, and attach ② **수단** post-its saying what each is done with. Tags are wider
 than cards with a larger title, so the timeline reads as a different level from the cards

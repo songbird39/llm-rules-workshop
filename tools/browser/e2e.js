@@ -981,6 +981,61 @@ async function dragTileToBoard(page, title, fx = 0.45, fy = 0.4) {
     await page.close();
   }
 
+  // ------------------------------------------------- consent document
+  console.log("\nconsent document reads and downloads from the sign-in screen");
+  {
+    const page = await browser.newPage({ viewport: { width: 1500, height: 950 } });
+    const errors = [], failed = [];
+    page.on("pageerror", (e) => errors.push(e.message));
+    page.on("console", (m) => m.type() === "error" && errors.push(m.text().slice(0, 160)));
+    // 마크업에 남은 보간된 url()은 여기서 잡힌다 / a url() left in the markup shows up here
+    // as a request for the literal "{{ … }}" — the whole reason for the stylesheet.
+    page.on("requestfailed", (r) => failed.push(r.url().slice(0, 90)));
+    await page.goto(APP, { waitUntil: "load", timeout: 120000 });
+    await page.waitForSelector('input[placeholder="P00"]', { timeout: 120000 });
+    await page.waitForTimeout(800);
+
+    const pages = await page.evaluate(() => [...document.querySelectorAll('[role="img"]')]
+      .map((d) => ({ bg: getComputedStyle(d).backgroundImage.slice(0, 30), len: getComputedStyle(d).backgroundImage.length })));
+    check(pages.length === 5, "five consent pages on the sign-in screen", ` (${pages.length})`);
+    check(pages.every((p) => p.bg.startsWith('url("data:image/png') && p.len > 10000),
+      "each page has its image painted from the stylesheet");
+    check(failed.length === 0, "nothing is fetched from the markup", failed.length ? ` (${failed[0]})` : "");
+
+    const fits = await page.evaluate(() => {
+      const first = document.querySelector('[role="img"]');
+      const scroller = first.parentElement.parentElement;
+      const panel = scroller.parentElement;
+      let card = document.querySelector('input[placeholder="P00"]');
+      while (card && getComputedStyle(card).boxShadow === "none") card = card.parentElement;
+      const p = panel.getBoundingClientRect(), c = card.getBoundingClientRect();
+      return { scrolls: scroller.scrollHeight > scroller.clientHeight + 2,
+               clear: p.right <= c.x + 1 && p.bottom <= innerHeight + 1 && c.right <= innerWidth + 1 };
+    });
+    check(fits.scrolls, "the document scrolls inside its panel");
+    check(fits.clear, "and does not overlap or overflow the sign-in card");
+
+    for (const [label, ext, magic] of [["동의서 PDF", "pdf", "%PDF"], ["동의서 이미지", "png", "PNG"]]) {
+      const [dl] = await Promise.all([
+        page.waitForEvent("download", { timeout: 20000 }),
+        page.getByText(label, { exact: false }).click()
+      ]);
+      const file = await dl.path();
+      const bytes = require("fs").readFileSync(file);
+      check(dl.suggestedFilename().endsWith("." + ext), `${label} downloads a .${ext}`,
+        ` (${dl.suggestedFilename()})`);
+      check(bytes.length > 20000 && bytes.slice(0, 5).toString("latin1").includes(magic),
+        `${label} is a real ${ext.toUpperCase()}`, ` (${bytes.length} bytes)`);
+    }
+
+    await page.fill('input[placeholder="P00"]', "CN1");
+    await page.getByText("시작하기", { exact: false }).click();
+    await page.waitForSelector("text=무엇을 하나요?", { timeout: 30000 });
+    check(true, "signing in still works with the document beside it");
+    check(errors.length === 0, "no console errors", errors.length ? ` (${errors[0]})` : "");
+    await page.close();
+  }
+
   // ------------------------------------------------- every object is editable
   // 활동 태그와 수단 포스트잇에는 아이콘이 없다 / activity tags and 수단 post-its carry no icon.
   // The description textarea was once nested inside the icon's sc-if, so those two types

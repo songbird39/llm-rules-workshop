@@ -207,6 +207,33 @@ console.log("\nrule card keeps its size on drop");
 
 }
 
+// ---- 6b. the consent document on the sign-in screen ----
+// 브라우저는 보간 전에 마크업을 읽는다 / the browser resolves url() while parsing, BEFORE
+// the template engine substitutes anything. src="{{ … }}" therefore fetches the literal
+// string and 404s on every load; a data: placeholder is an ERR_INVALID_URL instead. The
+// images must arrive through the stylesheet injected at mount, and the markup must carry
+// nothing but a class name.
+console.log("\nconsent document is embedded without a parse-time fetch");
+{
+  const pages = (src.match(/'data:image\/png;base64,/g) || []).length;
+  check(pages === 6, "five page images plus the print-resolution last page", ` (${pages})`);
+  check(/lastPdf: 'data:application\/pdf;base64,/.test(src), "the last page ships as a real PDF");
+  check(/mountConsentStyles\(\)/.test(src), "pages are attached through an injected stylesheet");
+  check(/componentDidMount\(\) \{\s*this\.mountConsentStyles\(\);/.test(src),
+    "and that runs at mount");
+
+  const step0 = doc.slice(doc.indexOf("{{ isStep0 }}"), doc.indexOf("{{ isRoster }}"));
+  check(!/src="\{\{/.test(step0), "no interpolated src on the sign-in screen");
+  check(!/url\(['"]?\{\{/.test(step0), "no interpolated url() either");
+  check(/class="\{\{ pg\.cls \}\}"/.test(step0), "the page element carries only a class");
+  check(/consentTitle:/.test(src) && /consentPdf:/.test(src), "the panel is translated");
+  // both download buttons are the LAST page — the sheet that gets signed
+  check(/downloadConsent\(kind\)/.test(src) && /kind === 'pdf' \? CONSENT\.lastPdf : CONSENT\.lastPng/.test(src),
+    "both downloads are scoped to the last page");
+  check(/atob\(src\.slice\(comma \+ 1\)\)/.test(src),
+    "downloads go through a Blob, not a huge data: href");
+}
+
 // ---- 7. view mode must not be able to write ----
 // The whole point: viewing P01 must never produce a localStorage write or a sheet
 // POST, because latestState_() takes the newest row and would adopt the accident.
