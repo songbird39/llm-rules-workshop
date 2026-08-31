@@ -161,8 +161,8 @@ console.log("\nrule card keeps its size on drop");
   check(!/collapsed: type === 'rule'/.test(doc), "not created pre-collapsed");
   check(/collapsed: false/.test(doc), "created expanded");
   // the fold control must still exist — collapsing stays available, just not default
-  check(/onFold: \(\) => this\.patch\(c\.id, 'collapsed', !c\.collapsed\)/.test(doc),
-    "fold control still present");
+  check(/onFold: \(!RO \|\| c\.sm\) \? \(\) => this\.patch\(c\.id, 'collapsed', !c\.collapsed\)/.test(doc),
+    "fold control still present, and gated like every other handler");
   check(/h: c\.h \|\| \(folded \? 90 : 168\)/.test(doc),
     "collapsed fallback height still defined (cards now measure their own height)");
   check(/cardRect\(c\) \{ return \{ x: c\.x, y: c\.y, w: c\.w \|\| CARD, h: c\.h \|\| 168 \}; \}/.test(doc),
@@ -240,8 +240,16 @@ console.log("\nview mode cannot write");
     "card drag handler gated per object");
   check(/showPanel: !RO/.test(doc), "card panel hidden while viewing");
   check(/canEdit: !RO/.test(doc), "editing toolbar hidden while viewing");
-  const noops = (doc.match(/RO \? NOOP :/g) || []).length;
-  check(noops >= 6, "mutating handlers swapped for no-ops", ` (${noops} found)`);
+  // Deck tiles use "RO ? NOOP :"; board objects use the per-object form so that admin
+  // sensemaking copies stay editable while the participant's do not. Both must exist.
+  const deckNoops = (doc.match(/RO \? NOOP :/g) || []).length;
+  const objNoops = (doc.match(/\(!RO \|\| [cn]\.sm\) \?/g) || []).length;
+  check(deckNoops >= 2, "deck tiles are inert in admin", ` (${deckNoops})`);
+  check(objNoops >= 9, "every board handler is gated per object", ` (${objNoops})`);
+  for (const h of ["onTitle", "onDesc", "onDup", "onDel", "onFold", "onText"]) {
+    check(new RegExp(h + ": \\(!RO \\|\\| [cn]\\.sm\\) \\?").test(doc),
+      `${h} cannot edit a participant object in admin`);
+  }
 
   // 7d-bis. view controls must survive the canEdit guard, editing controls must not.
   // resetView lives between the note and export buttons, so it is easy to sweep into

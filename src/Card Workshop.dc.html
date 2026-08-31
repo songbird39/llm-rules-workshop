@@ -146,53 +146,20 @@
     </div>
   </sc-if>
 
-  <sc-if value="{{ isStep1 }}" hint-placeholder-val="{{ false }}">
-    <div style="flex:1;min-height:0;overflow-y:auto;background:#f1efe8">
-      <div style="max-width:1380px;margin:0 auto;padding:22px 32px 36px;display:flex;flex-direction:column;gap:18px;min-height:100%">
-        <div style="font-size:13.5px;line-height:1.65;color:#7a776f">
-          {{ t.i1a }}<b style="color:#1b1a17;font-weight:600">{{ t.i1b }}</b>{{ t.i1c }}<b style="color:#1b1a17;font-weight:600">{{ t.i1d }}</b>{{ t.i1e }}
-        </div>
-        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,270px),1fr));gap:22px;align-items:start">
-        <sc-for list="{{ cats }}" as="cat" hint-placeholder-count="3">
-          <div style="display:flex;flex-direction:column;gap:12px">
-            <div style="display:flex;flex-direction:column;gap:2px;border-bottom:1px solid #e2dfd7;padding-bottom:9px">
-              <div style="display:flex;align-items:center;gap:8px">
-                <span style="width:9px;height:9px;border-radius:2px;background:oklch(0.51 0.08 253)"></span>
-                <span style="font-size:15px;font-weight:700;letter-spacing:-0.01em">{{ cat.label }}</span>
-              </div>
-              <span style="font-size:12px;color:#a7a49b;padding-left:17px">{{ cat.sub }}</span>
-            </div>
-            <div style="display:flex;flex-direction:column;gap:10px">
-              <sc-for list="{{ cat.rules }}" as="r" hint-placeholder-count="4">
-                <div onClick="{{ r.onToggle }}" style="display:flex;flex-direction:column;gap:7px;background:{{ r.bg }};border:1.5px solid {{ r.bd }};border-radius:11px;padding:9px;cursor:pointer;box-shadow:{{ r.shadow }}" style-hover="border-color:oklch(0.51 0.08 253)">
-                  <div style="display:flex;align-items:center;gap:7px;background:{{ r.tint }};border-radius:6px;padding:5px 7px">
-                    <span style="width:19px;height:19px;flex:0 0 19px;border-radius:50%;background:{{ r.ckBg }};border:1.5px solid {{ r.ckBd }};color:#fff;display:flex;align-items:center;justify-content:center;font-size:11.5px;line-height:1">{{ r.ck }}</span>
-                    <input value="{{ r.title }}" onChange="{{ r.onTitle }}" placeholder="{{ t.ruleName }}" style="flex:1;min-width:0;border:none;background:transparent;font-size:13px;font-weight:600;letter-spacing:-0.01em;outline:none;padding:0" />
-                    <sc-if value="{{ r.isCustom }}" hint-placeholder-val="{{ false }}">
-                      <button onClick="{{ r.onDel }}" title="{{ t.delTip }}" style="border:none;background:transparent;color:#bfbcb3;font-size:12px;line-height:1;cursor:pointer;padding:0 2px" style-hover="color:#b03f34">✕</button>
-                    </sc-if>
-                  </div>
-                  <textarea value="{{ r.desc }}" onChange="{{ r.onDesc }}" placeholder="{{ t.ruleDescPh }}" style="width:100%;height:52px;border:none;background:transparent;font-size:12.5px;font-weight:500;line-height:1.55;letter-spacing:-0.01em;color:#26251f;outline:none;padding:0 2px"></textarea>
-                </div>
-              </sc-for>
-              <button onClick="{{ cat.onAdd }}" style="min-height:44px;border:1.5px dashed #c9c6bd;border-radius:11px;background:transparent;color:#98958c;font-size:13px;cursor:pointer" style-hover="border-color:oklch(0.51 0.08 253);color:oklch(0.51 0.08 253)">{{ t.addRule }}</button>
-            </div>
-          </div>
-        </sc-for>
-        </div>
-      </div>
-    </div>
-  </sc-if>
-
-  <sc-if value="{{ isStep2 }}" hint-placeholder-val="{{ false }}">
+  <sc-if value="{{ onBoard }}" hint-placeholder-val="{{ false }}">
   <div style="display:flex;flex:1;min-height:0">
 
     <sc-if value="{{ showPanel }}" hint-placeholder-val="{{ true }}">
     <div style="flex:0 0 {{ panelW }}px;display:flex;flex-direction:column;background:#faf8f3;overflow-y:auto">
-      <div style="padding:14px 16px 12px;font-size:13px;line-height:1.65;color:#7a776f;border-bottom:1px solid #ece9e1">
-        {{ t.p1a }}<b style="color:#1b1a17;font-weight:600">{{ t.p1b }}</b>{{ t.p1c }}<b style="color:#1b1a17;font-weight:600">{{ t.p1d }}</b>{{ t.p1e }}<b style="color:#1b1a17;font-weight:600">{{ t.p1f }}</b>{{ t.p1g }}
-      </div>
+      <sc-if value="{{ isStep2 }}" hint-placeholder-val="{{ false }}">
+        <div style="display:flex;gap:0;border-bottom:1px solid #ece9e1">
+          <button onClick="{{ onTabFlow }}" style="flex:1;padding:10px 8px;border:none;border-bottom:2px solid {{ tabFlowBd }};background:{{ tabFlowBg }};color:{{ tabFlowFg }};font-size:12.5px;font-weight:600;cursor:pointer">{{ t.tabFlow }}</button>
+          <button onClick="{{ onTabGuard }}" style="flex:1;padding:10px 8px;border:none;border-bottom:2px solid {{ tabGuardBd }};background:{{ tabGuardBg }};color:{{ tabGuardFg }};font-size:12.5px;font-weight:600;cursor:pointer">{{ t.tabGuard }}</button>
+        </div>
+      </sc-if>
+      <div style="padding:14px 16px 12px;font-size:13px;line-height:1.65;color:#7a776f;border-bottom:1px solid #ece9e1">{{ panelHint }}</div>
 
+      <sc-if value="{{ showFlow }}" hint-placeholder-val="{{ true }}">
       <div style="padding:16px 16px 4px;display:flex;align-items:baseline;gap:8px">
         <span style="width:9px;height:9px;border-radius:2px;background:#8a877e;align-self:center"></span>
         <span style="font-size:14px;font-weight:600">{{ t.actCards }}</span>
@@ -219,6 +186,8 @@
           </div>
         </sc-for>
       </div>
+      </sc-if>
+      <sc-if value="{{ showGuard }}" hint-placeholder-val="{{ false }}">
       <div style="padding:8px 16px 4px;display:flex;align-items:baseline;gap:8px;border-top:1px solid #ece9e1">
         <span style="width:9px;height:9px;border-radius:2px;background:oklch(0.51 0.08 160);align-self:center"></span>
         <span style="font-size:14px;font-weight:600">{{ t.conCards }}</span>
@@ -276,6 +245,7 @@
           </div>
         </sc-for>
       </div>
+      </sc-if>
     </div>
 
     </sc-if>
@@ -475,26 +445,6 @@ const ADMIN_CODE = 'admin';
 const I18N = {
   ko: {
     mark: { act: '활동', means: '수단', con: '제약', when: '언제', trig: '발동' },
-    cats: [
-      { id: 'use', label: '“~~에만 AI를 사용한다”', sub: 'AI를 쓰는 범위 정하기' },
-      { id: 'way', label: '“AI를 통한 ~~는 ~~하게 한다”', sub: 'AI를 쓰는 방식 정하기' },
-      { id: 'alt', label: '“AI 대신 ~~로 한다”', sub: 'AI가 아닌 다른 방법 정하기' }
-    ],
-    rules: [
-      ['use', '브레인스토밍 · 초안', '브레인스토밍 / 계획 / 초안'],
-      ['use', '보충 학습', '본 학습(수업/교재 등)에서 다루지 않는 부분의 보충'],
-      ['use', '연습 · 복습', '본 학습 이후의 연습 / 복습'],
-      ['use', '퀴즈 · 피드백', '본 학습 이후의 퀴즈 제작 / 피드백 / 채점'],
-      ['way', '먼저 직접 시도', 'AI에게 문장이나 답을 요청하는 대신 먼저 직접 시도'],
-      ['way', '변형해서 사용', 'AI의 출력물을 자신의 상황에 맞게 변형해 사용'],
-      ['way', '기록과 반성', 'AI 사용 방식을 기록 및 반성'],
-      ['way', '새 개념 학습 금지', '처음 배우는 개념을 AI로 학습하지 않는다'],
-      ['alt', '외부 설명 자료', '교재, 사전 등 외부 설명 자료 사용'],
-      ['alt', '외부 읽기 · 듣기 자료', '외부 읽기/듣기 텍스트 혹은 영상 자료 사용'],
-      ['alt', '외부 보조 도구', '암기 카드 등 외부 보조 도구 사용'],
-      ['alt', '직접 작성', '복사 대신 직접 타자치기 / 손으로 쓰기 / 말하면서 쓰기 등 노력을 들여 작성'],
-      ['alt', '별도로 정리', '학습 상황과 내용을 별도로 노트 / 문서 등에 정리']
-    ],
     deck: {
       act: [
         { title: '계획 세우기', desc: '' },
@@ -549,8 +499,8 @@ const I18N = {
       ]
     },
     ui: {
-      title: '나의 AI 학습 규칙 만들기', step1: '1단계 · 규칙 고르기', step2: '2단계 · 언제 · 어떻게 조합하기',
-      participant: '참여자', prev: '← 이전', next: '다음 →', choose: '규칙을 골라 주세요', selSuffix: '개 선택됨',
+      title: '나의 AI 학습 규칙 만들기', step1: '1단계 · 워크플로 만들기', step2: '2단계 · 가드레일 붙이기',
+      participant: '참여자', prev: '← 이전', next: '다음 →', choose: '활동 태그를 놓아 주세요', selSuffix: '개 활동',
       syncPending: '저장 중…', syncSaved: '서버 저장됨', syncOffline: '오프라인 · 재시도 대기',
       syncLocal: '⚠ 로컬 저장만 · 서버 미연결', syncReady: '서버 연결됨', syncLoading: '서버에서 불러오는 중…',
       fit: '화면 맞춤', note: '✎ 메모', exportBtn: '제출 · JSON 저장', clear: '초기화', confirmClear: '보드의 모든 카드를 지울까요?',
@@ -573,8 +523,9 @@ const I18N = {
       noSnap: '이 참여자의 저장된 보드가 없습니다.', backList: '← 목록', refreshBtn: '새로고침',
       rowsSuffix: '개 기록', submittedTag: '제출됨', neverSaved: '기록 없음',
       step0: '참여자 로그인', loginTitle: '참여자 코드를 입력해 주세요', loginSub: '작업은 참여자 코드별로 자동 저장됩니다. 같은 코드로 다시 들어오면 이어서 할 수 있습니다.', start: '시작하기 →', continueAs: '이어서 하기', logout: '나가기',
-      i1a: '지키고 싶은 ', i1b: '규칙 카드', i1c: '를 모두 골라 주세요. 여러 장을 고를 수 있고, 카드 위 글자를 눌러 내용을 직접 고치거나 ', i1d: '＋ 새 규칙', i1e: '으로 나만의 규칙을 추가할 수 있습니다.',
-      p1a: '고른 ', p1b: '① 규칙 카드', p1c: '를 오른쪽 보드에 놓고, ', p1d: '② 언제 카드', p1e: '와 ', p1f: '③ 어떻게 카드', p1g: '를 한 줄로 나란히 놓으면 하나의 조합이 됩니다. 카드 위 글자는 눌러서 직접 고칠 수 있습니다.',
+      tabFlow: '① 활동 · ② 수단', tabGuard: '③ 제약 · ④ 언제 · ⑤ 발동',
+      hintFlow: '내가 학습하는 순서대로 ① 활동 태그를 왼쪽에서 오른쪽으로 놓아 보세요. 활동 전 → 활동 중 → 활동 후 흐름이면 좋고, 길어지거나 갈래가 나뉘면 줄을 바꿔도 됩니다. 각 활동 옆에 ② 수단을 붙여 무엇으로 하는지 적어 주세요.',
+      hintGuard: '각 활동 아래에 ③ 제약 · ④ 언제 · ⑤ 발동 사건 카드를 놓아, 시스템이 언제 어떻게 개입하면 좋을지 정해 보세요. 카드 위 글자는 눌러서 직접 고칠 수 있습니다.',
       addRule: '＋ 새 규칙', ruleName: '규칙 이름', ruleDescPh: '규칙 내용 쓰기', cardName: '카드 이름', writeRule: '규칙 쓰기', descPh: '설명', notePh: '메모 쓰기…',
       actCards: '활동', actCardsSub: '무엇을 하나요? (타임라인)', meansCards: '수단', meansCardsSub: '무엇으로 하나요?',
       conCards: '제약', conCardsSub: '시스템이 어떻게 개입하나요?', whenCards: '언제', whenCardsSub: '활동의 어느 구간인가요?',
@@ -585,26 +536,6 @@ const I18N = {
   },
   en: {
     mark: { act: 'Activity', means: 'Means', con: 'Constraint', when: 'When', trig: 'Trigger' },
-    cats: [
-      { id: 'use', label: '“Use AI only for ~~”', sub: 'Deciding where AI may be used' },
-      { id: 'way', label: '“Do ~~ with AI in a ~~ way”', sub: 'Deciding how AI is used' },
-      { id: 'alt', label: '“Use ~~ instead of AI”', sub: 'Deciding non-AI alternatives' }
-    ],
-    rules: [
-      ['use', 'Brainstorm · Drafts', 'Brainstorming / planning / first drafts'],
-      ['use', 'Supplementary study', 'Filling gaps not covered in main study (class/textbook)'],
-      ['use', 'Practice · Review', 'Practice / review after main study'],
-      ['use', 'Quizzes · Feedback', 'Quiz creation / feedback / grading after main study'],
-      ['way', 'Try it myself first', 'Try on my own before asking AI for sentences or answers'],
-      ['way', 'Adapt, not copy', 'Adapt AI output to my own situation before using it'],
-      ['way', 'Log and reflect', 'Record and reflect on how I use AI'],
-      ['way', 'No new concepts via AI', 'Do not learn brand-new concepts with AI'],
-      ['alt', 'External references', 'Use textbooks, dictionaries, and other reference materials'],
-      ['alt', 'External media', 'Use external reading/listening texts or video materials'],
-      ['alt', 'External study aids', 'Use flashcards and other external study aids'],
-      ['alt', 'Write it myself', 'Type, handwrite, or say-and-write with effort instead of copying'],
-      ['alt', 'Keep separate notes', 'Organize study context and content in separate notes/documents']
-    ],
     deck: {
       act: [
         { title: 'Plan', desc: '' },
@@ -659,8 +590,8 @@ const I18N = {
       ]
     },
     ui: {
-      title: 'Design My AI Learning Rules', step1: 'Step 1 · Choose rules', step2: 'Step 2 · Combine when & how',
-      participant: 'Participant', prev: '← Back', next: 'Next →', choose: 'Choose your rules', selSuffix: ' selected',
+      title: 'Design My AI Learning Rules', step1: 'Step 1 · Build the workflow', step2: 'Step 2 · Add guardrails',
+      participant: 'Participant', prev: '← Back', next: 'Next →', choose: 'Place an activity tag', selSuffix: ' activities',
       syncPending: 'Saving…', syncSaved: 'Saved to server', syncOffline: 'Offline · will retry',
       syncLocal: '⚠ Local only · no server', syncReady: 'Server connected', syncLoading: 'Loading from server…',
       fit: 'Reset view', note: '✎ Note', exportBtn: 'Submit · Save JSON', clear: 'Clear', confirmClear: 'Clear all cards on the board?',
@@ -683,8 +614,9 @@ const I18N = {
       noSnap: 'No saved board for this participant.', backList: '← List', refreshBtn: 'Refresh',
       rowsSuffix: ' records', submittedTag: 'submitted', neverSaved: 'no records',
       step0: 'Participant sign-in', loginTitle: 'Enter your participant code', loginSub: 'Work is saved automatically per participant code. Come back with the same code to continue where you left off.', start: 'Start →', continueAs: 'Continue as', logout: 'Exit',
-      i1a: 'Choose all the ', i1b: 'rule cards', i1c: ' you want to keep. You can pick several, edit any text directly on a card, or add your own with ', i1d: '＋ New rule', i1e: '.',
-      p1a: 'Place your chosen ', p1b: '① rule cards', p1c: ' on the board, then line up a ', p1d: '② when card', p1e: ' and a ', p1f: '③ how card', p1g: ' in the same row to form a combination. Tap any text on a card to edit it.',
+      tabFlow: '① Activity · ② Means', tabGuard: '③ Constraint · ④ When · ⑤ Trigger',
+      hintFlow: 'Lay ① activity tags left to right in the order you study — before → during → after works well, and you can start a new row if it gets long or branches. Add ② means beside each activity to say what you do it with.',
+      hintGuard: 'Place ③ constraint · ④ when · ⑤ trigger cards under each activity to decide when and how the system should step in. Tap any text on a card to edit it.',
       addRule: '＋ New rule', ruleName: 'Rule name', ruleDescPh: 'Write the rule', cardName: 'Card name', writeRule: 'Write rule', descPh: 'Description', notePh: 'Write a note…',
       actCards: 'Activity', actCardsSub: 'what you do (timeline)', meansCards: 'Means', meansCardsSub: 'what you do it with',
       conCards: 'Constraint', conCardsSub: 'how the system steps in', whenCards: 'When', whenCardsSub: 'which part of the activity',
@@ -694,14 +626,11 @@ const I18N = {
     }
   }
 };
-function defaultRules(lang) {
-  return I18N[lang || 'ko'].rules.map((r, i) => ({ id: 'r' + i, cat: r[0], title: r[1], desc: r[2], sel: false, custom: false }));
-}
 
 class Component extends DCLogic {
   constructor(props) {
     super(props);
-    this.state = { sync: '', step: 0, lang: 'ko', rules: defaultRules('ko'), pid: '', loginPid: '', cards: [], notes: [], arrows: [], arrowMode: false, pendingArrow: null, selArrow: null, noteMode: false, focusNote: null, pan: { x: 0, y: 0 }, zoom: 1, ghost: null, seq: 1, panelW: 566, sel: [], marquee: null, finish: null, hist: null, histList: [], travel: null, senseOn: true, admin: false, viewPid: '', roster: [], rosterMsg: '' };
+    this.state = { sync: '', step: 0, lang: 'ko', rules: [], pid: '', loginPid: '', cards: [], notes: [], arrows: [], arrowMode: false, pendingArrow: null, selArrow: null, noteMode: false, focusNote: null, pan: { x: 0, y: 0 }, zoom: 1, ghost: null, seq: 1, panelW: 566, sel: [], marquee: null, finish: null, tab: 'flow', hist: null, histList: [], travel: null, senseOn: true, admin: false, viewPid: '', roster: [], rosterMsg: '' };
     this.canvasRef = React.createRef();
     this.drag = null;
   }
@@ -1046,7 +975,7 @@ class Component extends DCLogic {
     const lang = this.state.lang;
     this.setState({ pid: pid, loginPid: '' });
     if (d) this.applyState(d, lang);
-    else this.setState({ step: 1, rules: defaultRules(lang), cards: [], notes: [], arrows: [], seq: 1, panelW: 566, pan: { x: 0, y: 0 }, zoom: 1, noteMode: false }, () => this.seedSig());
+    else this.setState({ step: 1, rules: [], cards: [], notes: [], arrows: [], seq: 1, panelW: 566, pan: { x: 0, y: 0 }, zoom: 1, noteMode: false }, () => this.seedSig());
     this.syncDown(pid, d ? d.savedAt || 0 : 0);
   }
   logout() { this.setState({ pid: '', loginPid: '', step: 0, noteMode: false, admin: false, viewPid: '', roster: [], rosterMsg: '' }); }
@@ -1227,18 +1156,7 @@ class Component extends DCLogic {
   }
 
   // ── 1단계: 규칙 선택 ──
-  patchRule(id, k, v) { this.setState((s) => ({ rules: s.rules.map((r) => r.id === id ? Object.assign({}, r, { [k]: v }) : r) })); }
-  toggleRule(id, e) {
-    const t = e.target.tagName;
-    if (t === 'INPUT' || t === 'TEXTAREA' || t === 'BUTTON') return;
-    this.patchRule(id, 'sel', !this.state.rules.find((r) => r.id === id).sel);
-  }
-  addCustom(cat) {
-    const id = 'rc' + Date.now();
-    this.setState((s) => ({ rules: s.rules.concat([{ id: id, cat: cat, title: '', desc: '', sel: true, custom: true }]) }));
-  }
 
-  // ── 2단계: 보드 ──
   startNew(type, tpl, e) {
     e.preventDefault();
     this.drag = { kind: 'new', type: type, tpl: tpl };
@@ -1644,7 +1562,7 @@ class Component extends DCLogic {
   // 화살표 레이어는 SVG라 템플릿 대신 직접 그린다
   arrowsLayer() {
     const h = React.createElement;
-    const SEL = ACC.rule, INK = '#8a877e';
+    const SEL = ACC.trig, INK = '#8a877e';
     const kids = [h('defs', { key: 'defs' },
       h('marker', { id: 'om-ah', viewBox: '0 0 10 10', refX: 8.5, refY: 5, markerWidth: 6.5, markerHeight: 6.5, orient: 'auto-start-reverse' }, h('path', { d: 'M0 0 L10 5 L0 10 z', fill: INK })),
       h('marker', { id: 'om-ah-sel', viewBox: '0 0 10 10', refX: 8.5, refY: 5, markerWidth: 6.5, markerHeight: 6.5, orient: 'auto-start-reverse' }, h('path', { d: 'M0 0 L10 5 L0 10 z', fill: SEL }))
@@ -1770,7 +1688,7 @@ class Component extends DCLogic {
     this.setState({
       step: d.step > 0 ? d.step : 1,
       lang: lang,
-      rules: (d.rules && d.rules.length) ? d.rules : defaultRules(lang),
+      rules: d.rules || [],
       cards: d.cards || [], notes: d.notes || [], arrows: d.arrows || [],
       seq: d.seq || 1, panelW: d.panelW || 566,
       pan: { x: 0, y: 0 }, zoom: 1, noteMode: false
@@ -1868,9 +1786,8 @@ class Component extends DCLogic {
   }
 
   renderVals() {
-    const rules = this.state.rules;
-    const selCount = rules.filter((r) => r.sel).length;
-    const RB = ACC.rule;
+    // 워크플로에 활동 태그가 하나라도 있어야 2단계로 넘어간다
+    const actCount = this.state.cards.filter((c) => c.type === 'act' && !c.sm).length;
     const L = I18N[this.state.lang] || I18N.ko, t = L.ui;
 
     const mkDeck = (type, list) => list.map((tpl, i) => ({
@@ -1940,6 +1857,19 @@ class Component extends DCLogic {
       syncDot: !this.syncUrl() ? '#d0a531' : this.state.sync === 'saved' ? '#7d9a80' : this.state.sync === 'offline' ? '#c9776c' : '#c9c5ba',
       isStep1: this.state.step === 1,
       isStep2: this.state.step === 2,
+      // 두 단계가 같은 보드를 쓴다 / both steps share one board; only the panel changes
+      onBoard: this.state.step >= 1,
+      showFlow: this.state.step === 1 || this.state.tab === 'flow',
+      showGuard: this.state.step === 2 && this.state.tab === 'guard',
+      panelHint: this.state.step === 1 ? t.hintFlow : t.hintGuard,
+      onTabFlow: () => this.setState({ tab: 'flow' }),
+      onTabGuard: () => this.setState({ tab: 'guard' }),
+      tabFlowBg: this.state.tab === 'flow' ? '#faf8f3' : '#f1efe8',
+      tabGuardBg: this.state.tab === 'guard' ? '#faf8f3' : '#f1efe8',
+      tabFlowFg: this.state.tab === 'flow' ? '#1b1a17' : '#98958c',
+      tabGuardFg: this.state.tab === 'guard' ? '#1b1a17' : '#98958c',
+      tabFlowBd: this.state.tab === 'flow' ? '#1b1a17' : 'transparent',
+      tabGuardBd: this.state.tab === 'guard' ? '#1b1a17' : 'transparent',
       stepLabel: this.state.step === 0 ? t.step0 : this.state.step === 1 ? t.step1 : t.step2,
       loginPid: this.state.loginPid,
       onLoginPid: (e) => this.setState({ loginPid: e.target.value }),
@@ -1979,34 +1909,10 @@ class Component extends DCLogic {
       onCloseFinish: () => this.setState({ finish: null }),
       savedList: this.savedPids().map((p) => ({ key: p, label: p, onPick: () => this.login(p) })),
       hasSaved: this.savedPids().length > 0,
-      selLabel: selCount ? selCount + t.selSuffix : t.choose,
-      nextOpacity: selCount ? 1 : 0.4,
-      goNext: () => { if (selCount) this.setState({ step: 2 }); },
-      goBack: () => this.setState({ step: 1 }),
-
-      cats: L.cats.map((cat) => ({
-        key: cat.id,
-        label: cat.label,
-        sub: cat.sub,
-        onAdd: RO ? NOOP : () => this.addCustom(cat.id),
-        rules: rules.filter((r) => r.cat === cat.id).map((r) => ({
-          key: r.id,
-          title: r.title,
-          desc: r.desc,
-          isCustom: r.custom,
-          bg: r.sel ? 'oklch(0.985 0.008 253)' : '#fffefb',
-          bd: r.sel ? RB : '#e2dfd7',
-          tint: r.sel ? TINT.rule : '#f1efe8',
-          shadow: r.sel ? '0 0 0 2.5px oklch(0.88 0.04 253), 0 3px 10px rgba(0,0,0,0.06)' : '0 1px 5px rgba(0,0,0,0.05)',
-          ck: r.sel ? '✓' : '',
-          ckBg: r.sel ? RB : 'transparent',
-          ckBd: r.sel ? RB : '#c9c6bd',
-          onToggle: RO ? NOOP : (e) => this.toggleRule(r.id, e),
-          onTitle: RO ? NOOP : (e) => this.patchRule(r.id, 'title', e.target.value),
-          onDesc: RO ? NOOP : (e) => this.patchRule(r.id, 'desc', e.target.value),
-          onDel: () => this.setState((s) => ({ rules: s.rules.filter((k) => k.id !== r.id) }))
-        }))
-      })),
+      selLabel: actCount ? actCount + t.selSuffix : t.choose,
+      nextOpacity: actCount ? 1 : 0.4,
+      goNext: () => { if (actCount) this.setState({ step: 2, tab: 'guard' }); },
+      goBack: () => this.setState({ step: 1, tab: 'flow' }),
 
       deckAct: mkDeck('act', L.deck.act),
       deckMeans: mkDeck('means', L.deck.means),
@@ -2050,8 +1956,8 @@ class Component extends DCLogic {
         text: n.text,
         autoFocus: this.state.focusNote === n.id,
         onDown: (!RO || n.sm) ? (e) => this.startNoteMove(n.id, e) : NOOP,
-        onText: (e) => this.setState((s) => ({ notes: s.notes.map((k) => k.id === n.id ? Object.assign({}, k, { text: e.target.value }) : k) })),
-        onDel: () => this.setState((s) => ({ notes: s.notes.filter((k) => k.id !== n.id) }))
+        onText: (!RO || n.sm) ? (e) => this.setState((s) => ({ notes: s.notes.map((k) => k.id === n.id ? Object.assign({}, k, { text: e.target.value }) : k) })) : NOOP,
+        onDel: (!RO || n.sm) ? () => this.setState((s) => ({ notes: s.notes.filter((k) => k.id !== n.id) })) : NOOP
       })),
       clearAll: () => { if (confirm(t.confirmClear)) this.setState({ cards: [], notes: [], arrows: [], selArrow: null }); },
       exportJson: () => this.exportJson(),
@@ -2086,7 +1992,6 @@ class Component extends DCLogic {
           isRuleOpen: isRule && !c.collapsed,
           isRuleClosed: folded,
           foldIcon: folded ? '▸' : '▾',
-          onFold: () => this.patch(c.id, 'collapsed', !c.collapsed),
           hasDiagram: !!c.dia,
           title: c.title,
           desc: c.desc,
@@ -2094,10 +1999,11 @@ class Component extends DCLogic {
           diagram: c.dia ? this.diagram(c.dia) : null,
           cursor: this.state.arrowMode ? 'crosshair' : 'grab',
           onDown: (!RO || c.sm) ? (e) => this.startMove(c.id, e) : NOOP,
-          onTitle: (e) => this.patch(c.id, 'title', e.target.value),
-          onDesc: (e) => this.patch(c.id, 'desc', e.target.value),
-          onDup: () => this.dup(c.id),
-          onDel: () => this.del(c.id)
+          onTitle: (!RO || c.sm) ? (e) => this.patch(c.id, 'title', e.target.value) : NOOP,
+          onDesc: (!RO || c.sm) ? (e) => this.patch(c.id, 'desc', e.target.value) : NOOP,
+          onFold: (!RO || c.sm) ? () => this.patch(c.id, 'collapsed', !c.collapsed) : NOOP,
+          onDup: (!RO || c.sm) ? () => this.dup(c.id) : NOOP,
+          onDel: (!RO || c.sm) ? () => this.del(c.id) : NOOP
         };
       }),
       ghost: !!this.state.ghost,
