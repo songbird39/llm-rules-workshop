@@ -136,12 +136,15 @@
         </sc-if>
         <div style="display:flex;flex-direction:column;gap:8px">
           <sc-for list="{{ rosterList }}" as="r" hint-placeholder-count="0">
-            <button onClick="{{ r.onOpen }}" style="display:flex;align-items:baseline;gap:12px;text-align:left;padding:12px 15px;border:1px solid #e2dfd7;border-radius:10px;background:#fffefb;cursor:pointer" style-hover="border-color:oklch(0.51 0.08 253);box-shadow:0 3px 12px rgba(0,0,0,0.07)">
-              <span style="font-size:14px;font-weight:700;letter-spacing:-0.01em;min-width:64px">{{ r.label }}</span>
-              <span style="font-size:12px;color:#7a776f">{{ r.meta }}</span>
-              <span style="flex:1"></span>
-              <span style="font-size:11.5px;color:#a7a49b;white-space:nowrap">{{ r.when }}</span>
-            </button>
+            <div style="display:flex;align-items:center;gap:12px;padding:12px 15px;border:1px solid #e2dfd7;border-radius:10px;background:#fffefb" style-hover="border-color:oklch(0.51 0.08 253);box-shadow:0 3px 12px rgba(0,0,0,0.07)">
+              <div onClick="{{ r.onOpen }}" style="flex:1;min-width:0;display:flex;align-items:baseline;gap:12px;text-align:left;cursor:pointer">
+                <span style="font-size:14px;font-weight:700;letter-spacing:-0.01em;min-width:64px">{{ r.label }}</span>
+                <span style="font-size:12px;color:#7a776f">{{ r.meta }}</span>
+                <span style="flex:1"></span>
+                <span style="font-size:11.5px;color:#a7a49b;white-space:nowrap">{{ r.when }}</span>
+              </div>
+              <button onClick="{{ r.onDelete }}" title="{{ t.delRecTip }}" style="border:none;background:transparent;color:#bfbcb3;font-size:13px;line-height:1;cursor:pointer;padding:2px 4px" style-hover="color:#b03f34">✕</button>
+            </div>
           </sc-for>
         </div>
       </div>
@@ -284,27 +287,14 @@
           <div onPointerDown="{{ c.onDown }}" style="position:absolute;left:{{ c.x }}px;top:{{ c.y }}px;width:{{ c.w }}px;display:flex;flex-direction:column;gap:5px;background:{{ c.bg }};border:1px {{ c.bstyle }} {{ c.bd }};border-radius:10px;padding:7px;box-shadow:0 3px 12px rgba(0,0,0,0.08);outline:{{ c.outline }};outline-offset:2px;pointer-events:{{ c.pe }};cursor:{{ c.cursor }}">
             <div style="display:flex;align-items:center;gap:5px;background:{{ c.tint }};border-radius:5px;padding:3px 5px">
               <input value="{{ c.title }}" onChange="{{ c.onTitle }}" placeholder="{{ c.titlePlaceholder }}" style="flex:1;min-width:0;border:none;background:transparent;font-size:{{ c.tfs }};font-weight:600;letter-spacing:-0.01em;outline:none;padding:0;pointer-events:auto" />
-              <sc-if value="{{ c.isRule }}" hint-placeholder-val="{{ false }}">
-                <button onClick="{{ c.onFold }}" title="{{ t.foldTip }}" style="border:none;background:transparent;color:{{ c.accent }};font-size:10px;line-height:1;cursor:pointer;padding:0 1px">{{ c.foldIcon }}</button>
-              </sc-if>
               <span style="font-size:9px;letter-spacing:0.02em;color:{{ c.accent }};border:1px solid {{ c.accent }};border-radius:3px;padding:0 3px">{{ c.mark }}</span>
             </div>
-            <sc-if value="{{ c.isRuleOpen }}" hint-placeholder-val="{{ false }}">
-              <div style="flex:none;border:1px solid #eae7df;border-radius:5px;background:#f7f5f0;padding:7px">
-                <textarea value="{{ c.desc }}" onChange="{{ c.onDesc }}" data-grow="1" placeholder="{{ t.writeRule }}" style="width:100%;height:auto;min-height:92px;overflow:hidden;resize:none;border:none;background:transparent;font-size:12px;font-weight:500;line-height:1.5;letter-spacing:-0.015em;text-align:center;color:#26251f;outline:none;padding:0;pointer-events:auto"></textarea>
-              </div>
-            </sc-if>
-            <sc-if value="{{ c.isRuleClosed }}" hint-placeholder-val="{{ false }}">
-              <div data-scroll="1" style="flex:none;min-height:30px;font-size:12px;line-height:1.4;color:#5b584f;overflow:{{ descOverflow }};padding:0 2px;pointer-events:auto">{{ c.desc }}</div>
-            </sc-if>
             <sc-if value="{{ c.hasDiagram }}" hint-placeholder-val="{{ true }}">
               <div style="flex:none;height:50px;display:flex;align-items:center;justify-content:center;border:1px solid #eae7df;border-radius:5px;background:#f7f5f0;padding:1px 2px;overflow:hidden">{{ c.diagram }}</div>
             </sc-if>
-            <sc-if value="{{ c.hasDiagram }}" hint-placeholder-val="{{ true }}">
-              <div style="flex:none;border-top:1px solid #eae7df;padding-top:4px">
-                <textarea value="{{ c.desc }}" onChange="{{ c.onDesc }}" data-grow="1" placeholder="{{ t.descPh }}" style="width:100%;height:auto;min-height:{{ c.dmin }};overflow:hidden;resize:none;border:none;background:transparent;font-size:12px;line-height:1.45;color:#5b584f;outline:none;padding:0;pointer-events:auto"></textarea>
-              </div>
-            </sc-if>
+            <div style="flex:none;border-top:{{ c.dsep }};padding-top:4px">
+              <textarea value="{{ c.desc }}" onChange="{{ c.onDesc }}" data-grow="1" placeholder="{{ t.descPh }}" style="width:100%;height:auto;min-height:{{ c.dmin }};overflow:hidden;resize:none;border:none;background:transparent;font-size:12px;line-height:1.45;color:#5b584f;outline:none;padding:0;pointer-events:auto"></textarea>
+            </div>
             <sc-if value="{{ c.isTag }}" hint-placeholder-val="{{ false }}">
               <div onPointerDown="{{ c.onWidth }}" title="{{ t.widthTip }}" style="position:absolute;right:0;top:0;bottom:0;width:12px;cursor:ew-resize;opacity:0;display:flex;align-items:center;justify-content:center" style-hover="opacity:1">
                 <div style="width:3px;height:22px;border-radius:2px;background:#b6b3aa"></div>
@@ -321,7 +311,7 @@
 
       <sc-if value="{{ isEmpty }}" hint-placeholder-val="{{ true }}">
         <div style="position:absolute;left:50%;top:44%;transform:translate(-50%,-50%);text-align:center;color:#a7a49b;font-size:14px;line-height:1.7;pointer-events:none">
-          {{ t.empty1 }}<br />{{ t.empty2 }}
+          {{ emptyA }}<br />{{ emptyB }}
         </div>
       </sc-if>
 
@@ -333,6 +323,20 @@
       </sc-if>
     </div>
   </div>
+  </sc-if>
+
+  <sc-if value="{{ delOpen }}" hint-placeholder-val="{{ false }}">
+    <div style="position:fixed;left:0;top:0;right:0;bottom:0;background:rgba(27,26,23,0.42);display:flex;align-items:center;justify-content:center;z-index:70">
+      <div style="width:400px;max-width:88vw;background:#fffefb;border:1px solid #e2dfd7;border-radius:14px;padding:26px 28px;box-shadow:0 12px 36px rgba(0,0,0,0.2);display:flex;flex-direction:column;gap:12px">
+        <div style="font-size:16px;font-weight:700;letter-spacing:-0.01em;color:#b03f34">{{ t.delTitle }}</div>
+        <div style="font-size:13px;line-height:1.65;color:#7a776f">{{ t.delBody1 }}<b style="color:#1b1a17">{{ delA }}</b>{{ t.delBody2 }}<b style="color:#1b1a17">{{ delB }}</b>{{ t.delBody3 }}</div>
+        <input value="{{ delTyped }}" onChange="{{ onDelTyped }}" placeholder="{{ delPid }}" style="padding:9px 12px;border:1px solid #dedbd3;border-radius:8px;background:#fdfcf9;font-size:14px;font-weight:600;outline:none" style-focus="border-color:#b03f34" />
+        <div style="display:flex;gap:8px;justify-content:flex-end;padding-top:2px">
+          <button onClick="{{ onDelCancel }}" style="padding:8px 16px;border:1px solid #d6d3ca;border-radius:8px;background:#fff;font-size:13px;cursor:pointer">{{ t.closeBtn }}</button>
+          <button onClick="{{ onDelConfirm }}" style="padding:8px 16px;border:1px solid transparent;border-radius:8px;background:#b03f34;color:#fff;font-size:13px;cursor:pointer;opacity:{{ delOpacity }}">{{ t.delConfirmBtn }}</button>
+        </div>
+      </div>
+    </div>
   </sc-if>
 
   <sc-if value="{{ histOpen }}" hint-placeholder-val="{{ false }}">
@@ -526,6 +530,9 @@ const I18N = {
       downloadBtn: 'JSON 내려받기', closeBtn: '닫기',
       viewBadge: '열람 전용', viewBanner: '열람 모드입니다. 이 화면에서는 참여자의 작업이 수정되거나 저장되지 않습니다.',
       rosterTitle: '참여자 목록', rosterSub: '열람할 참여자를 선택하세요.',
+      delRecTip: '이 참여자 기록 삭제', delTitle: '참여자 기록을 삭제할까요?',
+      delBody1: '참여자 ', delBody2: '의 기록 ', delBody3: '행과, 이 참여자에 대한 해석 작업이 모두 지워집니다. 되돌릴 수 없습니다. 확인을 위해 참여자 코드를 입력해 주세요.',
+      delConfirmBtn: '삭제', delFail: '삭제되지 않았습니다. Apps Script를 새 버전으로 다시 배포했는지 확인해 주세요.',
       rosterLoading: '불러오는 중…', rosterEmpty: '아직 저장된 참여자가 없습니다.',
       rosterError: '목록을 불러오지 못했습니다. Apps Script를 새 버전으로 다시 배포했는지 확인해 주세요.',
       noSnap: '이 참여자의 저장된 보드가 없습니다.', backList: '← 목록', refreshBtn: '새로고침',
@@ -534,11 +541,12 @@ const I18N = {
       tabFlow: '① 활동 · ② 수단', tabGuard: '③ 제약 · ④ 언제 · ⑤ 발동',
       hintFlow: '내가 학습하는 순서대로 ① 활동 태그를 왼쪽에서 오른쪽으로 놓아 보세요. 활동 전 → 활동 중 → 활동 후 흐름이면 좋고, 길어지거나 갈래가 나뉘면 줄을 바꿔도 됩니다. 각 활동 옆에 ② 수단을 붙여 무엇으로 하는지 적어 주세요.',
       hintGuard: '각 활동 아래에 ③ 제약 · ④ 언제 · ⑤ 발동 사건 카드를 놓아, 시스템이 언제 어떻게 개입하면 좋을지 정해 보세요. 카드 위 글자는 눌러서 직접 고칠 수 있습니다.',
-      addRule: '＋ 새 규칙', ruleName: '규칙 이름', ruleDescPh: '규칙 내용 쓰기', cardName: '카드 이름', writeRule: '규칙 쓰기', descPh: '설명', notePh: '메모 쓰기…',
+      cardName: '카드 이름', descPh: '설명', notePh: '메모 쓰기…',
       actCards: '활동', actCardsSub: '무엇을 하나요? (타임라인)', meansCards: '수단', meansCardsSub: '무엇으로 하나요?',
       conCards: '제약', conCardsSub: '시스템이 어떻게 개입하나요?', whenCards: '언제', whenCardsSub: '활동의 어느 구간인가요?',
       trigCards: '발동 사건', trigCardsSub: '무엇이 개입을 불러오나요?',
-      empty1: '왼쪽에서 고른 규칙 카드를 이 보드에 놓아 보세요.', empty2: '규칙 · 언제 · 어떻게 카드를 한 줄로 놓으면 조합이 됩니다.',
+      empty1: '왼쪽에서 ① 활동 태그를 끌어와 학습 순서대로 놓아 보세요.', empty1b: '각 활동 옆에 ② 수단을 붙이면 워크플로가 됩니다.',
+      empty2A: '각 활동 아래에 ③ 제약 · ④ 언제 · ⑤ 발동 사건 카드를 놓아 보세요.', empty2B: '＋ 기타 카드로 직접 쓸 수도 있습니다.',
       widthTip: '드래그해서 폭 조절',
       dragTip: '드래그해서 보드에 놓기 (더블클릭으로 추가)', noteTip: '보드 빈 곳을 눌러 메모 만들기', resizeTip: '드래그해서 폭 조절', dupTip: '복제', delTip: '삭제', foldTip: '펼치기 / 접기', noteDelTip: '메모 삭제', clearTip: '보드 비우기'
     }
@@ -619,6 +627,9 @@ const I18N = {
       downloadBtn: 'Download JSON', closeBtn: 'Close',
       viewBadge: 'View only', viewBanner: 'View mode. Nothing on this screen is edited or saved to the participant record.',
       rosterTitle: 'Participants', rosterSub: 'Choose a participant to view.',
+      delRecTip: 'Delete this record', delTitle: 'Delete this participant record?',
+      delBody1: 'This removes all ', delBody2: ' rows for ', delBody3: ', and your sensemaking work for them. It cannot be undone. Type the participant code to confirm.',
+      delConfirmBtn: 'Delete', delFail: 'Nothing was deleted. Check that the Apps Script was redeployed as a new version.',
       rosterLoading: 'Loading…', rosterEmpty: 'No participants saved yet.',
       rosterError: 'Could not load the list. Check that the Apps Script was redeployed as a new version.',
       noSnap: 'No saved board for this participant.', backList: '← List', refreshBtn: 'Refresh',
@@ -627,11 +638,12 @@ const I18N = {
       tabFlow: '① Activity · ② Means', tabGuard: '③ Constraint · ④ When · ⑤ Trigger',
       hintFlow: 'Lay ① activity tags left to right in the order you study — before → during → after works well, and you can start a new row if it gets long or branches. Add ② means beside each activity to say what you do it with.',
       hintGuard: 'Place ③ constraint · ④ when · ⑤ trigger cards under each activity to decide when and how the system should step in. Tap any text on a card to edit it.',
-      addRule: '＋ New rule', ruleName: 'Rule name', ruleDescPh: 'Write the rule', cardName: 'Card name', writeRule: 'Write rule', descPh: 'Description', notePh: 'Write a note…',
+      cardName: 'Card name', descPh: 'Description', notePh: 'Write a note…',
       actCards: 'Activity', actCardsSub: 'what you do (timeline)', meansCards: 'Means', meansCardsSub: 'what you do it with',
       conCards: 'Constraint', conCardsSub: 'how the system steps in', whenCards: 'When', whenCardsSub: 'which part of the activity',
       trigCards: 'Trigger', trigCardsSub: 'what brings the intervention',
-      empty1: 'Drag your rule cards from the left onto this board.', empty2: 'Line up rule · when · how cards in a row to form a combination.',
+      empty1: 'Drag ① activity tags from the left in the order you study.', empty1b: 'Add ② means beside each activity to build the workflow.',
+      empty2A: 'Place ③ constraint · ④ when · ⑤ trigger cards under each activity.', empty2B: 'Or write your own with the ＋ Other card.',
       widthTip: 'Drag to resize',
       dragTip: 'Drag onto the board (double-click to add)', noteTip: 'Click an empty spot on the board to add a note', resizeTip: 'Drag to resize', dupTip: 'Duplicate', delTip: 'Delete', foldTip: 'Expand / collapse', noteDelTip: 'Delete note', clearTip: 'Clear the board'
     }
@@ -641,7 +653,7 @@ const I18N = {
 class Component extends DCLogic {
   constructor(props) {
     super(props);
-    this.state = { sync: '', step: 0, lang: 'ko', rules: [], pid: '', loginPid: '', cards: [], notes: [], arrows: [], arrowMode: false, pendingArrow: null, selArrow: null, noteMode: false, focusNote: null, pan: { x: 0, y: 0 }, zoom: 1, ghost: null, seq: 1, panelW: 566, sel: [], marquee: null, finish: null, tab: 'flow', hist: null, histList: [], travel: null, senseOn: true, admin: false, viewPid: '', roster: [], rosterMsg: '' };
+    this.state = { sync: '', step: 0, lang: 'ko', rules: [], pid: '', loginPid: '', cards: [], notes: [], arrows: [], arrowMode: false, pendingArrow: null, selArrow: null, noteMode: false, focusNote: null, pan: { x: 0, y: 0 }, zoom: 1, ghost: null, seq: 1, panelW: 566, sel: [], marquee: null, finish: null, tab: 'flow', hist: null, histList: [], travel: null, senseOn: true, del: null, delTyped: '', delBusy: false, admin: false, viewPid: '', roster: [], rosterMsg: '' };
     this.canvasRef = React.createRef();
     this.drag = null;
   }
@@ -936,6 +948,38 @@ class Component extends DCLogic {
         })
       });
     } catch (e) {}
+  }
+
+  // ── 참여자 기록 삭제 / delete a participant record ────────────────────────
+  // 되돌릴 수 없다. 그래서 참여자 코드를 직접 입력해야만 버튼이 열린다.
+  // Irreversible, so the button only unlocks once the admin types the code back. A
+  // misclick in a roster of similar-looking ids would otherwise destroy a session.
+  askDelete(r) { this.setState({ del: r, delTyped: '', delBusy: false }); }
+
+  confirmDelete() {
+    const r = this.state.del, url = this.syncUrl();
+    if (!r || !url || this.state.delTyped.trim() !== r.participant) return;
+    this.setState({ delBusy: true });
+    try {
+      fetch(url, {
+        method: 'POST', mode: 'no-cors',
+        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+        body: JSON.stringify({ action: 'delete', participant: r.participant })
+      });
+    } catch (e) {}
+    // no-cors 라 응답을 읽을 수 없다 — 목록을 다시 불러 사라졌는지로 확인한다
+    // The response is unreadable under no-cors, so confirm by reloading the roster and
+    // checking the participant is actually gone rather than assuming success.
+    setTimeout(() => {
+      this.jsonp('list=1').then((res) => {
+        const list = (res && res.ok && res.participants) || [];
+        const still = list.some((x) => x.participant === r.participant);
+        this.setState({
+          del: null, delBusy: false, delTyped: '',
+          roster: list, rosterMsg: still ? 'delfail' : (list.length ? '' : 'empty')
+        });
+      });
+    }, 1400);
   }
 
   refreshRoster() {
@@ -2089,16 +2133,31 @@ class Component extends DCLogic {
         label: r.participant,
         meta: (r.rows || 0) + t.rowsSuffix + (r.submits ? ' · ' + t.submittedTag : ''),
         when: r.lastAt ? new Date(r.lastAt).toLocaleString() : t.neverSaved,
-        onOpen: () => this.openParticipant(r.participant)
+        onOpen: () => this.openParticipant(r.participant),
+        onDelete: (e) => { e.stopPropagation(); this.askDelete(r); }
       })),
       rosterBusy: this.state.rosterMsg === 'loading',
       rosterNote:
         this.state.rosterMsg === 'loading' ? t.rosterLoading :
         this.state.rosterMsg === 'empty' ? t.rosterEmpty :
         this.state.rosterMsg === 'error' ? t.rosterError :
-        this.state.rosterMsg === 'nosnap' ? t.noSnap : '',
+  this.state.rosterMsg === 'nosnap' ? t.noSnap :
+        this.state.rosterMsg === 'delfail' ? t.delFail : '',
       hasRosterNote: !!this.state.rosterMsg,
       onRefresh: () => (this.state.viewPid ? this.openParticipant(this.state.viewPid) : this.refreshRoster()),
+      delOpen: !!this.state.del,
+      delPid: this.state.del ? this.state.del.participant : '',
+      // 한국어는 '참여자 <코드>의 기록 <행>행', 영어는 'all <rows> rows for <code>'
+      // The two languages put the code and the row count in opposite slots.
+      delA: this.state.lang === 'en' ? (this.state.del ? this.state.del.rows : 0) : (this.state.del ? this.state.del.participant : ''),
+      delB: this.state.lang === 'en' ? (this.state.del ? this.state.del.participant : '') : (this.state.del ? this.state.del.rows : 0),
+      delRows: this.state.del ? this.state.del.rows : 0,
+      delTyped: this.state.delTyped,
+      onDelTyped: (e) => this.setState({ delTyped: e.target.value }),
+      delReady: !!this.state.del && this.state.delTyped.trim() === this.state.del.participant && !this.state.delBusy,
+      delOpacity: (!!this.state.del && this.state.delTyped.trim() === this.state.del.participant && !this.state.delBusy) ? 1 : 0.4,
+      onDelCancel: () => this.setState({ del: null, delTyped: '' }),
+      onDelConfirm: () => this.confirmDelete(),
       onBackList: () => this.backToRoster(),
       isLoggedIn: this.state.step > 0 || viewing,
       showSync: this.state.step > 0 && !RO,
@@ -2107,6 +2166,8 @@ class Component extends DCLogic {
       syncBg: !this.syncUrl() ? '#f7f0dc' : '#f4f2eb',
       syncDot: !this.syncUrl() ? '#d0a531' : this.state.sync === 'saved' ? '#7d9a80' : this.state.sync === 'offline' ? '#c9776c' : '#c9c5ba',
       isStep1: this.state.step === 1,
+      emptyA: this.state.step === 1 ? t.empty1 : t.empty2A,
+      emptyB: this.state.step === 1 ? t.empty1b : t.empty2B,
       isStep2: this.state.step === 2,
       // 두 단계가 같은 보드를 쓴다 / both steps share one board; only the panel changes
       onBoard: this.state.step >= 1,
@@ -2213,10 +2274,9 @@ class Component extends DCLogic {
       clearAll: () => { if (confirm(t.confirmClear)) this.setState({ cards: [], notes: [], arrows: [], selArrow: null }); },
       exportJson: () => this.exportJson(),
       cards: this.state.cards.map((c) => {
-        // 'rule' 타입은 사라졌다 — 접기 기능만 남겨 둔다 / the rule type is gone; the
-        // fold affordance survives for any card a participant chooses to collapse
-        const isRule = false;
-        const folded = !!c.collapsed;
+        // 'rule' 타입도, 접기 UI도 사라졌다. collapsed 는 옛 보드 데이터에 남아 있을 뿐이다.
+        // The rule type and the fold control are both gone; `collapsed` survives only in
+        // older saved boards, where it no longer affects anything.
         return {
           key: c.id,
           x: c.x, y: c.y,
@@ -2229,20 +2289,18 @@ class Component extends DCLogic {
           // 태그는 한 줄짜리 막대에서 시작해 내용만큼만 자란다 / a tag starts as a one-line
           // bar and grows only with its content, so it never looks like a card
           dmin: c.type === 'act' ? '17px' : '48px',
+          // 아이콘이 있을 때만 구분선 / the separator only makes sense under an icon
+          dsep: c.dia ? '1px solid #eae7df' : 'none',
           // 해석 레이어 카드만 조작 가능 / only sensemaking objects are interactive in admin
           pe: (!RO || c.sm) ? 'auto' : 'none',
           bg: c.sm ? '#fdfbf5' : '#fffefb',
           bstyle: c.sm ? 'dashed' : 'solid',
           bd: c.sm ? 'oklch(0.62 0.11 62)' : '#e2dfd7',
           outline: this.isSel(c.id) ? '2px solid oklch(0.51 0.08 253)' : 'none',
-          h: c.h || (folded ? 90 : 168),
+          h: c.h || 168,
           accent: ACC[c.type],
           tint: TINT[c.type],
           mark: L.mark[c.type],
-          isRule: isRule,
-          isRuleOpen: isRule && !c.collapsed,
-          isRuleClosed: folded,
-          foldIcon: folded ? '▸' : '▾',
           hasDiagram: !!c.dia,
           title: c.title,
           desc: c.desc,
@@ -2253,7 +2311,6 @@ class Component extends DCLogic {
           onWidth: (!RO || c.sm) ? (e) => this.startWidth(c.id, e) : NOOP,
           onTitle: (!RO || c.sm) ? (e) => this.patch(c.id, 'title', e.target.value) : NOOP,
           onDesc: (!RO || c.sm) ? (e) => this.patch(c.id, 'desc', e.target.value) : NOOP,
-          onFold: (!RO || c.sm) ? () => this.patch(c.id, 'collapsed', !c.collapsed) : NOOP,
           onDup: (!RO || c.sm) ? () => this.dup(c.id) : NOOP,
           onDel: (!RO || c.sm) ? () => this.del(c.id) : NOOP
         };

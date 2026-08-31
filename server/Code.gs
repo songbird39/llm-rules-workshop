@@ -28,6 +28,11 @@ function doPost(e) {
   lock.waitLock(30000);
   try {
     var body = JSON.parse(e.postData.contents);
+    // 삭제는 되돌릴 수 없다 / deletion is irreversible: it removes the participant's rows
+    // AND the admin sensemaking record keyed to them, which would otherwise be orphaned.
+    if (body.action === 'delete' && body.participant) {
+      return json_(deleteParticipant_(String(body.participant)));
+    }
     var p = body.payload || {};
     sheet_().appendRow([
       new Date(),
@@ -74,6 +79,25 @@ function doGet(e) {
       .setMimeType(ContentService.MimeType.JAVASCRIPT);
   }
   return json_(out);
+}
+
+/** Remove every row belonging to one participant, plus their sensemaking record.
+ *  Returns how many rows went. Rows are deleted bottom-up so the indices collected
+ *  first stay valid as the sheet shrinks.
+ */
+function deleteParticipant_(pid) {
+  if (!pid || pid.indexOf(SENSE_PREFIX) === 0) return { ok: false, error: 'bad id' };
+  var sh = sheet_();
+  var last = sh.getLastRow();
+  if (last < 2) return { ok: true, deleted: 0 };
+  var col = sh.getRange(2, 2, last - 1, 1).getValues();
+  var rows = [];
+  for (var i = 0; i < col.length; i++) {
+    var v = String(col[i][0] || '').trim();
+    if (v === pid || v === SENSE_PREFIX + pid) rows.push(i + 2);
+  }
+  for (var j = rows.length - 1; j >= 0; j--) sh.deleteRow(rows[j]);
+  return { ok: true, deleted: rows.length };
 }
 
 /** One row per participant seen in the sheet, newest activity first.

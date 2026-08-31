@@ -912,6 +912,124 @@ async function dragTileToBoard(page, title, fx = 0.45, fy = 0.4) {
     await page.close();
   }
 
+  // ------------------------------------------------- 3l. delete a participant record
+  // Irreversible, so the interesting assertions are the ones about NOT deleting.
+  console.log("\ndeleting a participant record");
+  {
+    const EP = "https://script.google.com/macros/s/FAKE/exec";
+    let people = [{ participant: "P01", rows: 12, submits: 1, lastAt: "2026-08-29T10:00:00Z" },
+                  { participant: "P02", rows: 4, submits: 0, lastAt: "2026-08-29T09:00:00Z" }];
+    const posts = [];
+    const page = await browser.newPage({ viewport: { width: 1400, height: 900 } });
+    const errors = [];
+    page.on("pageerror", (e) => errors.push(e.message));
+    await page.route("**/macros/s/**", async (route) => {
+      const u = new URL(route.request().url());
+      if (route.request().method() === "POST") {
+        let b = {};
+        try { b = JSON.parse(route.request().postData() || "{}"); } catch (e) {}
+        posts.push(b);
+        if (b.action === "delete") people = people.filter((x) => x.participant !== b.participant);
+        return route.fulfill({ status: 200, body: "{}" });
+      }
+      const cbn = u.searchParams.get("callback");
+      const reply = (o) => route.fulfill({ status: 200, contentType: "application/javascript", body: cbn + "(" + JSON.stringify(o) + ");" });
+      if (u.searchParams.get("list")) return reply({ ok: true, participants: people });
+      return reply({ ok: true, state: null });
+    });
+    await page.goto(APP + "?sync=" + encodeURIComponent(EP), { waitUntil: "load", timeout: 120000 });
+    await page.waitForSelector('input[placeholder="P00"]', { timeout: 120000 });
+    await page.fill('input[placeholder="P00"]', "admin");
+    await page.getByText("시작하기", { exact: false }).click();
+    await page.waitForTimeout(1000);
+    const rows = () => page.evaluate(() =>
+      [...document.querySelectorAll("span")].filter((s) => s.style.minWidth === "64px").map((s) => s.textContent));
+    const dlg = () => page.evaluate(() => {
+      const o = [...document.querySelectorAll("div")].find((d) => d.style.position === "fixed" && d.style.zIndex === "70");
+      return o ? o.innerText.replace(/\s+/g, " ").trim() : null;
+    });
+    const pressDelete = () => page.evaluate(() => {
+      const o = [...document.querySelectorAll("div")].find((d) => d.style.position === "fixed" && d.style.zIndex === "70");
+      [...o.querySelectorAll("button")].find((b) => b.textContent.trim() === "삭제").click();
+    });
+    check(JSON.stringify(await rows()) === JSON.stringify(["P01", "P02"]), "roster lists both");
+
+    await page.evaluate(() => {
+      [...document.querySelectorAll("button")].find((x) => x.title && x.title.includes("삭제")).click();
+    });
+    await page.waitForTimeout(400);
+    const d = await dlg();
+    check(!!d && d.includes("삭제할까요"), "confirmation dialog opens");
+    check(!!d && d.includes("12"), "it states how many rows will go");
+    check(posts.length === 0, "opening it posts nothing");
+
+    await page.locator('input[placeholder="P01"]').fill("P0");
+    await pressDelete();
+    await page.waitForTimeout(600);
+    check(posts.length === 0, "a mistyped code does not delete", ` (${posts.length} posts)`);
+    check((await dlg()) !== null, "and the dialog stays open");
+
+    await page.locator('input[placeholder="P01"]').fill("P01");
+    await pressDelete();
+    await page.waitForTimeout(2600);
+    check(posts.length === 1 && posts[0].action === "delete" && posts[0].participant === "P01",
+      "posts the delete action", ` (${JSON.stringify(posts[0])})`);
+    check((await dlg()) === null, "dialog closes");
+    check(JSON.stringify(await rows()) === JSON.stringify(["P02"]),
+      "roster is reloaded and the record is gone", ` (${JSON.stringify(await rows())})`);
+    check(errors.length === 0, "no console errors", errors.length ? ` (${errors[0]})` : "");
+    await page.close();
+  }
+
+  // ------------------------------------------------- every object is editable
+  // 활동 태그와 수단 포스트잇에는 아이콘이 없다 / activity tags and 수단 post-its carry no icon.
+  // The description textarea was once nested inside the icon's sc-if, so those two types
+  // rendered a title and nothing else: they looked right and could not be typed into.
+  console.log("\nevery board object can be edited, icon or not");
+  {
+    const { page, errors } = await boot(browser);
+    await toStep1(page, "ED1");
+    await dragTileToBoard(page, "첫 학습", 0.14, 0.12);          // tag, no icon
+    await dragTileToBoard(page, "AI 사용 안 함", 0.14, 0.42);     // post-it, no icon
+    await page.getByRole("button", { name: /다음/ }).click();
+    await page.waitForSelector("text=시스템이 어떻게 개입하나요?", { timeout: 30000 });
+    await dragTileToBoard(page, "규칙 상기", 0.52, 0.42);         // guardrail card, has icon
+
+    const objects = () => page.evaluate(() => {
+      const layer = [...document.querySelectorAll("div")].find((d) => d.style.width === "5000px");
+      return [...layer.children]
+        .filter((c) => c.tagName === "DIV" && c.querySelector("input"))
+        .map((c) => ({ title: c.querySelector("input").value, body: !!c.querySelector("textarea") }));
+    });
+    const laid = await objects();
+    check(laid.length === 3 && laid.every((o) => o.body),
+      "tag, post-it and card all render a description field", ` (${JSON.stringify(laid)})`);
+
+    for (const name of ["첫 학습", "AI 사용 안 함", "규칙 상기"]) {
+      const focused = await page.evaluate((n) => {
+        const layer = [...document.querySelectorAll("div")].find((d) => d.style.width === "5000px");
+        const el = [...layer.children].find((c) => c.tagName === "DIV"
+          && c.querySelector("input") && c.querySelector("input").value === n);
+        const ta = el && el.querySelector("textarea");
+        if (!ta) return false;
+        ta.focus();
+        return true;
+      }, name);
+      if (!focused) { check(false, `${name}: description is typeable`); continue; }
+      await page.keyboard.type("ZZ");
+      await page.waitForTimeout(200);
+      const body = await page.evaluate((n) => {
+        const layer = [...document.querySelectorAll("div")].find((d) => d.style.width === "5000px");
+        const el = [...layer.children].find((c) => c.tagName === "DIV"
+          && c.querySelector("input") && c.querySelector("input").value === n);
+        return el.querySelector("textarea").value;
+      }, name);
+      check(body.includes("ZZ"), `${name}: description is typeable`, ` ("${body.slice(0, 24)}")`);
+    }
+    check(errors.length === 0, "no console errors", errors.length ? ` (${errors[0]})` : "");
+    await page.close();
+  }
+
   // ------------------------------------------------- 4. ?ui=1 escape hatch
   console.log("\n?ui=1 escape hatch");
   {

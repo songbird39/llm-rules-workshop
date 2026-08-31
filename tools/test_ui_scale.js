@@ -174,10 +174,10 @@ console.log("\nrule card keeps its size on drop");
   check(!/collapsed: type === 'rule'/.test(doc), "not created pre-collapsed");
   check(/collapsed: false/.test(doc), "created expanded");
   // the fold control must still exist — collapsing stays available, just not default
-  check(/onFold: \(!RO \|\| c\.sm\) \? \(\) => this\.patch\(c\.id, 'collapsed', !c\.collapsed\)/.test(doc),
-    "fold control still present, and gated like every other handler");
-  check(/h: c\.h \|\| \(folded \? 90 : 168\)/.test(doc),
-    "collapsed fallback height still defined (cards now measure their own height)");
+  // the fold control was gated on the rule type and became unreachable, so it is gone;
+  // `collapsed` survives only in older saved boards, where it no longer does anything
+  check(!/onFold/.test(doc), "the unreachable fold control is gone");
+  check(/h: c\.h \|\| 168/.test(doc), "cards fall back to 168 before being measured");
   check(/cardRect\(c\) \{ return \{ x: c\.x, y: c\.y, w: c\.w \|\| CARD, h: c\.h \|\| 168 \}; \}/.test(doc),
     "cardRect uses each object's own width and measured height");
 
@@ -187,6 +187,21 @@ console.log("\nrule card keeps its size on drop");
   check(/tfs: c\.type === 'act' \? '15px' : '12\.5px'/.test(doc), "tags carry a larger title");
   check(/dmin: c\.type === 'act' \? '17px' : '48px'/.test(doc), "tags start as a bar, not a card");
   check(/hasDiagram: !!c\.dia/.test(doc), "only objects with an icon render a diagram box");
+
+  // 모든 보드 객체는 편집 가능한 본문을 가져야 한다 / EVERY board object needs a body to type
+  // in. The description textarea was once nested inside the hasDiagram guard, so 활동 tags
+  // and 수단 post-its (dia: null) rendered a title and nothing else — they looked fine and
+  // could not be edited. The guard must wrap the icon box ONLY.
+  {
+    const board = doc.slice(doc.indexOf('<sc-for list="{{ cards }}"'), doc.indexOf("</sc-for>", doc.indexOf('<sc-for list="{{ cards }}"')));
+    const guards = (board.match(/sc-if value="\{\{ c\.hasDiagram \}\}"/g) || []).length;
+    check(guards === 1, "the icon guard wraps the icon box and nothing else", ` (${guards} guard${guards === 1 ? "" : "s"})`);
+    const desc = board.indexOf("c.onDesc");
+    const lastGuard = board.lastIndexOf("<sc-if value=\"{{ c.hasDiagram }}\"", desc);
+    const closeAfterGuard = board.indexOf("</sc-if>", lastGuard);
+    check(desc > 0 && closeAfterGuard < desc, "every board object renders a description field");
+    check(/dsep: c\.dia \? '1px solid #eae7df' : 'none'/.test(doc), "the separator line appears only under an icon");
+  }
   check(/act: '#6f6b62', means: '#6f6b62'/.test(doc), "workflow decks are neutral");
   check(/con: 'oklch\(0\.51 0\.08 160\)'/.test(doc), "guardrail decks are colour-coded");
 
@@ -259,7 +274,7 @@ console.log("\nview mode cannot write");
   const objNoops = (doc.match(/\(!RO \|\| [cn]\.sm\) \?/g) || []).length;
   check(deckNoops >= 2, "deck tiles are inert in admin", ` (${deckNoops})`);
   check(objNoops >= 9, "every board handler is gated per object", ` (${objNoops})`);
-  for (const h of ["onTitle", "onDesc", "onDup", "onDel", "onFold", "onText"]) {
+  for (const h of ["onTitle", "onDesc", "onDup", "onDel", "onText"]) {
     check(new RegExp(h + ": \\(!RO \\|\\| [cn]\\.sm\\) \\?").test(doc),
       `${h} cannot edit a participant object in admin`);
   }
@@ -288,8 +303,10 @@ console.log("\nview mode cannot write");
 
   // 7d-ter. text inside a card must be reachable and scrollable while viewing
   check(/pointer-events:auto/.test(doc), "card text re-enabled under pointer-events:none");
-  check((doc.match(/pointer-events:auto/g) || []).length === 5,
-    "all five text elements re-enabled",
+  // three now: the card description, the note, and the card title. The two rule-card
+  // text boxes went with the rule type.
+  check((doc.match(/pointer-events:auto/g) || []).length === 3,
+    "every remaining text element is re-enabled",
     ` (${(doc.match(/pointer-events:auto/g) || []).length})`);
   check(/descOverflow: RO \? 'auto' : 'hidden'/.test(doc),
     "collapsed rule card scrolls in view mode, stays clipped for participants");
@@ -336,6 +353,13 @@ console.log("\nview mode cannot write");
     "pushSense refuses outside admin view mode");
   check(/cards: this\.state\.cards\.filter\(\(c\) => c\.sm\)/.test(doc),
     "only sm-flagged objects are sent, participant objects are filtered out");
+
+  // 7g. deleting a participant record
+  check(/action: 'delete', participant: r\.participant/.test(doc), "delete posts an explicit action");
+  check(/this\.state\.delTyped\.trim\(\) !== r\.participant\) return;/.test(doc),
+    "delete refuses unless the code was retyped");
+  check(/const still = list\.some\(\(x\) => x\.participant === r\.participant\);/.test(doc),
+    "and verifies from a fresh roster rather than assuming success");
 
   // 7e. the roster path
   check(/this\.jsonp\('list=1'\)/.test(doc), "roster fetched via ?list=1");
