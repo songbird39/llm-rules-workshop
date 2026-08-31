@@ -194,53 +194,84 @@
       </div>
 
       <div style="padding:16px 16px 4px;display:flex;align-items:baseline;gap:8px">
-        <span style="width:9px;height:9px;border-radius:2px;background:oklch(0.51 0.08 253);align-self:center"></span>
-        <span style="font-size:14px;font-weight:600">{{ t.ruleCards }}</span>
-        <span style="font-size:11.5px;color:#a7a49b">{{ t.ruleCardsSub }}</span>
+        <span style="width:9px;height:9px;border-radius:2px;background:#8a877e;align-self:center"></span>
+        <span style="font-size:14px;font-weight:600">{{ t.actCards }}</span>
+        <span style="font-size:11.5px;color:#a7a49b">{{ t.actCardsSub }}</span>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:8px;padding:8px 16px 18px">
+        <sc-for list="{{ deckAct }}" as="d" hint-placeholder-count="6">
+          <div onPointerDown="{{ d.onDown }}" onDoubleClick="{{ d.onAdd }}" title="{{ t.dragTip }}" style="width:100%;flex:0 0 auto;display:flex;align-items:baseline;gap:8px;background:#f4f2ec;border:1px solid #d6d3ca;border-radius:8px;padding:9px 12px;cursor:grab" style-hover="border-color:#b6b3aa;background:#eeece5">
+            <span style="font-size:14.5px;font-weight:600;letter-spacing:-0.01em;color:{{ d.titleColor }}">{{ d.title }}</span>
+            <span style="font-size:11.5px;color:#8a877e;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ d.body }}</span>
+          </div>
+        </sc-for>
+      </div>
+      <div style="padding:8px 16px 4px;display:flex;align-items:baseline;gap:8px;border-top:1px solid #ece9e1">
+        <span style="width:9px;height:9px;border-radius:2px;background:#8a877e;align-self:center"></span>
+        <span style="font-size:14px;font-weight:600">{{ t.meansCards }}</span>
+        <span style="font-size:11.5px;color:#a7a49b">{{ t.meansCardsSub }}</span>
+      </div>
+      <div style="display:flex;flex-wrap:wrap;gap:8px;padding:8px 16px 18px">
+        <sc-for list="{{ deckMeans }}" as="d" hint-placeholder-count="5">
+          <div onPointerDown="{{ d.onDown }}" onDoubleClick="{{ d.onAdd }}" title="{{ t.dragTip }}" style="width:168px;flex:0 0 auto;display:flex;flex-direction:column;gap:2px;background:rgba(255,254,251,0.7);border:1px dashed #c2beb2;border-radius:7px;padding:8px 10px;cursor:grab" style-hover="border-color:#8a877e">
+            <span style="font-size:12.5px;font-weight:600;letter-spacing:-0.01em;color:{{ d.titleColor }}">{{ d.title }}</span>
+            <span style="font-size:11px;line-height:1.45;color:#7a776f">{{ d.body }}</span>
+          </div>
+        </sc-for>
+      </div>
+      <div style="padding:8px 16px 4px;display:flex;align-items:baseline;gap:8px;border-top:1px solid #ece9e1">
+        <span style="width:9px;height:9px;border-radius:2px;background:oklch(0.51 0.08 160);align-self:center"></span>
+        <span style="font-size:14px;font-weight:600">{{ t.conCards }}</span>
+        <span style="font-size:11.5px;color:#a7a49b">{{ t.conCardsSub }}</span>
       </div>
       <div style="display:flex;flex-wrap:wrap;gap:10px;padding:8px 16px 18px">
-        <sc-for list="{{ deckRule }}" as="d" hint-placeholder-count="6">
+        <sc-for list="{{ deckCon }}" as="d" hint-placeholder-count="6">
           <div onPointerDown="{{ d.onDown }}" onDoubleClick="{{ d.onAdd }}" title="{{ t.dragTip }}" style="width:168px;height:168px;flex:0 0 auto;display:flex;flex-direction:column;gap:5px;background:#fffefb;border:1px solid #e2dfd7;border-radius:10px;padding:7px;cursor:grab;box-shadow:0 1px 5px rgba(0,0,0,0.05)" style-hover="border-color:#c9c6bd;box-shadow:0 4px 14px rgba(0,0,0,0.09)">
             <div style="display:flex;align-items:center;gap:5px;background:{{ d.tint }};border-radius:5px;padding:3px 5px">
               <span style="flex:1;min-width:0;font-size:12.5px;font-weight:600;letter-spacing:-0.01em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:{{ d.titleColor }}">{{ d.title }}</span>
               <span style="font-size:9px;letter-spacing:0.02em;color:{{ d.accent }};border:1px solid {{ d.accent }};border-radius:3px;padding:0 3px">{{ d.mark }}</span>
             </div>
-            <div style="flex:1;min-height:0;display:flex;align-items:center;justify-content:center;border:1px solid #eae7df;border-radius:5px;background:#f7f5f0;padding:7px;font-size:12px;font-weight:500;line-height:1.5;letter-spacing:-0.015em;color:#26251f;overflow:hidden;text-align:center;text-wrap:pretty">{{ d.body }}</div>
+            <sc-if value="{{ d.hasDiagram }}" hint-placeholder-val="{{ true }}">
+              <div style="flex:0.95;min-height:0;display:flex;align-items:center;justify-content:center;border:1px solid #eae7df;border-radius:5px;background:#f7f5f0;padding:1px 2px;overflow:hidden">{{ d.diagram }}</div>
+            </sc-if>
+            <div style="flex:1;min-height:0;border-top:1px solid #eae7df;padding-top:4px;font-size:12px;line-height:1.45;color:#5b584f;overflow:hidden">{{ d.body }}</div>
           </div>
         </sc-for>
       </div>
-
       <div style="padding:8px 16px 4px;display:flex;align-items:baseline;gap:8px;border-top:1px solid #ece9e1">
         <span style="width:9px;height:9px;border-radius:2px;background:oklch(0.51 0.08 62);align-self:center"></span>
         <span style="font-size:14px;font-weight:600">{{ t.whenCards }}</span>
         <span style="font-size:11.5px;color:#a7a49b">{{ t.whenCardsSub }}</span>
       </div>
       <div style="display:flex;flex-wrap:wrap;gap:10px;padding:8px 16px 18px">
-        <sc-for list="{{ deckWhen }}" as="d" hint-placeholder-count="4">
+        <sc-for list="{{ deckWhen }}" as="d" hint-placeholder-count="3">
           <div onPointerDown="{{ d.onDown }}" onDoubleClick="{{ d.onAdd }}" title="{{ t.dragTip }}" style="width:168px;height:168px;flex:0 0 auto;display:flex;flex-direction:column;gap:5px;background:#fffefb;border:1px solid #e2dfd7;border-radius:10px;padding:7px;cursor:grab;box-shadow:0 1px 5px rgba(0,0,0,0.05)" style-hover="border-color:#c9c6bd;box-shadow:0 4px 14px rgba(0,0,0,0.09)">
             <div style="display:flex;align-items:center;gap:5px;background:{{ d.tint }};border-radius:5px;padding:3px 5px">
               <span style="flex:1;min-width:0;font-size:12.5px;font-weight:600;letter-spacing:-0.01em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:{{ d.titleColor }}">{{ d.title }}</span>
               <span style="font-size:9px;letter-spacing:0.02em;color:{{ d.accent }};border:1px solid {{ d.accent }};border-radius:3px;padding:0 3px">{{ d.mark }}</span>
             </div>
-            <div style="flex:0.95;min-height:0;display:flex;align-items:center;justify-content:center;border:1px solid #eae7df;border-radius:5px;background:#f7f5f0;padding:1px 2px;overflow:hidden">{{ d.diagram }}</div>
+            <sc-if value="{{ d.hasDiagram }}" hint-placeholder-val="{{ true }}">
+              <div style="flex:0.95;min-height:0;display:flex;align-items:center;justify-content:center;border:1px solid #eae7df;border-radius:5px;background:#f7f5f0;padding:1px 2px;overflow:hidden">{{ d.diagram }}</div>
+            </sc-if>
             <div style="flex:1;min-height:0;border-top:1px solid #eae7df;padding-top:4px;font-size:12px;line-height:1.45;color:#5b584f;overflow:hidden">{{ d.body }}</div>
           </div>
         </sc-for>
       </div>
-
       <div style="padding:8px 16px 4px;display:flex;align-items:baseline;gap:8px;border-top:1px solid #ece9e1">
-        <span style="width:9px;height:9px;border-radius:2px;background:oklch(0.51 0.08 160);align-self:center"></span>
-        <span style="font-size:14px;font-weight:600">{{ t.howCards }}</span>
-        <span style="font-size:11.5px;color:#a7a49b">{{ t.howCardsSub }}</span>
+        <span style="width:9px;height:9px;border-radius:2px;background:oklch(0.51 0.08 253);align-self:center"></span>
+        <span style="font-size:14px;font-weight:600">{{ t.trigCards }}</span>
+        <span style="font-size:11.5px;color:#a7a49b">{{ t.trigCardsSub }}</span>
       </div>
-      <div style="display:flex;flex-wrap:wrap;gap:10px;padding:8px 16px 26px">
-        <sc-for list="{{ deckHow }}" as="d" hint-placeholder-count="4">
+      <div style="display:flex;flex-wrap:wrap;gap:10px;padding:8px 16px 18px">
+        <sc-for list="{{ deckTrig }}" as="d" hint-placeholder-count="5">
           <div onPointerDown="{{ d.onDown }}" onDoubleClick="{{ d.onAdd }}" title="{{ t.dragTip }}" style="width:168px;height:168px;flex:0 0 auto;display:flex;flex-direction:column;gap:5px;background:#fffefb;border:1px solid #e2dfd7;border-radius:10px;padding:7px;cursor:grab;box-shadow:0 1px 5px rgba(0,0,0,0.05)" style-hover="border-color:#c9c6bd;box-shadow:0 4px 14px rgba(0,0,0,0.09)">
             <div style="display:flex;align-items:center;gap:5px;background:{{ d.tint }};border-radius:5px;padding:3px 5px">
               <span style="flex:1;min-width:0;font-size:12.5px;font-weight:600;letter-spacing:-0.01em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:{{ d.titleColor }}">{{ d.title }}</span>
               <span style="font-size:9px;letter-spacing:0.02em;color:{{ d.accent }};border:1px solid {{ d.accent }};border-radius:3px;padding:0 3px">{{ d.mark }}</span>
             </div>
-            <div style="flex:0.95;min-height:0;display:flex;align-items:center;justify-content:center;border:1px solid #eae7df;border-radius:5px;background:#f7f5f0;padding:1px 2px;overflow:hidden">{{ d.diagram }}</div>
+            <sc-if value="{{ d.hasDiagram }}" hint-placeholder-val="{{ true }}">
+              <div style="flex:0.95;min-height:0;display:flex;align-items:center;justify-content:center;border:1px solid #eae7df;border-radius:5px;background:#f7f5f0;padding:1px 2px;overflow:hidden">{{ d.diagram }}</div>
+            </sc-if>
             <div style="flex:1;min-height:0;border-top:1px solid #eae7df;padding-top:4px;font-size:12px;line-height:1.45;color:#5b584f;overflow:hidden">{{ d.body }}</div>
           </div>
         </sc-for>
@@ -278,9 +309,9 @@
           </div>
         </sc-for>
         <sc-for list="{{ cards }}" as="c" hint-placeholder-count="0">
-          <div onPointerDown="{{ c.onDown }}" style="position:absolute;left:{{ c.x }}px;top:{{ c.y }}px;width:168px;display:flex;flex-direction:column;gap:5px;background:{{ c.bg }};border:1px {{ c.bstyle }} {{ c.bd }};border-radius:10px;padding:7px;box-shadow:0 3px 12px rgba(0,0,0,0.08);outline:{{ c.outline }};outline-offset:2px;pointer-events:{{ c.pe }};cursor:{{ c.cursor }}">
+          <div onPointerDown="{{ c.onDown }}" style="position:absolute;left:{{ c.x }}px;top:{{ c.y }}px;width:{{ c.w }}px;display:flex;flex-direction:column;gap:5px;background:{{ c.bg }};border:1px {{ c.bstyle }} {{ c.bd }};border-radius:10px;padding:7px;box-shadow:0 3px 12px rgba(0,0,0,0.08);outline:{{ c.outline }};outline-offset:2px;pointer-events:{{ c.pe }};cursor:{{ c.cursor }}">
             <div style="display:flex;align-items:center;gap:5px;background:{{ c.tint }};border-radius:5px;padding:3px 5px">
-              <input value="{{ c.title }}" onChange="{{ c.onTitle }}" placeholder="{{ c.titlePlaceholder }}" style="flex:1;min-width:0;border:none;background:transparent;font-size:12.5px;font-weight:600;letter-spacing:-0.01em;outline:none;padding:0;pointer-events:auto" />
+              <input value="{{ c.title }}" onChange="{{ c.onTitle }}" placeholder="{{ c.titlePlaceholder }}" style="flex:1;min-width:0;border:none;background:transparent;font-size:{{ c.tfs }};font-weight:600;letter-spacing:-0.01em;outline:none;padding:0;pointer-events:auto" />
               <sc-if value="{{ c.isRule }}" hint-placeholder-val="{{ false }}">
                 <button onClick="{{ c.onFold }}" title="{{ t.foldTip }}" style="border:none;background:transparent;color:{{ c.accent }};font-size:10px;line-height:1;cursor:pointer;padding:0 1px">{{ c.foldIcon }}</button>
               </sc-if>
@@ -299,7 +330,7 @@
             </sc-if>
             <sc-if value="{{ c.hasDiagram }}" hint-placeholder-val="{{ true }}">
               <div style="flex:none;border-top:1px solid #eae7df;padding-top:4px">
-                <textarea value="{{ c.desc }}" onChange="{{ c.onDesc }}" data-grow="1" placeholder="{{ t.descPh }}" style="width:100%;height:auto;min-height:48px;overflow:hidden;resize:none;border:none;background:transparent;font-size:12px;line-height:1.45;color:#5b584f;outline:none;padding:0;pointer-events:auto"></textarea>
+                <textarea value="{{ c.desc }}" onChange="{{ c.onDesc }}" data-grow="1" placeholder="{{ t.descPh }}" style="width:100%;height:auto;min-height:{{ c.dmin }};overflow:hidden;resize:none;border:none;background:transparent;font-size:12px;line-height:1.45;color:#5b584f;outline:none;padding:0;pointer-events:auto"></textarea>
               </div>
             </sc-if>
             <div style="display:flex;align-items:center;gap:5px;height:13px">
@@ -368,17 +399,25 @@
 </div>
 </x-dc>
 <script type="text/x-dc" data-dc-script data-props="{&quot;snapToGrid&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:true,&quot;tsType&quot;:&quot;boolean&quot;,&quot;section&quot;:&quot;Canvas&quot;},&quot;syncUrl&quot;:{&quot;editor&quot;:&quot;text&quot;,&quot;default&quot;:&quot;&quot;,&quot;tsType&quot;:&quot;string&quot;,&quot;section&quot;:&quot;Server&quot;}}">
+// 워크플로(활동·수단)는 중립 톤, 가드레일(제약·언제·발동)만 색으로 구분한다
+// The workflow decks stay neutral; only the guardrail decks carry colour, so the two
+// layers read apart at a glance even before you read any text.
 const ACC = {
-  rule: 'oklch(0.51 0.08 253)',
+  act: '#6f6b62', means: '#6f6b62',
+  con: 'oklch(0.51 0.08 160)',
   when: 'oklch(0.51 0.08 62)',
-  how: 'oklch(0.51 0.08 160)'
+  trig: 'oklch(0.51 0.08 253)'
 };
 const TINT = {
-  rule: 'oklch(0.93 0.026 253)',
+  act: '#e8e5dd', means: '#eeece5',
+  con: 'oklch(0.93 0.026 160)',
   when: 'oklch(0.93 0.026 62)',
-  how: 'oklch(0.93 0.026 160)'
+  trig: 'oklch(0.93 0.026 253)'
 };
-const CARD = 168, STORE = 'llm-guardrail-workshop-v4';
+// 활동 태그는 카드 두 장(168*2 + 16 간격) 폭 — 태그 아래 카드가 가지런히 들어간다
+// A tag is two cards wide plus the 16px gap, so cards line up underneath it.
+const CARD = 168, TAG_W = 352, TAG_MIN = 200, TAG_MAX = 900;
+const STORE = 'llm-guardrail-workshop-v4';
 // 드래그 중 미리보기와 놓았을 때의 위치를 같게 만드는 오프셋 (커서 기준 오른쪽 아래)
 // Ghost/drop offset, in screen px, down-and-right of the cursor. Used by BOTH the
 // drag preview and addCard on release so they cannot disagree.
@@ -435,7 +474,7 @@ const ADMIN_CODE = 'admin';
 
 const I18N = {
   ko: {
-    mark: { rule: '규칙', when: '언제', how: '어떻게' },
+    mark: { act: '활동', means: '수단', con: '제약', when: '언제', trig: '발동' },
     cats: [
       { id: 'use', label: '“~~에만 AI를 사용한다”', sub: 'AI를 쓰는 범위 정하기' },
       { id: 'way', label: '“AI를 통한 ~~는 ~~하게 한다”', sub: 'AI를 쓰는 방식 정하기' },
@@ -457,26 +496,55 @@ const I18N = {
       ['alt', '별도로 정리', '학습 상황과 내용을 별도로 노트 / 문서 등에 정리']
     ],
     deck: {
-      when: [
-        { title: '학습 전', desc: '학습 전', dia: 'w_before' },
-        { title: '학습 중', desc: '학습 중 (항상/몇분 단위로)', dia: 'w_during' },
-        { title: '학습 후', desc: '학습 후', dia: 'w_after' },
-        { title: '자동으로', desc: '해당하는 상황이 되면 자동으로', dia: 'w_auto' },
-        { title: '위반 요청 감지', desc: '규칙을 어기는 요청이 감지되면', dia: 'w_violate' },
-        { title: '거듭 요청 시 해제', desc: '사용자가 거듭 요청하면 일시적으로 가드레일을 해제한다', dia: 'w_retry' },
-        { title: '설정에서 해제', desc: '설정 등에 들어가서 사용자가 가드레일을 끌 수 있게끔 한다', dia: 'w_settings' },
-        { title: '어려움 감지 시 해제', desc: '사용자가 어려움을 느끼고 있음을 감지하면 가드레일을 해제한다', dia: 'w_struggle' },
-        { title: '', desc: '', dia: null, blank: '＋ 기타 (직접 작성)' }
+      act: [
+        { title: '계획 세우기', desc: '' },
+        { title: '브레인스토밍 · 아이디어 발산', desc: '' },
+        { title: '초안 작성', desc: '' },
+        { title: '첫 학습', desc: '처음 배우는 개념 도입' },
+        { title: '보충 설명', desc: '첫 학습에서 다루지 않은 부분' },
+        { title: '연습', desc: '반복 수행' },
+        { title: '복습 · 인출', desc: '' },
+        { title: '학습 자료 만들기 · 변형하기', desc: '퀴즈, 예문 등' },
+        { title: '퀴즈 풀기 · 채점받기', desc: '' },
+        { title: '피드백 받기', desc: '내 산출물에 대해' },
+        { title: '자기평가 · 성찰', desc: '' },
+        { title: '', desc: '', blank: '＋ 기타 (직접 작성)' }
       ],
-      how: [
-        { title: '스스로 지키기', desc: '사용자가 알아서 지킨다 (=아무것도 안한다)', dia: 'h_self' },
+      means: [
+        { title: 'AI', desc: '' },
+        { title: 'AI 사용 안 함', desc: '이 활동은 AI로 하지 않는다' },
+        { title: '외부 설명 자료', desc: '교재 · 사전 · 강의' },
+        { title: '외부 읽기 · 듣기 자료', desc: '텍스트 · 영상 · 음성' },
+        { title: '외부 보조 도구', desc: '암기 카드 · 앱' },
+        { title: '직접하기', desc: '타자 · 손글씨 · 말하며 쓰기' },
+        { title: '', desc: '', blank: '＋ 기타 (직접 작성)' }
+      ],
+      con: [
+        { title: '개입 없음', desc: '시스템은 아무것도 하지 않는다', dia: 'h_self' },
         { title: '규칙 상기', desc: '규칙을 시스템에 표출시켜서 상기시킨다', dia: 'h_remind' },
-        { title: '채팅 프리셋', desc: '원하는 행동을 쉽게 쓸 수 있도록 채팅 프리셋으로 제공한다', dia: 'h_preset' },
-        { title: '모드 / 템플릿', desc: '원하는 행동 만을 할 수 있도록 모드/템플릿을 설정한다', dia: 'h_mode' },
+        { title: '프롬프트 프리셋', desc: '원하는 행동을 쉽게 쓸 수 있도록 프롬프트 프리셋으로 제공한다', dia: 'h_preset' },
+        { title: '먼저 스스로 해보도록 유도', desc: '답을 주기 전에 먼저 시도해 보도록 이끈다', dia: null },
+        { title: '질문 제안', desc: '도움이 될 만한 질문을 제안하거나 던진다', dia: null },
+        { title: '단계별 힌트', desc: '직접적으로 제공하는 대신 단계별 힌트를 제공한다', dia: 'h_hint' },
         { title: '외부 도구 열기', desc: '자동으로 외부 도구를 띄운다 (사전/유튜브/단어카드/문서파일 등)', dia: 'h_tool' },
         { title: '한 번 더 확인', desc: '채팅 혹은 시스템에서 요청을 실행할 것인지 다시 한 번 확인한다', dia: 'h_confirm' },
         { title: '경고 후 거부', desc: '채팅 혹은 시스템에서 경고창을 띄우고 요청을 거부한다', dia: 'h_refuse' },
-        { title: '단계별 힌트', desc: '직접적으로 제공하는 대신 단계별 힌트를 제공한다', dia: 'h_hint' },
+        { title: '규칙 일시 중지', desc: '규칙을 잠시 멈춘다', dia: null },
+        { title: '', desc: '', dia: null, blank: '＋ 기타 (직접 작성)' }
+      ],
+      when: [
+        { title: '활동 전', desc: '사전숙고', dia: 'w_before' },
+        { title: '활동 중', desc: '수행', dia: 'w_during' },
+        { title: '활동 후', desc: '성찰', dia: 'w_after' }
+      ],
+      trig: [
+        { title: '규칙 대상 활동 시작 시', desc: '', dia: 'w_auto' },
+        { title: '규칙 위반 요청 감지 시', desc: '', dia: 'w_violate' },
+        { title: '거듭 요청 시', desc: '', dia: 'w_retry' },
+        { title: '어려움 감지 시', desc: '', dia: 'w_struggle' },
+        { title: '목표 도달 시', desc: '', dia: null },
+        { title: '시간 제한 시', desc: '', dia: null },
+        { title: '횟수 · 턴 제한 시', desc: '', dia: null },
         { title: '', desc: '', dia: null, blank: '＋ 기타 (직접 작성)' }
       ]
     },
@@ -508,13 +576,15 @@ const I18N = {
       i1a: '지키고 싶은 ', i1b: '규칙 카드', i1c: '를 모두 골라 주세요. 여러 장을 고를 수 있고, 카드 위 글자를 눌러 내용을 직접 고치거나 ', i1d: '＋ 새 규칙', i1e: '으로 나만의 규칙을 추가할 수 있습니다.',
       p1a: '고른 ', p1b: '① 규칙 카드', p1c: '를 오른쪽 보드에 놓고, ', p1d: '② 언제 카드', p1e: '와 ', p1f: '③ 어떻게 카드', p1g: '를 한 줄로 나란히 놓으면 하나의 조합이 됩니다. 카드 위 글자는 눌러서 직접 고칠 수 있습니다.',
       addRule: '＋ 새 규칙', ruleName: '규칙 이름', ruleDescPh: '규칙 내용 쓰기', cardName: '카드 이름', writeRule: '규칙 쓰기', descPh: '설명', notePh: '메모 쓰기…',
-      ruleCards: '규칙 카드', ruleCardsSub: '1단계에서 고른 규칙', whenCards: '언제 카드', whenCardsSub: '규칙이 언제 작동하나요?', howCards: '어떻게 카드', howCardsSub: '시스템이 어떻게 도와주나요?',
+      actCards: '활동', actCardsSub: '무엇을 하나요? (타임라인)', meansCards: '수단', meansCardsSub: '무엇으로 하나요?',
+      conCards: '제약', conCardsSub: '시스템이 어떻게 개입하나요?', whenCards: '언제', whenCardsSub: '활동의 어느 구간인가요?',
+      trigCards: '발동 사건', trigCardsSub: '무엇이 개입을 불러오나요?',
       empty1: '왼쪽에서 고른 규칙 카드를 이 보드에 놓아 보세요.', empty2: '규칙 · 언제 · 어떻게 카드를 한 줄로 놓으면 조합이 됩니다.',
       dragTip: '드래그해서 보드에 놓기 (더블클릭으로 추가)', noteTip: '보드 빈 곳을 눌러 메모 만들기', resizeTip: '드래그해서 폭 조절', dupTip: '복제', delTip: '삭제', foldTip: '펼치기 / 접기', noteDelTip: '메모 삭제', clearTip: '보드 비우기'
     }
   },
   en: {
-    mark: { rule: 'Rule', when: 'When', how: 'How' },
+    mark: { act: 'Activity', means: 'Means', con: 'Constraint', when: 'When', trig: 'Trigger' },
     cats: [
       { id: 'use', label: '“Use AI only for ~~”', sub: 'Deciding where AI may be used' },
       { id: 'way', label: '“Do ~~ with AI in a ~~ way”', sub: 'Deciding how AI is used' },
@@ -536,26 +606,55 @@ const I18N = {
       ['alt', 'Keep separate notes', 'Organize study context and content in separate notes/documents']
     ],
     deck: {
-      when: [
-        { title: 'Before study', desc: 'Before the study session', dia: 'w_before' },
-        { title: 'During study', desc: 'During study (always / every few minutes)', dia: 'w_during' },
-        { title: 'After study', desc: 'After the study session', dia: 'w_after' },
-        { title: 'Automatically', desc: 'Automatically when the situation applies', dia: 'w_auto' },
-        { title: 'Violation detected', desc: 'When a rule-breaking request is detected', dia: 'w_violate' },
-        { title: 'Unlock on retry', desc: 'Temporarily lift the guardrail if the user asks repeatedly', dia: 'w_retry' },
-        { title: 'Unlock in settings', desc: 'Let the user turn the guardrail off in settings', dia: 'w_settings' },
-        { title: 'Unlock on struggle', desc: 'Lift the guardrail when the user seems to be struggling', dia: 'w_struggle' },
+      act: [
+        { title: 'Plan', desc: '' },
+        { title: 'Brainstorm · generate ideas', desc: '' },
+        { title: 'Draft', desc: '' },
+        { title: 'First learning', desc: 'meeting a concept for the first time' },
+        { title: 'Extra explanation', desc: 'what first learning did not cover' },
+        { title: 'Practice', desc: 'repeated performance' },
+        { title: 'Review · retrieval', desc: '' },
+        { title: 'Make · adapt materials', desc: 'quizzes, example sentences' },
+        { title: 'Take a quiz · get marked', desc: '' },
+        { title: 'Get feedback', desc: 'on my own work' },
+        { title: 'Self-assess · reflect', desc: '' },
+        { title: '', desc: '', blank: '＋ Other (write your own)' }
+      ],
+      means: [
+        { title: 'AI', desc: '' },
+        { title: 'No AI', desc: 'do not use AI for this activity' },
+        { title: 'Reference materials', desc: 'textbook · dictionary · lecture' },
+        { title: 'Reading · listening material', desc: 'text · video · audio' },
+        { title: 'Study aids', desc: 'flashcards · apps' },
+        { title: 'By hand', desc: 'typing · handwriting · saying it aloud' },
+        { title: '', desc: '', blank: '＋ Other (write your own)' }
+      ],
+      con: [
+        { title: 'No intervention', desc: 'the system does nothing', dia: 'h_self' },
+        { title: 'Show the rule', desc: 'surface the rule in the system as a reminder', dia: 'h_remind' },
+        { title: 'Prompt presets', desc: 'offer presets that make the desired behaviour easy to use', dia: 'h_preset' },
+        { title: 'Prompt a first attempt', desc: 'lead the user to try before giving an answer', dia: null },
+        { title: 'Suggest questions', desc: 'offer or pose questions that would help', dia: null },
+        { title: 'Step-by-step hints', desc: 'give staged hints instead of the direct answer', dia: 'h_hint' },
+        { title: 'Open an external tool', desc: 'open a dictionary/YouTube/flashcards/document automatically', dia: 'h_tool' },
+        { title: 'Confirm once more', desc: 'ask again whether to run the request', dia: 'h_confirm' },
+        { title: 'Warn and refuse', desc: 'show a warning and refuse the request', dia: 'h_refuse' },
+        { title: 'Pause the rule', desc: 'suspend the rule for now', dia: null },
         { title: '', desc: '', dia: null, blank: '＋ Other (write your own)' }
       ],
-      how: [
-        { title: 'Self-enforce', desc: 'The user keeps the rule on their own (= system does nothing)', dia: 'h_self' },
-        { title: 'Rule reminder', desc: 'Show the rule in the system as a reminder', dia: 'h_remind' },
-        { title: 'Chat presets', desc: 'Provide chat presets that make the desired behavior easy to use', dia: 'h_preset' },
-        { title: 'Mode / Template', desc: 'Set a mode/template so only the desired behavior is possible', dia: 'h_mode' },
-        { title: 'Open external tool', desc: 'Automatically open an external tool (dictionary/YouTube/flashcards/docs)', dia: 'h_tool' },
-        { title: 'Confirm first', desc: 'Ask once more in chat or the system before executing the request', dia: 'h_confirm' },
-        { title: 'Warn and refuse', desc: 'Show a warning in chat or the system and refuse the request', dia: 'h_refuse' },
-        { title: 'Step-by-step hints', desc: 'Give step-by-step hints instead of the direct answer', dia: 'h_hint' },
+      when: [
+        { title: 'Before the activity', desc: 'forethought', dia: 'w_before' },
+        { title: 'During the activity', desc: 'performance', dia: 'w_during' },
+        { title: 'After the activity', desc: 'reflection', dia: 'w_after' }
+      ],
+      trig: [
+        { title: 'When the activity starts', desc: '', dia: 'w_auto' },
+        { title: 'When a rule-breaking request is detected', desc: '', dia: 'w_violate' },
+        { title: 'When the user asks repeatedly', desc: '', dia: 'w_retry' },
+        { title: 'When the user seems to struggle', desc: '', dia: 'w_struggle' },
+        { title: 'When the goal is reached', desc: '', dia: null },
+        { title: 'On a time limit', desc: '', dia: null },
+        { title: 'On a count · turn limit', desc: '', dia: null },
         { title: '', desc: '', dia: null, blank: '＋ Other (write your own)' }
       ]
     },
@@ -587,7 +686,9 @@ const I18N = {
       i1a: 'Choose all the ', i1b: 'rule cards', i1c: ' you want to keep. You can pick several, edit any text directly on a card, or add your own with ', i1d: '＋ New rule', i1e: '.',
       p1a: 'Place your chosen ', p1b: '① rule cards', p1c: ' on the board, then line up a ', p1d: '② when card', p1e: ' and a ', p1f: '③ how card', p1g: ' in the same row to form a combination. Tap any text on a card to edit it.',
       addRule: '＋ New rule', ruleName: 'Rule name', ruleDescPh: 'Write the rule', cardName: 'Card name', writeRule: 'Write rule', descPh: 'Description', notePh: 'Write a note…',
-      ruleCards: 'Rule cards', ruleCardsSub: 'Rules chosen in step 1', whenCards: 'When cards', whenCardsSub: 'When does the rule apply?', howCards: 'How cards', howCardsSub: 'How does the system help?',
+      actCards: 'Activity', actCardsSub: 'what you do (timeline)', meansCards: 'Means', meansCardsSub: 'what you do it with',
+      conCards: 'Constraint', conCardsSub: 'how the system steps in', whenCards: 'When', whenCardsSub: 'which part of the activity',
+      trigCards: 'Trigger', trigCardsSub: 'what brings the intervention',
       empty1: 'Drag your rule cards from the left onto this board.', empty2: 'Line up rule · when · how cards in a row to form a combination.',
       dragTip: 'Drag onto the board (double-click to add)', noteTip: 'Click an empty spot on the board to add a note', resizeTip: 'Drag to resize', dupTip: 'Duplicate', delTip: 'Delete', foldTip: 'Expand / collapse', noteDelTip: 'Delete note', clearTip: 'Clear the board'
     }
@@ -1144,7 +1245,7 @@ class Component extends DCLogic {
     this.setState({ ghost: { x: e.clientX, y: e.clientY, type: type, text: tpl.title || tpl.blank || '' } });
   }
   addCard(type, tpl, x, y) {
-    const card = { id: 'c' + this.state.seq, type: type, title: tpl.title || '', desc: tpl.desc || '', dia: tpl.dia || null, collapsed: false, x: this.fix(x), y: this.fix(y) };
+    const card = { id: 'c' + this.state.seq, type: type, title: tpl.title || '', desc: tpl.desc || '', dia: tpl.dia || null, collapsed: false, w: (type === 'act' ? TAG_W : CARD), x: this.fix(x), y: this.fix(y) };
     this.setState((s) => ({ cards: s.cards.concat([card]), seq: s.seq + 1 }));
   }
   quickAdd(type, tpl) {
@@ -1275,7 +1376,7 @@ class Component extends DCLogic {
   // 실제로 렌더된 높이를 쓴다 — 화살표 끝점과 링크 판정이 키 큰 카드에서도 맞도록
   // Use the measured height so arrow endpoints and link hit-testing follow a tall
   // card. Falls back to the old constants until the first measure pass runs.
-  cardRect(c) { return { x: c.x, y: c.y, w: CARD, h: c.h || ((c.type === 'rule' && c.collapsed) ? 90 : 168) }; }
+  cardRect(c) { return { x: c.x, y: c.y, w: c.w || CARD, h: c.h || 168 }; }
 
   // 화살표 끝점 / arrow endpoint. Old saves stored a bare card id, so a string is read
   // as {k:'card'}. Old boards therefore keep working without being rewritten.
@@ -1781,6 +1882,7 @@ class Component extends DCLogic {
       accent: ACC[type],
       tint: TINT[type],
       diagram: tpl.dia ? this.diagram(tpl.dia) : null,
+      hasDiagram: !!tpl.dia,
       onDown: RO ? NOOP : (e) => this.startNew(type, tpl, e),
       onAdd: RO ? NOOP : () => this.quickAdd(type, tpl)
     }));
@@ -1906,9 +2008,11 @@ class Component extends DCLogic {
         }))
       })),
 
-      deckRule: mkDeck('rule', rules.filter((r) => r.sel)),
+      deckAct: mkDeck('act', L.deck.act),
+      deckMeans: mkDeck('means', L.deck.means),
+      deckCon: mkDeck('con', L.deck.con),
       deckWhen: mkDeck('when', L.deck.when),
-      deckHow: mkDeck('how', L.deck.how),
+      deckTrig: mkDeck('trig', L.deck.trig),
 
       canvasRef: this.canvasRef,
       onCanvasDown: (e) => this.onCanvasDown(e),
@@ -1952,11 +2056,22 @@ class Component extends DCLogic {
       clearAll: () => { if (confirm(t.confirmClear)) this.setState({ cards: [], notes: [], arrows: [], selArrow: null }); },
       exportJson: () => this.exportJson(),
       cards: this.state.cards.map((c) => {
-        const isRule = c.type === 'rule';
-        const folded = isRule && c.collapsed;
+        // 'rule' 타입은 사라졌다 — 접기 기능만 남겨 둔다 / the rule type is gone; the
+        // fold affordance survives for any card a participant chooses to collapse
+        const isRule = false;
+        const folded = !!c.collapsed;
         return {
           key: c.id,
           x: c.x, y: c.y,
+          // 활동 태그는 더 넓고 제목이 크다 — 카드와 한눈에 구분되도록
+          // An activity tag is wider with a larger title, so the timeline layer reads as a
+          // different level from the cards placed under it.
+          isTag: c.type === 'act',
+          w: c.w || CARD,
+          tfs: c.type === 'act' ? '15px' : '12.5px',
+          // 태그는 한 줄짜리 막대에서 시작해 내용만큼만 자란다 / a tag starts as a one-line
+          // bar and grows only with its content, so it never looks like a card
+          dmin: c.type === 'act' ? '17px' : '48px',
           // 해석 레이어 카드만 조작 가능 / only sensemaking objects are interactive in admin
           pe: (!RO || c.sm) ? 'auto' : 'none',
           bg: c.sm ? '#fdfbf5' : '#fffefb',
@@ -1972,10 +2087,10 @@ class Component extends DCLogic {
           isRuleClosed: folded,
           foldIcon: folded ? '▸' : '▾',
           onFold: () => this.patch(c.id, 'collapsed', !c.collapsed),
-          hasDiagram: !isRule,
+          hasDiagram: !!c.dia,
           title: c.title,
           desc: c.desc,
-          titlePlaceholder: isRule ? t.ruleName : t.cardName,
+          titlePlaceholder: t.cardName,
           diagram: c.dia ? this.diagram(c.dia) : null,
           cursor: this.state.arrowMode ? 'crosshair' : 'grab',
           onDown: (!RO || c.sm) ? (e) => this.startMove(c.id, e) : NOOP,

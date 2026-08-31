@@ -43,6 +43,20 @@ def app_source(text):
     return a, z, text[a:z]
 
 
+def markup(text):
+    """The template markup: everything between </helmet> and </x-dc>.
+
+    The app is TWO regions, and an early version of this script spliced only the
+    second — so i18n edits landed while panel markup silently did not, and the built
+    file rendered empty headings. <helmet> itself is excluded on purpose: src links
+    Pretendard from a CDN while the bundle has the @font-face blocks inlined, and that
+    difference is the whole point of the bundle.
+    """
+    a = text.index("</helmet>") + len("</helmet>")
+    z = text.index("</x-dc>")
+    return a, z, text[a:z]
+
+
 def read_bundle():
     b = BUNDLE.read_text(encoding="utf-8")
     j = b.index(TAG)
@@ -60,25 +74,35 @@ def write_bundle(b, start, end, doc):
 def main():
     check_only = "--check" in sys.argv
     src = SRC.read_text(encoding="utf-8")
-    _, _, want = app_source(src)
+    _, _, want_src = app_source(src)
+    _, _, want_mk = markup(src)
     b, start, end, doc = read_bundle()
-    a2, z2, have = app_source(doc)
+    _, _, have_src = app_source(doc)
+    _, _, have_mk = markup(doc)
 
-    if have == want:
-        print(f"up to date ({len(want)} chars of app source)")
+    stale = (have_src != want_src) or (have_mk != want_mk)
+    if not stale:
+        print(f"up to date (markup {len(want_mk)}, app source {len(want_src)})")
     elif check_only:
-        print(f"OUT OF DATE: src {len(want)} chars vs bundle {len(have)} chars")
+        print("OUT OF DATE:"
+              f" markup {'differs' if have_mk != want_mk else 'ok'},"
+              f" app source {'differs' if have_src != want_src else 'ok'}")
         sys.exit(1)
     else:
-        write_bundle(b, start, end, doc[:a2] + want + doc[z2:])
-        print(f"built index.html from {SRC.name} ({len(want)} chars)")
+        # markup first, then the script — splicing markup shifts the script's offsets
+        a, z, _ = markup(doc)
+        doc = doc[:a] + want_mk + doc[z:]
+        a, z, _ = app_source(doc)
+        doc = doc[:a] + want_src + doc[z:]
+        write_bundle(b, start, end, doc)
+        print(f"built index.html (markup {len(want_mk)}, app source {len(want_src)})")
 
     # verify the result round-trips and still parses
     _, _, _, doc2 = read_bundle()
-    _, _, got = app_source(doc2)
-    assert got == want, "app source did not round-trip through the bundle"
+    assert app_source(doc2)[2] == want_src, "app source did not round-trip"
+    assert markup(doc2)[2] == want_mk, "markup did not round-trip"
     assert doc2.rstrip().endswith("</html>"), "bundle document is truncated"
-    print("verified: unpacks, app source matches src, document intact")
+    print("verified: unpacks, markup and app source match src, document intact")
 
 
 if __name__ == "__main__":

@@ -165,36 +165,18 @@ console.log("\nrule card keeps its size on drop");
     "fold control still present");
   check(/h: c\.h \|\| \(folded \? 90 : 168\)/.test(doc),
     "collapsed fallback height still defined (cards now measure their own height)");
-  check(/cardRect\(c\) \{ return \{ x: c\.x, y: c\.y, w: CARD, h: c\.h \|\|/.test(doc),
-    "cardRect uses the measured height so arrows follow tall cards");
+  check(/cardRect\(c\) \{ return \{ x: c\.x, y: c\.y, w: c\.w \|\| CARD, h: c\.h \|\| 168 \}; \}/.test(doc),
+    "cardRect uses each object's own width and measured height");
 
-  // text metrics parity between the panel card body and the board card textarea
-  const grab = (re) => {
-    const m = doc.match(re);
-    return m ? m[0] : null;
-  };
-  const panel = grab(/font-size:12px;font-weight:500;line-height:[\d.]+;letter-spacing:-0\.015em;color:#26251f;overflow:hidden;text-align:center/);
-  const board = grab(/font-size:12px;font-weight:500;line-height:[\d.]+;letter-spacing:-0\.015em;text-align:center;color:#26251f;outline:none/);
-  const lh = (s) => s && s.match(/line-height:([\d.]+)/)[1];
-  check(panel !== null && board !== null, "found both rule-card renderings");
-  check(lh(panel) === lh(board),
-    "line-height matches", ` (panel ${lh(panel)} vs board ${lh(board)})`);
+  // 워크플로 층과 가드레일 층이 실제로 다른 크기인지 / the two levels must differ
+  check(/const CARD = 168, TAG_W = 352/.test(doc), "a tag is wider than a card");
+  check(/w: \(type === 'act' \? TAG_W : CARD\)/.test(doc), "activity tags are created at tag width");
+  check(/tfs: c\.type === 'act' \? '15px' : '12\.5px'/.test(doc), "tags carry a larger title");
+  check(/dmin: c\.type === 'act' \? '17px' : '48px'/.test(doc), "tags start as a bar, not a card");
+  check(/hasDiagram: !!c\.dia/.test(doc), "only objects with an icon render a diagram box");
+  check(/act: '#6f6b62', means: '#6f6b62'/.test(doc), "workflow decks are neutral");
+  check(/con: 'oklch\(0\.51 0\.08 160\)'/.test(doc), "guardrail decks are colour-coded");
 
-  // and the longest rule description still fits the expanded board card
-  const ruleDescs = [...doc.matchAll(/\['(?:use|way|alt)', '[^']*', '([^']*)'\]/g)].map((m) => m[1]);
-  const CARD = 168, PAD = 7, BORDER = 1, GAP = 5;
-  const content = CARD - 2 * PAD - 2 * BORDER;            // 152
-  const titleRow = 12.5 * 1.2 + 2 * 3;
-  const footer = 13;
-  const box = content - titleRow - footer - 2 * GAP;      // the desc box (flex:1, alone)
-  const textArea = box - 2 * PAD - 2 * BORDER;            // its own padding+border
-  const linesFit = Math.floor(textArea / (12 * 1.5));
-  const emWidth = (t) => [...t].reduce((n, c) => n + (c.codePointAt(0) > 0x1100 ? 1 : 0.5), 0);
-  const perLine = (content - 2 * PAD) / 12;
-  const worst = ruleDescs.reduce((a, d) => Math.max(a, Math.ceil(emWidth(d) / perLine)), 0);
-  console.log(`       expanded rule card: ${textArea.toFixed(1)}px of text room = ${linesFit} lines; ` +
-    `longest of ${ruleDescs.length} rule descriptions needs ${worst}`);
-  check(linesFit >= worst, "longest rule description fits", ` (${linesFit} >= ${worst})`);
 }
 
 // ---- 7. view mode must not be able to write ----
