@@ -473,13 +473,13 @@ const I18N = {
         { title: '개입 없음', desc: '시스템은 아무것도 하지 않는다', dia: 'h_self' },
         { title: '규칙 상기', desc: '규칙을 시스템에 표출시켜서 상기시킨다', dia: 'h_remind' },
         { title: '프롬프트 프리셋', desc: '원하는 행동을 쉽게 쓸 수 있도록 프롬프트 프리셋으로 제공한다', dia: 'h_preset' },
-        { title: '먼저 스스로 해보도록 유도', desc: '답을 주기 전에 먼저 시도해 보도록 이끈다', dia: null },
-        { title: '질문 제안', desc: '도움이 될 만한 질문을 제안하거나 던진다', dia: null },
+        { title: '먼저 스스로 해보도록 유도', desc: '답을 주기 전에 먼저 시도해 보도록 이끈다', dia: 'h_try' },
+        { title: '질문 제안', desc: '도움이 될 만한 질문을 제안하거나 던진다', dia: 'h_ask' },
         { title: '단계별 힌트', desc: '직접적으로 제공하는 대신 단계별 힌트를 제공한다', dia: 'h_hint' },
         { title: '외부 도구 열기', desc: '자동으로 외부 도구를 띄운다 (사전/유튜브/단어카드/문서파일 등)', dia: 'h_tool' },
         { title: '한 번 더 확인', desc: '채팅 혹은 시스템에서 요청을 실행할 것인지 다시 한 번 확인한다', dia: 'h_confirm' },
         { title: '경고 후 거부', desc: '채팅 혹은 시스템에서 경고창을 띄우고 요청을 거부한다', dia: 'h_refuse' },
-        { title: '규칙 일시 중지', desc: '규칙을 잠시 멈춘다', dia: null },
+        { title: '규칙 일시 중지', desc: '규칙을 잠시 멈춘다', dia: 'h_pause' },
         { title: '', desc: '', dia: null, blank: '＋ 기타 (직접 작성)' }
       ],
       when: [
@@ -492,9 +492,9 @@ const I18N = {
         { title: '규칙 위반 요청 감지 시', desc: '', dia: 'w_violate' },
         { title: '거듭 요청 시', desc: '', dia: 'w_retry' },
         { title: '어려움 감지 시', desc: '', dia: 'w_struggle' },
-        { title: '목표 도달 시', desc: '', dia: null },
-        { title: '시간 제한 시', desc: '', dia: null },
-        { title: '횟수 · 턴 제한 시', desc: '', dia: null },
+        { title: '목표 도달 시', desc: '', dia: 'w_goal' },
+        { title: '시간 제한 시', desc: '', dia: 'w_time' },
+        { title: '횟수 · 턴 제한 시', desc: '', dia: 'w_count' },
         { title: '', desc: '', dia: null, blank: '＋ 기타 (직접 작성)' }
       ]
     },
@@ -564,13 +564,13 @@ const I18N = {
         { title: 'No intervention', desc: 'the system does nothing', dia: 'h_self' },
         { title: 'Show the rule', desc: 'surface the rule in the system as a reminder', dia: 'h_remind' },
         { title: 'Prompt presets', desc: 'offer presets that make the desired behaviour easy to use', dia: 'h_preset' },
-        { title: 'Prompt a first attempt', desc: 'lead the user to try before giving an answer', dia: null },
-        { title: 'Suggest questions', desc: 'offer or pose questions that would help', dia: null },
+        { title: 'Prompt a first attempt', desc: 'lead the user to try before giving an answer', dia: 'h_try' },
+        { title: 'Suggest questions', desc: 'offer or pose questions that would help', dia: 'h_ask' },
         { title: 'Step-by-step hints', desc: 'give staged hints instead of the direct answer', dia: 'h_hint' },
         { title: 'Open an external tool', desc: 'open a dictionary/YouTube/flashcards/document automatically', dia: 'h_tool' },
         { title: 'Confirm once more', desc: 'ask again whether to run the request', dia: 'h_confirm' },
         { title: 'Warn and refuse', desc: 'show a warning and refuse the request', dia: 'h_refuse' },
-        { title: 'Pause the rule', desc: 'suspend the rule for now', dia: null },
+        { title: 'Pause the rule', desc: 'suspend the rule for now', dia: 'h_pause' },
         { title: '', desc: '', dia: null, blank: '＋ Other (write your own)' }
       ],
       when: [
@@ -583,9 +583,9 @@ const I18N = {
         { title: 'When a rule-breaking request is detected', desc: '', dia: 'w_violate' },
         { title: 'When the user asks repeatedly', desc: '', dia: 'w_retry' },
         { title: 'When the user seems to struggle', desc: '', dia: 'w_struggle' },
-        { title: 'When the goal is reached', desc: '', dia: null },
-        { title: 'On a time limit', desc: '', dia: null },
-        { title: 'On a count · turn limit', desc: '', dia: null },
+        { title: 'When the goal is reached', desc: '', dia: 'w_goal' },
+        { title: 'On a time limit', desc: '', dia: 'w_time' },
+        { title: 'On a count · turn limit', desc: '', dia: 'w_count' },
         { title: '', desc: '', dia: null, blank: '＋ Other (write your own)' }
       ]
     },
@@ -1109,6 +1109,58 @@ class Component extends DCLogic {
       h('circle', { key: 'd1', cx: 31, cy: 32, r: 3.4, fill: GRN }),
       h('circle', { key: 'd2', cx: 57, cy: 22, r: 3.4, fill: GRN }),
       h('circle', { key: 'd3', cx: 83, cy: 12, r: 3.4, fill: GRN })
+    ]);
+
+    // ── 새 아이콘 / icons added with the 5-deck set ──────────────────────────
+    // 같은 어휘를 따른다: INK 윤곽, FNT 흐린 채움, 발동 덱은 ORG, 제약 덱은 GRN.
+    // Same vocabulary as the rest: INK outlines, FNT for filler, ORG accents the
+    // trigger deck and GRN the constraint deck, so a new card reads as a sibling.
+
+    // 목표 도달 — 진행 막대가 깃발에 닿는다 / progress reaching a flag
+    if (key === 'w_goal') return wrap([
+      h('rect', { key: 'tr', x: 12, y: 19, width: 72, height: 15, rx: 7.5, stroke: INK, strokeWidth: 2.2 }),
+      h('rect', { key: 'fl', x: 16, y: 23, width: 46, height: 7, rx: 3.5, fill: ORG }),
+      h('line', { key: 'po', x1: 96, y1: 9, x2: 96, y2: 45, stroke: INK, strokeWidth: 2.2 }),
+      h('path', { key: 'fg', d: 'M96 11 l15 5.5 l-15 5.5 z', fill: ORG })
+    ]);
+    // 시간 제한 — 시계, 남은 구간만 색 / a clock with the elapsed arc picked out
+    if (key === 'w_time') return wrap([
+      h('circle', { key: 'c', cx: 60, cy: 26, r: 18, stroke: INK, strokeWidth: 2.2 }),
+      h('path', { key: 'arc', d: 'M60 8 A18 18 0 0 1 78 26', stroke: ORG, strokeWidth: 3.6 }),
+      h('line', { key: 'h1', x1: 60, y1: 26, x2: 60, y2: 14, stroke: INK, strokeWidth: 2.4 }),
+      h('line', { key: 'h2', x1: 60, y1: 26, x2: 70, y2: 26, stroke: INK, strokeWidth: 2.4 }),
+      h('circle', { key: 'pin', cx: 60, cy: 26, r: 2.2, fill: INK })
+    ]);
+    // 횟수 · 턴 제한 — 주고받은 턴, 한계선, 그 다음은 점선 / turns, a limit, then dashed
+    if (key === 'w_count') return wrap([
+      h('rect', { key: 'b1', x: 12, y: 6, width: 40, height: 12, rx: 5, fill: '#ecece7' }),
+      h('rect', { key: 'b2', x: 12, y: 22, width: 40, height: 12, rx: 5, fill: '#ecece7' }),
+      h('rect', { key: 'b3', x: 12, y: 38, width: 40, height: 12, rx: 5, fill: '#ecece7' }),
+      h('line', { key: 'st', x1: 66, y1: 6, x2: 66, y2: 50, stroke: ORG, strokeWidth: 3.4 }),
+      h('rect', { key: 'b4', x: 76, y: 22, width: 32, height: 12, rx: 5, stroke: FNT, strokeWidth: 2, strokeDasharray: '3 2.5' })
+    ]);
+
+    // 규칙 일시 중지 — 규칙 창 위의 일시정지 / the rule window, paused
+    if (key === 'h_pause') return wrap([
+      h('rect', { key: 'w', x: 26, y: 9, width: 68, height: 34, rx: 7, stroke: INK, strokeWidth: 2.2 }),
+      h('line', { key: 'bn', x1: 34, y1: 17.5, x2: 78, y2: 17.5, stroke: FNT, strokeWidth: 4.5 }),
+      h('rect', { key: 'p1', x: 48, y: 25, width: 7, height: 13, rx: 2, fill: GRN }),
+      h('rect', { key: 'p2', x: 63, y: 25, width: 7, height: 13, rx: 2, fill: GRN })
+    ]);
+    // 먼저 스스로 해보도록 유도 — 사람이 먼저 입력칸으로 / the person goes to the input first
+    if (key === 'h_try') return wrap([
+      h('circle', { key: 'hd', cx: 24, cy: 15, r: 7, stroke: INK, strokeWidth: 2.2 }),
+      h('path', { key: 'bd', d: 'M11 42 a13 13 0 0 1 26 0', stroke: INK, strokeWidth: 2.2 }),
+      h('path', { key: 'ar', d: 'M44 26 h10 m-4.5 -4 l4.5 4 l-4.5 4', stroke: INK, strokeWidth: 2.2 }),
+      h('rect', { key: 'in', x: 62, y: 16, width: 46, height: 19, rx: 8, stroke: GRN, strokeWidth: 2.2 }),
+      h('line', { key: 'cr', x1: 71, y1: 21, x2: 71, y2: 30, stroke: GRN, strokeWidth: 2.4 })
+    ]);
+    // 질문 제안 — 던져 볼 만한 질문들 / questions offered, one to the front
+    if (key === 'h_ask') return wrap([
+      h('rect', { key: 'b1', x: 10, y: 15, width: 42, height: 23, rx: 8, stroke: FNT, strokeWidth: 2 }),
+      h('text', { key: 'q1', x: 31, y: 33, textAnchor: 'middle', fontSize: 14, fontWeight: 700, fill: FNT, fontFamily: 'Menlo, monospace' }, '?'),
+      h('rect', { key: 'b2', x: 60, y: 10, width: 50, height: 29, rx: 9, stroke: INK, strokeWidth: 2.2 }),
+      h('text', { key: 'q2', x: 85, y: 32, textAnchor: 'middle', fontSize: 17, fontWeight: 700, fill: GRN, fontFamily: 'Menlo, monospace' }, '?')
     ]);
 
     return wrap([]);

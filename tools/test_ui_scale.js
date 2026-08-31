@@ -155,6 +155,19 @@ console.log("\ncard description fits its box");
     ` (${linesThatFit} >= ${worst})`);
 }
 
+// ---- 5b. every guardrail card ships an icon ----
+// 활동/수단 are tags and post-its and carry no icon by design; the three guardrail decks
+// are card-shaped, so one without an icon renders a visibly plainer tile.
+console.log("\nevery guardrail card has an icon");
+{
+  const deckBlock = doc.slice(doc.indexOf("      con: ["), doc.indexOf("    },", doc.indexOf("      trig: [")));
+  const entries = [...deckBlock.matchAll(/\{ title: '([^']*)'[^}]*?\}/g)].map((m) => m[0]);
+  const missing = entries.filter((e) => !/blank:/.test(e) && /dia: null/.test(e))
+    .map((e) => e.match(/title: '([^']*)'/)[1]);
+  check(missing.length === 0, "no card left without a diagram",
+    missing.length ? ` (${missing.join(", ")})` : ` (${entries.length} checked)`);
+}
+
 // ---- 6. a rule card must look the same on the board as in the panel ----
 console.log("\nrule card keeps its size on drop");
 {
