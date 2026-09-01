@@ -1015,17 +1015,49 @@ async function dragTileToBoard(page, title, fx = 0.45, fy = 0.4) {
       await page.waitForTimeout(250);
     };
 
+    await dragTileToBoard(page, "계획 세우기", 0.14, 0.14);
     await page.getByRole("button", { name: "펜" }).click();
     await page.waitForTimeout(250);
     const count = await page.evaluate(() => [...document.querySelectorAll("button")]
       .filter((x) => x.style.borderRadius === "50%" && x.style.width === "19px").length);
     check(count === 4, "four inks to choose from", ` (${count})`);
+    check(await page.evaluate(() => {
+      const svg = [...document.querySelectorAll("svg")].find((x) => x.style.mixBlendMode);
+      return svg ? getComputedStyle(svg).mixBlendMode : "none";
+    }) === "multiply", "ink multiplies, like a board marker, rather than washing out");
+    // 카드 위에서 획을 시작할 수 있어야 한다 / a stroke must be able to START on a card.
+    // A card that takes the pointerdown makes striking one through impossible, and an
+    // ancestor's pointer-events:none does not stop a card that sets auto itself.
+    const tag = await page.evaluate(() => {
+      const layer = [...document.querySelectorAll("div")].find((d) => d.style.width === "5000px");
+      const el = [...layer.children].find((c) => c.querySelector && c.querySelector("input"));
+      const r = el.getBoundingClientRect();
+      return { x: r.x + r.width / 2, y: r.y + r.height / 2 };
+    });
+    await page.mouse.move(tag.x, tag.y);
+    await page.mouse.down();
+    for (let i = 0; i < 10; i++) { await page.mouse.move(tag.x + i * 14, tag.y + i * 4); await page.waitForTimeout(14); }
+    await page.mouse.up();
+    await page.waitForTimeout(300);
+    check((await page.evaluate(() => document.querySelectorAll("polyline").length)) === 1,
+      "a stroke can start on top of a card");
+    const moved = await page.evaluate(() => {
+      const layer = [...document.querySelectorAll("div")].find((d) => d.style.width === "5000px");
+      const el = [...layer.children].find((c) => c.querySelector && c.querySelector("input"));
+      return el.style.left;
+    });
+    check(moved === "80px" || parseInt(moved, 10) < 200, "and drawing on a card does not drag it", ` (left ${moved})`);
+    await page.evaluate(() => {
+      const b = [...document.querySelectorAll("button")].find((x) => x.textContent.trim() === "✕");
+      if (b) b.click();
+    });
+    await page.waitForTimeout(200);
     await draw(300, 12);
-    check((await strokes()) === 1, "a drag draws a stroke", ` (${await strokes()})`);
+    check((await strokes()) === 2, "a drag draws a stroke", ` (${await strokes()})`);
     await swatch(2);
     await draw(430, 10);
     const two = await inks();
-    check(two.length === 2 && two[0] !== two[1], "a second stroke takes the newly picked ink", ` (${JSON.stringify(two)})`);
+    check(two.length === 3 && two[2] !== two[1], "a second stroke takes the newly picked ink", ` (${JSON.stringify(two)})`);
 
     // 지우개는 획 단위 / the eraser takes whole strokes
     await page.getByRole("button", { name: "지우개" }).click();
@@ -1035,7 +1067,7 @@ async function dragTileToBoard(page, title, fx = 0.45, fy = 0.4) {
     await page.mouse.move(box.x + 400, box.y + 430);
     await page.mouse.up();
     await page.waitForTimeout(300);
-    check((await strokes()) === 1, "the eraser removes a whole stroke, not part of one", ` (${await strokes()})`);
+    check((await strokes()) === 2, "the eraser removes a whole stroke, not part of one", ` (${await strokes()})`);
 
     // 펜을 켜면 다른 모드는 꺼진다 / three modes cannot own the same drag
     await page.getByRole("button", { name: "화살표" }).click();
@@ -1055,7 +1087,7 @@ async function dragTileToBoard(page, title, fx = 0.45, fy = 0.4) {
     await page.waitForSelector('input[placeholder="P00"]', { timeout: 120000 });
     await page.getByRole("button", { name: "INK" }).click();
     await page.waitForTimeout(800);
-    check((await strokes()) === 1, "ink survives a reload", ` (${await strokes()})`);
+    check((await strokes()) === 2, "ink survives a reload", ` (${await strokes()})`);
     check(errors.length === 0, "no console errors", errors.length ? ` (${errors[0]})` : "");
     await page.close();
   }

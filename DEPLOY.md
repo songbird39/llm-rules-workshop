@@ -59,12 +59,22 @@ two kinds of card: the timing cards and the condition cards keep separate colour
 that distinction is the researcher's coding dimension, but the participant meets a single
 numbered deck and composes freely across it. Deck names are tinted to match their cards.
 
-Both steps carry the **화살표** and **펜** tools. The pen draws directly on the board in four
-inks at marker opacity, so a stroke reads as annotation over the cards rather than a line
-replacing them, and two crossing strokes both stay visible. The eraser removes whole
-strokes rather than pixels — a stroke is one gesture, and half an erased circle is never
-what anyone wanted. Ink is board content: it saves, restores, exports into the image, and
-belongs to the sensemaking layer when an admin draws it (dashed, like their other marks).
+Both steps carry the **화살표** and **펜** tools. The pen behaves like a board marker: four
+inks, drawn **over** the cards with multiply blending rather than plain transparency, so a
+stroke darkens what it crosses instead of washing it out and two strokes go deeper where
+they overlap — while a single stroke that doubles back on itself does not, because one
+polyline is one paint operation. Card text under a stroke stays readable.
+
+While the pen is up the whole board becomes paper: cards and notes stop taking the
+pointer, so a stroke can *start* on top of a card. Without that, striking a card through —
+the most obvious thing to do with a marker — is the one thing you cannot do. (An
+ancestor's `pointer-events: none` is not enough here: a card that sets `auto` itself
+re-enables hit-testing regardless, so it has to be decided per card.)
+
+The eraser removes whole strokes rather than pixels — a stroke is one gesture, and half an
+erased circle is never what anyone wanted. Ink is board content: it saves, restores,
+exports into the image in the same order and blend as on screen, and belongs to the
+sensemaking layer when an admin draws it (dashed, like their other marks).
 
 **1단계 · 워크플로 만들기** — participants lay ① **활동** tags left to right in the order
 they study, and attach ② **수단** post-its saying what each is done with. Tags are wider

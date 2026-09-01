@@ -326,7 +326,17 @@ console.log("\ndecks are renamed, regrouped and colour-coded");
 console.log("\nthe pen draws, erases and is saved like anything else on the board");
 {
   check(/const INKS = \['#e0a33a', '#cf5f7a', '#5b9464', '#4d7fbf'\]/.test(src), "four inks");
-  check(/opacity: 0\.5/.test(src), "drawn at marker opacity, so crossing strokes both show");
+  // 보드마카처럼 / like a board marker: multiply, not plain alpha. Alpha washes out what
+  // it crosses; multiply darkens it, and two strokes go deeper where they overlap.
+  check(/const PEN_W = 6, PEN_A = 0\.55;/.test(src), "drawn at marker weight and opacity");
+  check(/mixBlendMode: 'multiply'/.test(src), "the ink layer multiplies rather than washes out");
+  check(/inkLayer\(\)/.test(src) && /pointerEvents: 'none'/.test(src),
+    "it is its own layer and never intercepts a drag");
+  const iArrows = doc.indexOf("{{ arrowsLayer }}");
+  const iCards = doc.indexOf('<sc-for list="{{ cards }}"');
+  const iInk = doc.indexOf("{{ inkLayer }}");
+  check(iArrows > 0 && iArrows < iCards && iCards < iInk,
+    "the board stacks arrows → cards → ink, so a stroke can cross a card");
   // 세 모드가 동시에 켜지면 안 된다 / pen, arrow and note all claim a plain drag
   check(/pen: st\.pen \? null : \(st\.lastInk \|\| INKS\[0\]\), arrowMode: false, noteMode: false/.test(src),
     "turning the pen on turns the arrow and note modes off");
@@ -345,8 +355,12 @@ console.log("\nthe pen draws, erases and is saved like anything else on the boar
     [/cards: \[\], notes: \[\], arrows: \[\], strokes: \[\], selArrow: null/, "reset"],
     [/strokes: \(s\.strokes \|\| \[\]\)\.filter\(\(k\) => !k\.sm\)/, "clearing the sensemaking layer"],
   ]) check(re.test(src), `ink is carried through ${what}`);
-  check(/g\.globalAlpha = 0\.5;/.test(src) && /strokes\.forEach\(\(k\) => \{/.test(src),
-    "and is painted into the exported image");
+  check(/g\.globalAlpha = PEN_A;\s*\n\s*g\.globalCompositeOperation = 'multiply';/.test(src),
+    "the export blends it the same way");
+  check(/g\.globalAlpha = 1; g\.globalCompositeOperation = 'source-over';/.test(src),
+    "and puts the context back afterwards");
+  check(src.indexOf("strokes.forEach") > src.indexOf("cards.forEach"),
+    "painting it last, matching the screen order");
   check(/return \{ x: a - PEN_W, y: b - PEN_W/.test(src), "which is sized to include it");
 }
 

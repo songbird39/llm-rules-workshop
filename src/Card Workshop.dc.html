@@ -358,6 +358,7 @@
             </div>
           </div>
         </sc-for>
+        {{ inkLayer }}
       </div>
 
       <sc-if value="{{ isEmpty }}" hint-placeholder-val="{{ true }}">
@@ -463,7 +464,7 @@ const GHOST_DX = 14, GHOST_DY = 12;
    cross still show both. Strokes are plain point lists in board coordinates, which is
    what makes them survive pan, zoom, saving and the image export unchanged. */
 const INKS = ['#e0a33a', '#cf5f7a', '#5b9464', '#4d7fbf'];
-const PEN_W = 5;
+const PEN_W = 6, PEN_A = 0.55;
 
 /* ─────────────────────────────────────────────────────────────────
    UI 배율 / UI SCALE
@@ -1900,21 +1901,6 @@ class Component extends DCLogic {
       }));
       kids.push(h('line', { key: a.id, x1: e.p1.x, y1: e.p1.y, x2: e.p2.x, y2: e.p2.y, stroke: sel ? SEL : INK, strokeWidth: sel ? 3 : 2.2, strokeLinecap: 'round', markerEnd: 'url(#' + (sel ? 'om-ah-sel' : 'om-ah') + ')' }));
     });
-    // 필기는 화살표 아래 / ink sits under the arrows, as a highlighter would
-    (this.state.strokes || []).forEach((k) => {
-      kids.unshift(h('polyline', {
-        key: k.id, points: k.pts.join(' '), fill: 'none', stroke: k.ink,
-        strokeWidth: PEN_W, strokeLinecap: 'round', strokeLinejoin: 'round',
-        opacity: 0.5, strokeDasharray: k.sm ? '9 6' : null
-      }));
-    });
-    const dr = this.state.drawing;
-    if (dr && dr.pts.length >= 4) {
-      kids.push(h('polyline', {
-        key: 'drawing', points: dr.pts.join(' '), fill: 'none', stroke: dr.ink,
-        strokeWidth: PEN_W, strokeLinecap: 'round', strokeLinejoin: 'round', opacity: 0.5
-      }));
-    }
     const p = this.state.pendingArrow;
     if (p) {
       const A = this.anchor(p.from);
@@ -1924,6 +1910,34 @@ class Component extends DCLogic {
       }
     }
     return h('svg', { width: 5000, height: 5000, style: { position: 'absolute', left: 0, top: 0, pointerEvents: 'none' } }, kids);
+  }
+
+  /* 필기 레이어 / THE INK LAYER
+     보드마카처럼 / like a board marker: multiply blending rather than plain alpha, so the
+     ink darkens what it crosses instead of washing it out, two strokes that overlap go
+     deeper at the crossing, and a single stroke does NOT double-darken where it doubles
+     back on itself — one polyline is one paint operation, which is exactly how real ink
+     behaves.
+
+     It sits ABOVE the cards, again like a marker: on a whiteboard you draw over what is
+     already there. Under them, striking a card through or highlighting one would simply
+     vanish behind it. At 55% over multiply the card text underneath stays readable.
+     pointer-events stay off, so ink never intercepts a drag meant for a card. */
+  inkLayer() {
+    const h = React.createElement;
+    const kids = [];
+    const line = (k, key, dash) => h('polyline', {
+      key: key, points: k.pts.join(' '), fill: 'none', stroke: k.ink,
+      strokeWidth: PEN_W, strokeLinecap: 'round', strokeLinejoin: 'round',
+      opacity: PEN_A, strokeDasharray: dash || null
+    });
+    (this.state.strokes || []).forEach((k) => kids.push(line(k, k.id, k.sm ? '9 6' : null)));
+    const dr = this.state.drawing;
+    if (dr && dr.pts.length >= 4) kids.push(line(dr, 'drawing'));
+    return h('svg', {
+      width: 5000, height: 5000,
+      style: { position: 'absolute', left: 0, top: 0, pointerEvents: 'none', mixBlendMode: 'multiply' }
+    }, kids);
   }
 
   rows() {
@@ -2202,22 +2216,7 @@ class Component extends DCLogic {
       return y + n * lh;
     };
 
-    // 필기가 맨 아래 / ink first: on screen it sits under the arrows and cards, and an
-    // export that reorders the layers is not the board the participant saw
-    g.lineCap = 'round'; g.lineJoin = 'round'; g.lineWidth = PEN_W;
-    g.globalAlpha = 0.5;
-    strokes.forEach((k) => {
-      if (k.pts.length < 4) return;
-      g.strokeStyle = k.ink;
-      g.setLineDash(k.sm ? [9, 6] : []);
-      g.beginPath();
-      g.moveTo(k.pts[0], k.pts[1]);
-      for (let i = 2; i < k.pts.length; i += 2) g.lineTo(k.pts[i], k.pts[i + 1]);
-      g.stroke();
-    });
-    g.setLineDash([]); g.globalAlpha = 1;
-
-    // 화살표 (카드 아래로) / arrows next, so cards sit on top of them
+    // 화살표 (카드 아래로) / arrows first, so cards sit on top of them
     g.lineWidth = 2.2; g.lineCap = 'round';
     (this.state.arrows || []).filter(keep).forEach((a) => {
       const e = this.arrowEnds(a);
@@ -2279,6 +2278,24 @@ class Component extends DCLogic {
         }
       }
     });
+
+    // 필기는 맨 마지막, 화면과 같은 순서 / ink last, matching the screen: it is a marker
+    // drawn over the board, and multiply is what makes it darken the card underneath
+    // rather than wash it out. globalAlpha and the composite mode are both restored,
+    // because everything drawn after this on the same context would inherit them.
+    g.lineCap = 'round'; g.lineJoin = 'round'; g.lineWidth = PEN_W;
+    g.globalAlpha = PEN_A;
+    g.globalCompositeOperation = 'multiply';
+    strokes.forEach((k) => {
+      if (k.pts.length < 4) return;
+      g.strokeStyle = k.ink;
+      g.setLineDash(k.sm ? [9, 6] : []);
+      g.beginPath();
+      g.moveTo(k.pts[0], k.pts[1]);
+      for (let i = 2; i < k.pts.length; i += 2) g.lineTo(k.pts[i], k.pts[i + 1]);
+      g.stroke();
+    });
+    g.setLineDash([]); g.globalAlpha = 1; g.globalCompositeOperation = 'source-over';
 
     cv.toBlob((blob) => {
       if (!blob) return;
@@ -2354,6 +2371,10 @@ class Component extends DCLogic {
     }));
 
     const RO = this.isView();          // 읽기 전용 / read-only
+    // 펜을 들면 보드 전체가 종이가 된다 / with the pen up the whole board is paper.
+    // A descendant that sets pointer-events:auto re-enables hit-testing whatever an
+    // ancestor says, so this has to be applied per card and per note, not on the layer.
+    const PEN = !!this.state.pen;
     const NOOP = () => {};
     const viewing = RO && !!this.state.viewPid;
 
@@ -2367,7 +2388,7 @@ class Component extends DCLogic {
       isViewing: viewing,
       canEdit: !RO,
       showPanel: !RO,
-      layerPE: 'auto',
+      layerPE: this.state.pen ? 'none' : 'auto',
       senseRegion: RO && !!this.state.viewPid && !!this.senseBounds(),
       regionX: (this.senseBounds() || {}).x || 0,
       regionY: (this.senseBounds() || {}).y || 0,
@@ -2533,6 +2554,7 @@ class Component extends DCLogic {
       canvasCursor: this.state.pen ? 'crosshair' : this.state.noteMode ? 'text' : this.state.arrowMode ? 'crosshair' : 'default',
       cardCursor: this.state.arrowMode ? 'crosshair' : 'grab',
       arrowsLayer: this.arrowsLayer(),
+      inkLayer: this.inkLayer(),
       selArrowInfo: !!(this.state.selArrow && this.arrowMid(this.state.selArrow)),
       selArrowX: this.state.selArrow && this.arrowMid(this.state.selArrow) ? this.arrowMid(this.state.selArrow).x : 0,
       selArrowY: this.state.selArrow && this.arrowMid(this.state.selArrow) ? this.arrowMid(this.state.selArrow).y : 0,
@@ -2541,7 +2563,7 @@ class Component extends DCLogic {
         key: n.id,
         x: n.x, y: n.y,
         outline: this.isSel(n.id) ? '2px solid oklch(0.51 0.08 253)' : 'none',
-        pe: (!RO || n.sm) ? 'auto' : 'none',
+        pe: (PEN || (RO && !n.sm)) ? 'none' : 'auto',
         bg: n.sm ? '#fdfbf5' : 'transparent',
         ring: n.sm ? '0 0 0 1.5px oklch(0.62 0.11 62)' : 'none',
         text: n.text,
@@ -2573,7 +2595,10 @@ class Component extends DCLogic {
           // 활동 태그는 제목 줄만 / an activity tag is a label, not a card
           hasDesc: c.type !== 'act',
           // 해석 레이어 카드만 조작 가능 / only sensemaking objects are interactive in admin
-          pe: (!RO || c.sm) ? 'auto' : 'none',
+          // 카드가 포인터를 먹으면 카드 위에서 획을 시작할 수 없다 / if the card takes the
+          // pointerdown, a stroke can never START on top of one — striking a card
+          // through is the most obvious thing to do with a marker
+          pe: (PEN || (RO && !c.sm)) ? 'none' : 'auto',
           bg: c.sm ? '#fdfbf5' : '#fffefb',
           bstyle: c.sm ? 'dashed' : 'solid',
           bd: c.sm ? 'oklch(0.62 0.11 62)' : '#e2dfd7',
