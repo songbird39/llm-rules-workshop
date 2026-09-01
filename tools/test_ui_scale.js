@@ -227,6 +227,17 @@ console.log("\nconsent document is embedded without a parse-time fetch");
   check(!/url\(['"]?\{\{/.test(step0), "no interpolated url() either");
   check(/class="\{\{ pg\.cls \}\}"/.test(step0), "the page element carries only a class");
   check(/consentTitle:/.test(src) && /consentPdf:/.test(src), "the panel is translated");
+
+  // 안내문은 PDF를 고치지 않고 앱에서만 알린다 / the deviation notice lives in the app,
+  // never in the PDF: the embedded document is the IRB-approved file untouched.
+  check(/changeTitle:/.test(src) && /changeBody:/.test(src), "the deviation notice is translated");
+  for (const [word, what] of [["대면", "in-person → remote"], ["화상회의", "video call"],
+                              ["스캔", "the scanning change"], ["음성 녹음만", "audio-only recording"]])
+    check(src.includes(word), `the notice states ${what}`);
+  // it must sit OUTSIDE the scrolling list, or it scrolls away before the signature page
+  const notice = step0.indexOf("{{ t.changeBody }}");
+  const scroller = step0.indexOf("overflow-y:auto");
+  check(notice > 0 && notice < scroller, "the notice is above the scrolling page list");
   // both download buttons are the LAST page — the sheet that gets signed
   check(/downloadConsent\(kind\)/.test(src) && /kind === 'pdf' \? CONSENT\.lastPdf : CONSENT\.lastPng/.test(src),
     "both downloads are scoped to the last page");

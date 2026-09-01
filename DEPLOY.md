@@ -28,7 +28,15 @@ Works on phones, tablets and laptops; participants just open the link.
 ### What a session looks like
 
 **로그인 화면** — the IRB information sheet and consent form sit open beside the
-participant-code box, so it can be read without clicking anything first. Two buttons
+participant-code box, so it can be read without clicking anything first. Above it, a
+notice states in prose where the approved document and the study as actually run differ:
+the interview is remote over video call rather than 1:1 in person, and the workshop
+happens on this page's board with the result saved under the participant code rather
+than drawn on paper and scanned. Recording stays audio-only, as the form says. **The PDF
+itself is never edited** — it is the approved file byte for byte, and the notice is the
+app's own text (`changeTitle` / `changeBody` in the i18n block). It sits outside the
+scrolling page list on purpose, so it is still on screen when a participant scrolls down
+to the signature page. Two buttons
 download the **last page** — the sheet that actually gets signed — as a PDF or as a
 200dpi PNG for printing.
 
