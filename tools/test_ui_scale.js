@@ -256,9 +256,12 @@ console.log("\nconsent document is embedded without a parse-time fetch");
   // 안내문은 PDF를 고치지 않고 앱에서만 알린다 / the deviation notice lives in the app,
   // never in the PDF: the embedded document is the IRB-approved file untouched.
   check(/changeTitle:/.test(src) && /changeBody:/.test(src), "the deviation notice is translated");
-  for (const [word, what] of [["대면", "in-person → remote"], ["화상회의", "video call"],
-                              ["스캔", "the scanning change"], ["음성 녹음만", "audio-only recording"]])
+  for (const [word, what] of [["대면 실험에서 비대면", "the move to remote"],
+                              ["세부 실험 절차가 변경", "the change of procedure"],
+                              ["실험 진행자가 설명", "who explains the detail"]])
     check(src.includes(word), `the notice states ${what}`);
+  const body = (src.match(/changeBody: '([^']*)'/) || [])[1] || "";
+  check(body.length < 120, "and stays short enough to actually be read", ` (${body.length} chars)`);
   // it must sit OUTSIDE the scrolling list, or it scrolls away before the signature page
   const notice = step0.indexOf("{{ t.changeBody }}");
   const scroller = step0.indexOf("overflow-y:auto");
@@ -268,6 +271,20 @@ console.log("\nconsent document is embedded without a parse-time fetch");
     "both downloads are scoped to the last page");
   check(/atob\(src\.slice\(comma \+ 1\)\)/.test(src),
     "downloads go through a Blob, not a huge data: href");
+}
+
+// ---- 6c. language switching ----
+console.log("\nlanguage switching has no rule-deck left in it");
+{
+  const fn = src.slice(src.indexOf("setLang(nl)"), src.indexOf("startNew(type"));
+  check(!/I18N\[[a-z]+\]\.rules/.test(fn), "setLang no longer reads the removed rule deck");
+  check(!/c\.type === 'rule'/.test(fn), "and has no rule-card branch");
+  check(!/rules:/.test(fn), "and does not rewrite state.rules");
+  // 아이콘 없는 카드도 번역 대상 / matching must not be icon-only, or 활동 and 수단 are skipped
+  check(/k\.title && k\.title === c\.title/.test(fn), "icon-less cards match by title");
+  check(!/if \(!c\.dia\) return c;/.test(fn), "and are no longer skipped outright");
+  check(/\(this\.state\.rules \|\| \[\]\)\.filter/.test(src),
+    "a restored record with no rules cannot break the snapshot");
 }
 
 // ---- 7. view mode must not be able to write ----

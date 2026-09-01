@@ -61,6 +61,13 @@ const uiScale = (page) =>
 
 async function boot(browser, { width = 2560, height = 1440, query = "" } = {}) {
   const page = await browser.newPage({ viewport: { width, height } });
+  // 시트에 손대지 않는다 / never touch the live sheet. SYNC_URL is baked into the build,
+  // so an un-stubbed page autosaves real rows to the research spreadsheet AND pulls them
+  // back on the next login — which is not just pollution, it makes the suite read its own
+  // droppings: one run typed a title, the next run's login restored it from the server and
+  // the language check failed on data no test had put on the board. Sections that need to
+  // observe posts install their own route afterwards; the last route registered wins.
+  await page.route("**/macros/s/**", (r) => r.fulfill({ status: 200, body: "{}" }));
   const errors = [];
   page.on("pageerror", (e) => errors.push(e.message));
   page.on("console", (m) => m.type() === "error" && errors.push(m.text().slice(0, 200)));
@@ -981,6 +988,75 @@ async function dragTileToBoard(page, title, fx = 0.45, fy = 0.4) {
     await page.close();
   }
 
+  // ------------------------------------------------- language switch
+  console.log("\nswitching language translates the board and survives old records");
+  {
+    const { page, errors } = await boot(browser, { width: 1600, height: 1000 });
+    await toStep1(page, "LNG");
+    await dragTileToBoard(page, "첫 학습", 0.16, 0.12);        // tag: no icon
+    await dragTileToBoard(page, "AI 사용", 0.16, 0.42);        // post-it: no icon
+    await page.getByRole("button", { name: /다음/ }).click();
+    await page.waitForSelector("text=시스템이 어떻게 개입하나요?", { timeout: 30000 });
+    await dragTileToBoard(page, "규칙 상기", 0.55, 0.42);       // card: has an icon
+    const titles = () => page.evaluate(() => {
+      const layer = [...document.querySelectorAll("div")].find((d) => d.style.width === "5000px");
+      return [...layer.children].filter((c) => c.tagName === "DIV" && c.querySelector("input"))
+        .map((c) => c.querySelector("input").value);
+    });
+    await page.selectOption("select", "en");
+    await page.waitForTimeout(600);
+    const en = await titles();
+    // 아이콘 없는 카드도 번역되어야 한다 / the icon-less types were once skipped, so half
+    // the board stayed in Korean after a switch
+    check(en.includes("First learning"), "an activity tag is translated", ` (${JSON.stringify(en)})`);
+    check(en.includes("Using AI"), "a 수단 post-it is translated");
+    check(en.includes("Show the rule"), "an icon-bearing card is translated");
+    await page.selectOption("select", "ko");
+    await page.waitForTimeout(600);
+    const ko = await titles();
+    check(ko.includes("첫 학습") && ko.includes("AI 사용") && ko.includes("규칙 상기"),
+      "and everything comes back", ` (${JSON.stringify(ko)})`);
+
+    // 편집한 문구는 그대로 / text the participant edited must survive a switch
+    await page.evaluate(() => {
+      const layer = [...document.querySelectorAll("div")].find((d) => d.style.width === "5000px");
+      const el = [...layer.children].find((c) => c.querySelector("input") && c.querySelector("input").value === "첫 학습");
+      const input = el.querySelector("input");
+      input.focus(); input.select();
+    });
+    await page.keyboard.type("내 활동");
+    await page.waitForTimeout(250);
+    await page.selectOption("select", "en");
+    await page.waitForTimeout(600);
+    check((await titles()).includes("내 활동"), "edited text is left alone");
+
+    // 규칙 단계 시절 기록 / a record saved before the rule step was removed. Restoring one
+    // and switching language read I18N[lang].rules, which no longer exists: newR[0] threw
+    // "Cannot read properties of undefined (reading '0')". Reported from the live site.
+    const old = await browser.newPage({ viewport: { width: 1600, height: 1000 } });
+    const oldErrors = [];
+    old.on("pageerror", (e) => oldErrors.push(e.message.split("\n")[0]));
+    await old.goto(APP, { waitUntil: "load", timeout: 120000 });
+    await old.evaluate(() => localStorage.setItem("llm-guardrail-workshop-v4:OLD", JSON.stringify({
+      savedAt: Date.now(), pid: "OLD", step: 2, lang: "ko",
+      rules: [{ id: "r0", cat: "a", title: "번역은 직접", desc: "…", sel: true }],
+      cards: [{ id: "c1", type: "rule", title: "번역은 직접", desc: "…", x: 200, y: 200 }],
+      notes: [], arrows: [], seq: 2, panelW: 566
+    })));
+    await old.reload({ waitUntil: "load" });
+    await old.waitForSelector('input[placeholder="P00"]', { timeout: 120000 });
+    await old.getByRole("button", { name: "OLD" }).click();
+    await old.waitForTimeout(600);
+    await old.selectOption("select", "en");
+    await old.waitForTimeout(700);
+    check(oldErrors.length === 0, "a pre-rule-step record survives a language switch",
+      oldErrors.length ? ` (${oldErrors[0]})` : "");
+    await old.close();
+
+    check(errors.length === 0, "no console errors", errors.length ? ` (${errors[0]})` : "");
+    await page.close();
+  }
+
   // ------------------------------------------------- consent document
   console.log("\nconsent document reads and downloads from the sign-in screen");
   {
@@ -1020,7 +1096,7 @@ async function dragTileToBoard(page, title, fx = 0.45, fy = 0.4) {
       return { onScreen: r.top >= 0 && r.bottom <= innerHeight, text: n.textContent };
     });
     const before = await notice();
-    check(before && before.text.includes("비대면") && before.text.includes("스캔은 하지 않습니다"),
+    check(before && before.text.includes("비대면") && before.text.includes("세부 실험 절차"),
       "the deviation notice names both changes");
     // 서명 페이지까지 내려가도 보여야 한다 / it must still be in view at the signature page
     await page.evaluate(() => [...document.querySelectorAll('[role="img"]')].pop().scrollIntoView({ block: "center" }));

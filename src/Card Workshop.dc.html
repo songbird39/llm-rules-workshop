@@ -592,7 +592,7 @@ const I18N = {
       rosterError: '목록을 불러오지 못했습니다. Apps Script를 새 버전으로 다시 배포했는지 확인해 주세요.',
       noSnap: '이 참여자의 저장된 보드가 없습니다.', backList: '← 목록', refreshBtn: '새로고침',
       rowsSuffix: '개 기록', submittedTag: '제출됨', neverSaved: '기록 없음',
-      changeTitle: '동의서와 달라진 점', changeBody: '아래 동의서는 IRB 승인본 그대로이며, 다음 두 가지는 실제 진행 방식과 다릅니다. 첫째, 동의서에는 1:1 대면 면담으로 적혀 있으나 실제 면담은 화상회의를 통해 비대면으로 진행됩니다. 둘째, 동의서에는 종이나 화이트보드에 그리는 디자인 워크숍과 산출물 스캔 수집으로 적혀 있으나, 실제로는 이 웹 페이지의 보드에 카드를 놓는 방식으로 진행하며 결과는 참여자 코드로 자동 저장되고 종이 스캔은 하지 않습니다. 녹음 범위는 동의서와 같이 음성 녹음만 하며 화면 녹화는 하지 않습니다. 연구 목적, 소요 시간, 보상, 언제든 중도에 그만둘 수 있는 권리 등 나머지 내용은 동의서와 동일합니다. 궁금한 점이 있으면 서명 전에 연구자에게 말씀해 주세요.',
+      changeTitle: '동의서와 달라진 점', changeBody: '대면 실험에서 비대면으로 전환되었으며, 세부 실험 절차가 변경되었습니다. 자세한 내용은 실험 진행자가 설명해드립니다.',
       consentTitle: '연구 설명문 및 동의서', consentHint: '참여 전에 아래 내용을 읽어 주세요. 마지막 장이 서명하실 동의서입니다.',
       consentPdf: '동의서 PDF', consentPng: '동의서 이미지', consentPage: '{n} / {total} 쪽', consentLast: '마지막 장 — 서명용',
       step0: '참여자 로그인', loginTitle: '참여자 코드를 입력해 주세요', loginSub: '작업은 참여자 코드별로 자동 저장됩니다. 같은 코드로 다시 들어오면 이어서 할 수 있습니다.', start: '시작하기 →', continueAs: '이어서 하기', logout: '나가기',
@@ -692,7 +692,7 @@ const I18N = {
       rosterError: 'Could not load the list. Check that the Apps Script was redeployed as a new version.',
       noSnap: 'No saved board for this participant.', backList: '← List', refreshBtn: 'Refresh',
       rowsSuffix: ' records', submittedTag: 'submitted', neverSaved: 'no records',
-      changeTitle: 'What differs from the form below', changeBody: 'The consent form below is the IRB-approved document exactly as approved, and two things in it differ from how the study is actually run. First, the form describes a 1:1 in-person interview; the interview is now held remotely over a video call. Second, the form describes a design workshop drawn on paper or a whiteboard and collected by scanning; in practice you build your board by placing cards on this web page, the result is saved automatically under your participant code, and nothing is scanned from paper. Recording is audio only, as the form states — the screen is not recorded. Everything else — the purpose, the time it takes, the compensation, and your right to stop at any point — is unchanged. Please raise anything unclear with the researcher before you sign.',
+      changeTitle: 'What differs from the form below', changeBody: 'This study has moved from in-person to remote, and the detailed procedure has changed. The researcher will talk you through the specifics.',
       consentTitle: 'Information sheet and consent form', consentHint: 'Please read this before taking part. The last page is the consent form you sign.',
       consentPdf: 'Consent PDF', consentPng: 'Consent image', consentPage: 'Page {n} of {total}', consentLast: 'Last page — for signing',
       step0: 'Participant sign-in', loginTitle: 'Enter your participant code', loginSub: 'Work is saved automatically per participant code. Come back with the same code to continue where you left off.', start: 'Start →', continueAs: 'Continue as', logout: 'Exit',
@@ -1298,45 +1298,44 @@ class Component extends DCLogic {
     return wrap([]);
   }
 
-  // 언어 전환: 어떤 언어의 기본 문구든 그대로면 새 언어로 교체하고, 사용자가 고쳐 쓴 문구는 그대로 둔다
+  /* 언어 전환 / SWITCHING LANGUAGE
+     기본 문구 그대로면 새 언어로 갈아끼우고, 사용자가 고쳐 쓴 문구는 그대로 둔다.
+     Swap any text the participant left as the deck wrote it; leave anything they
+     edited alone. A card is matched to its deck entry by icon where it has one and
+     by title where it does not — 활동 tags and 수단 post-its carry no icon, and an
+     earlier version skipped them on that basis, so switching language left half the
+     board in the old language.
+
+     This used to remap the rule deck as well. That deck no longer exists, so
+     I18N[lang].rules was undefined and `!newR[i]` threw "reading '0'" the moment a
+     session saved before the rule step was restored — the rules survive in the saved
+     record even though nothing renders them. The rule handling is gone rather than
+     guarded: there is no rule model left to translate. */
   setLang(nl) {
     if (nl === this.state.lang) return;
     const langs = Object.keys(I18N);
-    const newR = I18N[nl].rules;
-    // 기본 규칙 문구 색인: 어느 언어의 몇 번째 규칙인지 찾기
-    const ruleTitleIdx = (v) => { for (const lg of langs) { const i = I18N[lg].rules.findIndex((r) => r[1] === v); if (i >= 0) return i; } return -1; };
-    const ruleDescIdx = (v) => { for (const lg of langs) { const i = I18N[lg].rules.findIndex((r) => r[2] === v); if (i >= 0) return i; } return -1; };
-    const rules = this.state.rules.map((r) => {
-      if (r.custom) return r;
-      const i = parseInt(r.id.slice(1), 10);
-      if (isNaN(i) || !newR[i]) return r;
-      return Object.assign({}, r, {
-        title: ruleTitleIdx(r.title) === i ? newR[i][1] : r.title,
-        desc: ruleDescIdx(r.desc) === i ? newR[i][2] : r.desc
-      });
-    });
     const cards = this.state.cards.map((c) => {
-      if (c.type === 'rule') {
-        let title = c.title, desc = c.desc;
-        const ti = ruleTitleIdx(c.title);
-        if (ti >= 0) title = newR[ti][1];
-        const di = ruleDescIdx(c.desc);
-        if (di >= 0) desc = newR[di][2];
-        return Object.assign({}, c, { title: title, desc: desc });
+      const deck = (lg) => (I18N[lg].deck[c.type] || []);
+      // 어느 언어의 몇 번째 카드였는지 / which deck entry this came from, in any language
+      let idx = -1;
+      for (const lg of langs) {
+        const i = c.dia
+          ? deck(lg).findIndex((k) => k.dia === c.dia)
+          : deck(lg).findIndex((k) => k.title && k.title === c.title);
+        if (i >= 0) { idx = i; break; }
       }
-      if (!c.dia) return c;
-      const nd = (I18N[nl].deck[c.type] || []).find((k) => k.dia === c.dia);
-      if (!nd) return c;
+      const nd = idx >= 0 ? deck(nl)[idx] : null;
+      if (!nd) return c;                       // 직접 쓴 카드는 건드리지 않는다 / custom text stays
       let title = c.title, desc = c.desc;
       for (const lg of langs) {
-        const od = (I18N[lg].deck[c.type] || []).find((k) => k.dia === c.dia);
+        const od = deck(lg)[idx];
         if (!od) continue;
         if (c.title === od.title) title = nd.title;
         if (c.desc === od.desc) desc = nd.desc;
       }
       return Object.assign({}, c, { title: title, desc: desc });
     });
-    this.setState({ lang: nl, rules: rules, cards: cards });
+    this.setState({ lang: nl, cards: cards });
   }
 
   // ── 1단계: 규칙 선택 ──
@@ -1808,7 +1807,7 @@ class Component extends DCLogic {
     const data = {
       participant: this.state.pid,
       exportedAt: new Date().toISOString(),
-      selectedRules: this.state.rules.filter((r) => r.sel).map((r) => ({ category: r.cat, title: r.title, description: r.desc, custom: r.custom })),
+      selectedRules: (this.state.rules || []).filter((r) => r.sel).map((r) => ({ category: r.cat, title: r.title, description: r.desc, custom: r.custom })),
       combinations: this.rows().map((r, i) => ({
         index: i + 1,
         cards: r.cards.map((c) => ({ type: c.type, title: c.title, description: c.desc, diagram: c.dia }))
