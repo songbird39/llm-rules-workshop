@@ -301,6 +301,55 @@ console.log("\ndemo ids are frozen out of every write path");
   check(/if \(isDemo_\(pid\)\) continue;/.test(gs), "and never lists one as a participant");
 }
 
+// ---- 6e. deck naming, order and the pen ----
+console.log("\ndecks are renamed, regrouped and colour-coded");
+{
+  check(/mark: \{ act: '활동', means: '수단', con: '유도', when: '시점', trig: '조건' \}/.test(doc),
+    "badges read 유도 · 시점 · 조건");
+  check(/tabFlow: '규칙', tabGuard: '가드레일'/.test(doc), "the two sets are 규칙 and 가드레일");
+  check(!/제약/.test(doc) && !/발동 사건/.test(doc), "no old deck name survives anywhere");
+  // ③은 시점과 조건이 한 덱 / ③ is ONE deck holding both card kinds: they keep separate
+  // colours because that distinction is the researcher's, but the participant meets one deck
+  const panel = doc.slice(doc.indexOf("{{ showGuard }}"));
+  const order = ["t.whenCards", "t.trigCards", "t.conCards"].map((k) => panel.indexOf(k));
+  check(order[0] > 0 && order[0] < order[1] && order[1] < order[2],
+    "the panel runs 시점 → 조건 → 유도");
+  check(panel.indexOf("{{ t.conCards }}") > panel.indexOf("deckTrig"),
+    "유도 comes after both, as deck ④");
+  check((panel.match(/border-top:1px solid #ece9e1/g) || []).length === 2,
+    "and there are two section headers, not three");
+  for (const [name, col] of [["whenCards", "62"], ["trigCards", "253"], ["conCards", "160"]])
+    check(new RegExp("color:oklch\\(0\\.51 0\\.08 " + col + "\\)\">\\{\\{ t\\." + name).test(panel),
+      `${name} is tinted like its cards`);
+}
+
+console.log("\nthe pen draws, erases and is saved like anything else on the board");
+{
+  check(/const INKS = \['#e0a33a', '#cf5f7a', '#5b9464', '#4d7fbf'\]/.test(src), "four inks");
+  check(/opacity: 0\.5/.test(src), "drawn at marker opacity, so crossing strokes both show");
+  // 세 모드가 동시에 켜지면 안 된다 / pen, arrow and note all claim a plain drag
+  check(/pen: st\.pen \? null : \(st\.lastInk \|\| INKS\[0\]\), arrowMode: false, noteMode: false/.test(src),
+    "turning the pen on turns the arrow and note modes off");
+  check(/if \(this\.state\.travel\) return;/.test(src), "and it is off while browsing history");
+  check(/strokes: \(st\.strokes \|\| \[\]\)\.filter/.test(src), "the eraser removes whole strokes");
+  check(/if \(this\.isView\(\) && !k\.sm\) return true;/.test(src),
+    "and cannot rub out a participant's ink from view mode");
+  check(/if \(this\.isView\(\)\) st\.sm = true;/.test(src), "admin ink lands in the sensemaking layer");
+  check(/if \(pts\.length < 4\) return;/.test(src), "a single dot is not a stroke");
+  check(/Math\.abs\(d\.pts\[n - 2\] - q\.x\) > 1\.5/.test(src), "sub-pixel moves are dropped");
+  // 저장·복원·초기화·내보내기 모두 / ink must travel with everything else
+  for (const [re, what] of [
+    [/strokes: this\.state\.strokes, seq: this\.state\.seq, panelW: this\.state\.panelW, step/, "local save"],
+    [/strokes: d\.strokes \|\| \[\]/, "restore"],
+    [/this\.state\.arrows, this\.state\.strokes, this\.state\.rules\]/, "the change signature"],
+    [/cards: \[\], notes: \[\], arrows: \[\], strokes: \[\], selArrow: null/, "reset"],
+    [/strokes: \(s\.strokes \|\| \[\]\)\.filter\(\(k\) => !k\.sm\)/, "clearing the sensemaking layer"],
+  ]) check(re.test(src), `ink is carried through ${what}`);
+  check(/g\.globalAlpha = 0\.5;/.test(src) && /strokes\.forEach\(\(k\) => \{/.test(src),
+    "and is painted into the exported image");
+  check(/return \{ x: a - PEN_W, y: b - PEN_W/.test(src), "which is sized to include it");
+}
+
 // ---- 7. view mode must not be able to write ----
 // The whole point: viewing P01 must never produce a localStorage write or a sheet
 // POST, because latestState_() takes the newest row and would adopt the accident.

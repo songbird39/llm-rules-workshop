@@ -52,8 +52,19 @@
     </select>
     <div style="flex:1"></div>
     <sc-if value="{{ isStep1 }}" hint-placeholder-val="{{ true }}">
-      <div style="display:flex;align-items:center;gap:12px">
-        <span style="font-size:12.5px;color:#7a776f">{{ selLabel }}</span>
+      <div style="display:flex;align-items:center;gap:8px">
+        <button onClick="{{ toggleArrowMode }}" title="{{ t.arrowTip }}" style="padding:7px 12px;border:1px solid #d6d3ca;border-radius:7px;background:{{ arrowBtnBg }};color:{{ arrowBtnColor }};font-size:13.5px;cursor:pointer">{{ t.arrow }}</button>
+        <button onClick="{{ togglePen }}" title="{{ t.penTip }}" style="padding:7px 12px;border:1px solid #d6d3ca;border-radius:7px;background:{{ penBtnBg }};color:{{ penBtnColor }};font-size:13.5px;cursor:pointer">{{ t.pen }}</button>
+        <sc-if value="{{ penOpen }}" hint-placeholder-val="{{ false }}">
+          <div style="display:flex;align-items:center;gap:5px;padding:3px 7px;border:1px solid #e2dfd7;border-radius:20px;background:#fffefb">
+            <sc-for list="{{ penInks }}" as="k" hint-placeholder-count="4">
+              <button onClick="{{ k.onPick }}" title="{{ k.label }}" style="width:19px;height:19px;padding:0;border:2px solid {{ k.ring }};border-radius:50%;background:{{ k.ink }};cursor:pointer"></button>
+            </sc-for>
+            <span style="width:1px;height:15px;background:#e2dfd7"></span>
+            <button onClick="{{ onErase }}" title="{{ t.eraseTip }}" style="padding:1px 7px;border:1px solid {{ eraseBd }};border-radius:11px;background:{{ eraseBg }};color:{{ eraseFg }};font-size:11.5px;cursor:pointer">{{ t.erase }}</button>
+          </div>
+        </sc-if>
+        <span style="font-size:12.5px;color:#7a776f;margin-left:4px">{{ selLabel }}</span>
         <button onClick="{{ goNext }}" style="padding:8px 20px;border:1px solid transparent;border-radius:7px;background:#1b1a17;color:#faf8f3;font-size:13.5px;cursor:pointer;opacity:{{ nextOpacity }}" style-hover="background:#35332c">{{ t.next }}</button>
       </div>
     </sc-if>
@@ -77,6 +88,16 @@
         <button onClick="{{ resetView }}" style="padding:7px 12px;border:1px solid #d6d3ca;border-radius:7px;background:#fff;font-size:13.5px;cursor:pointer" style-hover="background:#f1efe8">{{ t.fit }}</button>
         <sc-if value="{{ canEdit }}" hint-placeholder-val="{{ true }}">
         <button onClick="{{ toggleArrowMode }}" title="{{ t.arrowTip }}" style="padding:7px 12px;border:1px solid #d6d3ca;border-radius:7px;background:{{ arrowBtnBg }};color:{{ arrowBtnColor }};font-size:13.5px;cursor:pointer">{{ t.arrow }}</button>
+        <button onClick="{{ togglePen }}" title="{{ t.penTip }}" style="padding:7px 12px;border:1px solid #d6d3ca;border-radius:7px;background:{{ penBtnBg }};color:{{ penBtnColor }};font-size:13.5px;cursor:pointer">{{ t.pen }}</button>
+        <sc-if value="{{ penOpen }}" hint-placeholder-val="{{ false }}">
+          <div style="display:flex;align-items:center;gap:5px;padding:3px 7px;border:1px solid #e2dfd7;border-radius:20px;background:#fffefb">
+            <sc-for list="{{ penInks }}" as="k" hint-placeholder-count="4">
+              <button onClick="{{ k.onPick }}" title="{{ k.label }}" style="width:19px;height:19px;padding:0;border:2px solid {{ k.ring }};border-radius:50%;background:{{ k.ink }};cursor:pointer"></button>
+            </sc-for>
+            <span style="width:1px;height:15px;background:#e2dfd7"></span>
+            <button onClick="{{ onErase }}" title="{{ t.eraseTip }}" style="padding:1px 7px;border:1px solid {{ eraseBd }};border-radius:11px;background:{{ eraseBg }};color:{{ eraseFg }};font-size:11.5px;cursor:pointer">{{ t.erase }}</button>
+          </div>
+        </sc-if>
         <button onClick="{{ toggleNoteMode }}" title="{{ t.noteTip }}" style="padding:7px 12px;border:1px solid #d6d3ca;border-radius:7px;background:{{ noteBtnBg }};color:{{ noteBtnColor }};font-size:13.5px;cursor:pointer">{{ t.note }}</button>
         <button onClick="{{ doFinish }}" style="padding:7px 13px;border:1px solid transparent;border-radius:7px;background:#1b1a17;color:#faf8f3;font-size:13.5px;cursor:pointer" style-hover="background:#35332c">{{ t.finishBtn }}</button>
         <button onClick="{{ clearAll }}" title="{{ t.clearTip }}" style="padding:7px 10px;border:1px solid #e2dfd7;border-radius:7px;background:transparent;color:#98958c;font-size:13.5px;cursor:pointer" style-hover="color:#b03f34;border-color:#ddc0bb">{{ t.clear }}</button>
@@ -195,7 +216,7 @@
       <sc-if value="{{ showFlow }}" hint-placeholder-val="{{ true }}">
       <div style="padding:16px 16px 4px;display:flex;align-items:baseline;gap:8px">
         <span style="width:9px;height:9px;border-radius:2px;background:#8a877e;align-self:center"></span>
-        <span style="font-size:14px;font-weight:600">{{ t.actCards }}</span>
+        <span style="font-size:14px;font-weight:600;color:#6f6b62">① {{ t.actCards }}</span>
         <span style="font-size:11.5px;color:#a7a49b">{{ t.actCardsSub }}</span>
       </div>
       <div style="display:flex;flex-direction:column;gap:8px;padding:8px 16px 18px">
@@ -208,7 +229,7 @@
       </div>
       <div style="padding:8px 16px 4px;display:flex;align-items:baseline;gap:8px;border-top:1px solid #ece9e1">
         <span style="width:9px;height:9px;border-radius:2px;background:#8a877e;align-self:center"></span>
-        <span style="font-size:14px;font-weight:600">{{ t.meansCards }}</span>
+        <span style="font-size:14px;font-weight:600;color:#6f6b62">② {{ t.meansCards }}</span>
         <span style="font-size:11.5px;color:#a7a49b">{{ t.meansCardsSub }}</span>
       </div>
       <div style="display:flex;flex-wrap:wrap;gap:8px;padding:8px 16px 18px">
@@ -222,30 +243,15 @@
       </sc-if>
       <sc-if value="{{ showGuard }}" hint-placeholder-val="{{ false }}">
       <div style="padding:8px 16px 4px;display:flex;align-items:baseline;gap:8px;border-top:1px solid #ece9e1">
-        <span style="width:9px;height:9px;border-radius:2px;background:oklch(0.51 0.08 160);align-self:center"></span>
-        <span style="font-size:14px;font-weight:600">{{ t.conCards }}</span>
-        <span style="font-size:11.5px;color:#a7a49b">{{ t.conCardsSub }}</span>
-      </div>
-      <div style="display:flex;flex-wrap:wrap;gap:10px;padding:8px 16px 18px">
-        <sc-for list="{{ deckCon }}" as="d" hint-placeholder-count="6">
-          <div onPointerDown="{{ d.onDown }}" onDoubleClick="{{ d.onAdd }}" title="{{ t.dragTip }}" style="width:168px;height:168px;flex:0 0 auto;display:flex;flex-direction:column;gap:5px;background:#fffefb;border:1px solid #e2dfd7;border-radius:10px;padding:7px;cursor:grab;box-shadow:0 1px 5px rgba(0,0,0,0.05)" style-hover="border-color:#c9c6bd;box-shadow:0 4px 14px rgba(0,0,0,0.09)">
-            <div style="display:flex;align-items:center;gap:5px;background:{{ d.tint }};border-radius:5px;padding:3px 5px">
-              <span style="flex:1;min-width:0;font-size:12.5px;font-weight:600;letter-spacing:-0.01em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:{{ d.titleColor }}">{{ d.title }}</span>
-              <span style="font-size:9px;letter-spacing:0.02em;color:{{ d.accent }};border:1px solid {{ d.accent }};border-radius:3px;padding:0 3px">{{ d.mark }}</span>
-            </div>
-            <sc-if value="{{ d.hasDiagram }}" hint-placeholder-val="{{ true }}">
-              <div style="flex:0.95;min-height:0;display:flex;align-items:center;justify-content:center;border:1px solid #eae7df;border-radius:5px;background:#f7f5f0;padding:1px 2px;overflow:hidden">{{ d.diagram }}</div>
-            </sc-if>
-            <div style="flex:1;min-height:0;border-top:1px solid #eae7df;padding-top:4px;font-size:12px;line-height:1.45;color:#5b584f;overflow:hidden">{{ d.body }}</div>
-          </div>
-        </sc-for>
-      </div>
-      <div style="padding:8px 16px 4px;display:flex;align-items:baseline;gap:8px;border-top:1px solid #ece9e1">
         <span style="width:9px;height:9px;border-radius:2px;background:oklch(0.51 0.08 62);align-self:center"></span>
-        <span style="font-size:14px;font-weight:600">{{ t.whenCards }}</span>
-        <span style="font-size:11.5px;color:#a7a49b">{{ t.whenCardsSub }}</span>
+        <span style="font-size:14px;font-weight:600;color:#6f6b62">③</span>
+        <span style="font-size:14px;font-weight:600;color:oklch(0.51 0.08 62)">{{ t.whenCards }}</span>
+        <span style="font-size:14px;font-weight:600;color:#c9c6bd">·</span>
+        <span style="width:9px;height:9px;border-radius:2px;background:oklch(0.51 0.08 253);align-self:center"></span>
+        <span style="font-size:14px;font-weight:600;color:oklch(0.51 0.08 253)">{{ t.trigCards }}</span>
+        <span style="font-size:11.5px;color:#a7a49b">{{ t.guardHeadSub }}</span>
       </div>
-      <div style="display:flex;flex-wrap:wrap;gap:10px;padding:8px 16px 18px">
+      <div style="display:flex;flex-wrap:wrap;gap:10px;padding:8px 16px 4px">
         <sc-for list="{{ deckWhen }}" as="d" hint-placeholder-count="3">
           <div onPointerDown="{{ d.onDown }}" onDoubleClick="{{ d.onAdd }}" title="{{ t.dragTip }}" style="width:168px;height:168px;flex:0 0 auto;display:flex;flex-direction:column;gap:5px;background:#fffefb;border:1px solid #e2dfd7;border-radius:10px;padding:7px;cursor:grab;box-shadow:0 1px 5px rgba(0,0,0,0.05)" style-hover="border-color:#c9c6bd;box-shadow:0 4px 14px rgba(0,0,0,0.09)">
             <div style="display:flex;align-items:center;gap:5px;background:{{ d.tint }};border-radius:5px;padding:3px 5px">
@@ -259,13 +265,28 @@
           </div>
         </sc-for>
       </div>
-      <div style="padding:8px 16px 4px;display:flex;align-items:baseline;gap:8px;border-top:1px solid #ece9e1">
-        <span style="width:9px;height:9px;border-radius:2px;background:oklch(0.51 0.08 253);align-self:center"></span>
-        <span style="font-size:14px;font-weight:600">{{ t.trigCards }}</span>
-        <span style="font-size:11.5px;color:#a7a49b">{{ t.trigCardsSub }}</span>
-      </div>
       <div style="display:flex;flex-wrap:wrap;gap:10px;padding:8px 16px 18px">
         <sc-for list="{{ deckTrig }}" as="d" hint-placeholder-count="5">
+          <div onPointerDown="{{ d.onDown }}" onDoubleClick="{{ d.onAdd }}" title="{{ t.dragTip }}" style="width:168px;height:168px;flex:0 0 auto;display:flex;flex-direction:column;gap:5px;background:#fffefb;border:1px solid #e2dfd7;border-radius:10px;padding:7px;cursor:grab;box-shadow:0 1px 5px rgba(0,0,0,0.05)" style-hover="border-color:#c9c6bd;box-shadow:0 4px 14px rgba(0,0,0,0.09)">
+            <div style="display:flex;align-items:center;gap:5px;background:{{ d.tint }};border-radius:5px;padding:3px 5px">
+              <span style="flex:1;min-width:0;font-size:12.5px;font-weight:600;letter-spacing:-0.01em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:{{ d.titleColor }}">{{ d.title }}</span>
+              <span style="font-size:9px;letter-spacing:0.02em;color:{{ d.accent }};border:1px solid {{ d.accent }};border-radius:3px;padding:0 3px">{{ d.mark }}</span>
+            </div>
+            <sc-if value="{{ d.hasDiagram }}" hint-placeholder-val="{{ true }}">
+              <div style="flex:0.95;min-height:0;display:flex;align-items:center;justify-content:center;border:1px solid #eae7df;border-radius:5px;background:#f7f5f0;padding:1px 2px;overflow:hidden">{{ d.diagram }}</div>
+            </sc-if>
+            <div style="flex:1;min-height:0;border-top:1px solid #eae7df;padding-top:4px;font-size:12px;line-height:1.45;color:#5b584f;overflow:hidden">{{ d.body }}</div>
+          </div>
+        </sc-for>
+      </div>
+      <div style="padding:8px 16px 4px;display:flex;align-items:baseline;gap:8px;border-top:1px solid #ece9e1">
+        <span style="width:9px;height:9px;border-radius:2px;background:oklch(0.51 0.08 160);align-self:center"></span>
+        <span style="font-size:14px;font-weight:600;color:#6f6b62">④</span>
+        <span style="font-size:14px;font-weight:600;color:oklch(0.51 0.08 160)">{{ t.conCards }}</span>
+        <span style="font-size:11.5px;color:#a7a49b">{{ t.conCardsSub }}</span>
+      </div>
+      <div style="display:flex;flex-wrap:wrap;gap:10px;padding:8px 16px 18px">
+        <sc-for list="{{ deckCon }}" as="d" hint-placeholder-count="6">
           <div onPointerDown="{{ d.onDown }}" onDoubleClick="{{ d.onAdd }}" title="{{ t.dragTip }}" style="width:168px;height:168px;flex:0 0 auto;display:flex;flex-direction:column;gap:5px;background:#fffefb;border:1px solid #e2dfd7;border-radius:10px;padding:7px;cursor:grab;box-shadow:0 1px 5px rgba(0,0,0,0.05)" style-hover="border-color:#c9c6bd;box-shadow:0 4px 14px rgba(0,0,0,0.09)">
             <div style="display:flex;align-items:center;gap:5px;background:{{ d.tint }};border-radius:5px;padding:3px 5px">
               <span style="flex:1;min-width:0;font-size:12.5px;font-weight:600;letter-spacing:-0.01em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:{{ d.titleColor }}">{{ d.title }}</span>
@@ -410,7 +431,7 @@
 </div>
 </x-dc>
 <script type="text/x-dc" data-dc-script data-props="{&quot;snapToGrid&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:true,&quot;tsType&quot;:&quot;boolean&quot;,&quot;section&quot;:&quot;Canvas&quot;},&quot;syncUrl&quot;:{&quot;editor&quot;:&quot;text&quot;,&quot;default&quot;:&quot;&quot;,&quot;tsType&quot;:&quot;string&quot;,&quot;section&quot;:&quot;Server&quot;}}">
-// 워크플로(활동·수단)는 중립 톤, 가드레일(제약·언제·발동)만 색으로 구분한다
+// 규칙(활동·수단)은 중립 톤, 가드레일(시점·조건·유도)만 색으로 구분한다
 // The workflow decks stay neutral; only the guardrail decks carry colour, so the two
 // layers read apart at a glance even before you read any text.
 const ACC = {
@@ -433,6 +454,16 @@ const STORE = 'llm-guardrail-workshop-v4';
 // Ghost/drop offset, in screen px, down-and-right of the cursor. Used by BOTH the
 // drag preview and addCard on release so they cannot disagree.
 const GHOST_DX = 14, GHOST_DY = 12;
+
+/* 펜 / MARKER PEN
+   보드에 직접 그리는 자유 필기 — 카드로는 못 하는 말을 하기 위한 도구입니다.
+   Free drawing on the board: circling a group, crossing something out, joining two
+   things the arrow tool cannot join. Four inks, drawn at 50% so a stroke reads as a
+   marker over the cards rather than a line replacing them, and so two strokes that
+   cross still show both. Strokes are plain point lists in board coordinates, which is
+   what makes them survive pan, zoom, saving and the image export unchanged. */
+const INKS = ['#e0a33a', '#cf5f7a', '#5b9464', '#4d7fbf'];
+const PEN_W = 5;
 
 /* ─────────────────────────────────────────────────────────────────
    UI 배율 / UI SCALE
@@ -510,7 +541,7 @@ const CONSENT = {
 
 const I18N = {
   ko: {
-    mark: { act: '활동', means: '수단', con: '제약', when: '언제', trig: '발동' },
+    mark: { act: '활동', means: '수단', con: '유도', when: '시점', trig: '조건' },
     deck: {
       act: [
         { title: '계획 세우기', desc: '무엇을 · 어떤 순서로 할지 정하기' },
@@ -565,9 +596,11 @@ const I18N = {
       ]
     },
     ui: {
-      title: '나의 AI 학습 규칙 만들기', step1: '1단계 · 워크플로 만들기', step2: '2단계 · 가드레일 붙이기',
+      title: '나의 AI 학습 규칙 만들기', step1: '1단계 · 규칙', step2: '2단계 · 가드레일',
       participant: '참여자', prev: '← 이전', next: '다음 →', choose: '활동 태그를 놓아 주세요', selSuffix: '개 활동',
       syncPending: '저장 중…', syncSaved: '서버 저장됨', syncOffline: '오프라인 · 재시도 대기',
+      pen: '펜', penTip: '보드에 직접 그리기 (색을 고르세요)', erase: '지우개', eraseTip: '그린 선을 지웁니다',
+      inkNames: ['노랑', '분홍', '초록', '파랑'],
       syncDemo: '데모 · 저장하지 않음', syncLocal: '⚠ 로컬 저장만 · 서버 미연결', syncReady: '서버 연결됨', syncLoading: '서버에서 불러오는 중…',
       fit: '화면 맞춤', note: '✎ 메모', exportBtn: '제출 · JSON 저장', clear: '초기화', confirmClear: '보드의 모든 카드를 지울까요?',
       arrow: '↗ 화살표', arrowTip: '카드에서 카드로 드래그해 화살표로 잇기', arrowDelTip: '화살표 삭제',
@@ -596,21 +629,23 @@ const I18N = {
       consentTitle: '연구 설명문 및 동의서', consentHint: '참여 전에 아래 내용을 읽어 주세요. 마지막 장이 서명하실 동의서입니다.',
       consentPdf: '동의서 PDF', consentPng: '동의서 이미지', consentPage: '{n} / {total} 쪽', consentLast: '마지막 장 — 서명용',
       step0: '참여자 로그인', loginTitle: '참여자 코드를 입력해 주세요', loginSub: '작업은 참여자 코드별로 자동 저장됩니다. 같은 코드로 다시 들어오면 이어서 할 수 있습니다.', start: '시작하기 →', continueAs: '이어서 하기', logout: '나가기',
-      tabFlow: '① 활동 · ② 수단', tabGuard: '③ 제약 · ④ 언제 · ⑤ 발동',
+      tabFlow: '규칙', tabGuard: '가드레일',
       hintFlow: '내가 학습하는 순서대로 ① 활동 태그를 왼쪽에서 오른쪽으로 놓아 보세요. 활동 전 → 활동 중 → 활동 후 흐름이면 좋고, 길어지거나 갈래가 나뉘면 줄을 바꿔도 됩니다. 각 활동 옆에 ② 수단을 붙여 무엇으로 하는지 적어 주세요.',
-      hintGuard: '각 활동 아래에 ③ 제약 · ④ 언제 · ⑤ 발동 사건 카드를 놓아, 시스템이 언제 어떻게 개입하면 좋을지 정해 보세요. 카드 위 글자는 눌러서 직접 고칠 수 있습니다.',
+      hintGuard: '각 활동 아래에 ③ 시점 · 조건 카드와 ④ 유도 카드를 놓아, 시스템이 언제 어떻게 개입하면 좋을지 정해 보세요. 카드 위 글자는 눌러서 직접 고칠 수 있습니다.',
       cardName: '카드 이름', descPh: '설명', notePh: '메모 쓰기…',
       actCards: '활동', actCardsSub: '무엇을 하나요? (타임라인)', meansCards: '수단', meansCardsSub: '무엇으로 하나요?',
-      conCards: '제약', conCardsSub: '시스템이 어떻게 개입하나요?', whenCards: '언제', whenCardsSub: '활동의 어느 구간인가요?',
-      trigCards: '발동 사건', trigCardsSub: '무엇이 개입을 불러오나요?',
+      conCards: '유도', conCardsSub: '시스템이 어떻게 개입하나요?',
+      whenCards: '시점', whenCardsSub: '활동의 어느 구간인가요?',
+      trigCards: '조건', trigCardsSub: '무엇이 개입을 불러오나요?',
+      guardHeadSub: '언제 개입하나요?',
       empty1: '왼쪽에서 ① 활동 태그를 끌어와 학습 순서대로 놓아 보세요.', empty1b: '각 활동 옆에 ② 수단을 붙이면 워크플로가 됩니다.',
-      empty2A: '각 활동 아래에 ③ 제약 · ④ 언제 · ⑤ 발동 사건 카드를 놓아 보세요.', empty2B: '＋ 기타 카드로 직접 쓸 수도 있습니다.',
+      empty2A: '각 활동 아래에 ③ 시점 · 조건 카드와 ④ 유도 카드를 놓아 보세요.', empty2B: '＋ 기타 카드로 직접 쓸 수도 있습니다.',
       widthTip: '드래그해서 폭 조절',
       dragTip: '드래그해서 보드에 놓기 (더블클릭으로 추가)', noteTip: '보드 빈 곳을 눌러 메모 만들기', resizeTip: '드래그해서 폭 조절', dupTip: '복제', delTip: '삭제', foldTip: '펼치기 / 접기', noteDelTip: '메모 삭제', clearTip: '보드 비우기'
     }
   },
   en: {
-    mark: { act: 'Activity', means: 'Means', con: 'Constraint', when: 'When', trig: 'Trigger' },
+    mark: { act: 'Activity', means: 'Means', con: 'Nudge', when: 'Timing', trig: 'Condition' },
     deck: {
       act: [
         { title: 'Plan', desc: 'deciding what to study and in what order' },
@@ -665,9 +700,11 @@ const I18N = {
       ]
     },
     ui: {
-      title: 'Design My AI Learning Rules', step1: 'Step 1 · Build the workflow', step2: 'Step 2 · Add guardrails',
+      title: 'Design My AI Learning Rules', step1: 'Step 1 · Rules', step2: 'Step 2 · Guardrails',
       participant: 'Participant', prev: '← Back', next: 'Next →', choose: 'Place an activity tag', selSuffix: ' activities',
       syncPending: 'Saving…', syncSaved: 'Saved to server', syncOffline: 'Offline · will retry',
+      pen: 'Pen', penTip: 'draw directly on the board (pick a colour)', erase: 'Eraser', eraseTip: 'rub out strokes',
+      inkNames: ['yellow', 'pink', 'green', 'blue'],
       syncDemo: 'Demo · nothing is saved', syncLocal: '⚠ Local only · no server', syncReady: 'Server connected', syncLoading: 'Loading from server…',
       fit: 'Reset view', note: '✎ Note', exportBtn: 'Submit · Save JSON', clear: 'Clear', confirmClear: 'Clear all cards on the board?',
       arrow: '↗ Arrow', arrowTip: 'Drag from one card to another to connect them', arrowDelTip: 'Delete arrow',
@@ -696,15 +733,17 @@ const I18N = {
       consentTitle: 'Information sheet and consent form', consentHint: 'Please read this before taking part. The last page is the consent form you sign.',
       consentPdf: 'Consent PDF', consentPng: 'Consent image', consentPage: 'Page {n} of {total}', consentLast: 'Last page — for signing',
       step0: 'Participant sign-in', loginTitle: 'Enter your participant code', loginSub: 'Work is saved automatically per participant code. Come back with the same code to continue where you left off.', start: 'Start →', continueAs: 'Continue as', logout: 'Exit',
-      tabFlow: '① Activity · ② Means', tabGuard: '③ Constraint · ④ When · ⑤ Trigger',
+      tabFlow: 'Rules', tabGuard: 'Guardrails',
       hintFlow: 'Lay ① activity tags left to right in the order you study — before → during → after works well, and you can start a new row if it gets long or branches. Add ② means beside each activity to say what you do it with.',
-      hintGuard: 'Place ③ constraint · ④ when · ⑤ trigger cards under each activity to decide when and how the system should step in. Tap any text on a card to edit it.',
+      hintGuard: 'Place ③ timing · condition cards and ④ nudge cards under each activity to decide when and how the system should step in. Tap any text on a card to edit it.',
       cardName: 'Card name', descPh: 'Description', notePh: 'Write a note…',
       actCards: 'Activity', actCardsSub: 'what you do (timeline)', meansCards: 'Means', meansCardsSub: 'what you do it with',
-      conCards: 'Constraint', conCardsSub: 'how the system steps in', whenCards: 'When', whenCardsSub: 'which part of the activity',
-      trigCards: 'Trigger', trigCardsSub: 'what brings the intervention',
+      conCards: 'Nudge', conCardsSub: 'how the system steps in',
+      whenCards: 'Timing', whenCardsSub: 'which part of the activity',
+      trigCards: 'Condition', trigCardsSub: 'what brings the intervention',
+      guardHeadSub: 'when does it step in?',
       empty1: 'Drag ① activity tags from the left in the order you study.', empty1b: 'Add ② means beside each activity to build the workflow.',
-      empty2A: 'Place ③ constraint · ④ when · ⑤ trigger cards under each activity.', empty2B: 'Or write your own with the ＋ Other card.',
+      empty2A: 'Place ③ timing · condition cards and ④ nudge cards under each activity.', empty2B: 'Or write your own with the ＋ Other card.',
       widthTip: 'Drag to resize',
       dragTip: 'Drag onto the board (double-click to add)', noteTip: 'Click an empty spot on the board to add a note', resizeTip: 'Drag to resize', dupTip: 'Duplicate', delTip: 'Delete', foldTip: 'Expand / collapse', noteDelTip: 'Delete note', clearTip: 'Clear the board'
     }
@@ -714,7 +753,7 @@ const I18N = {
 class Component extends DCLogic {
   constructor(props) {
     super(props);
-    this.state = { sync: '', step: 0, lang: 'ko', rules: [], pid: '', loginPid: '', cards: [], notes: [], arrows: [], arrowMode: false, pendingArrow: null, selArrow: null, noteMode: false, focusNote: null, pan: { x: 0, y: 0 }, zoom: 1, ghost: null, seq: 1, panelW: 566, sel: [], marquee: null, finish: null, tab: 'flow', hist: null, histList: [], travel: null, senseOn: true, del: null, delTyped: '', delBusy: false, admin: false, viewPid: '', roster: [], rosterMsg: '' };
+    this.state = { sync: '', step: 0, lang: 'ko', rules: [], pid: '', loginPid: '', cards: [], notes: [], arrows: [], arrowMode: false, pendingArrow: null, pen: null, strokes: [], selArrow: null, noteMode: false, focusNote: null, pan: { x: 0, y: 0 }, zoom: 1, ghost: null, seq: 1, panelW: 566, sel: [], marquee: null, finish: null, tab: 'flow', hist: null, histList: [], travel: null, senseOn: true, del: null, delTyped: '', delBusy: false, admin: false, viewPid: '', roster: [], rosterMsg: '' };
     this.canvasRef = React.createRef();
     this.drag = null;
   }
@@ -813,14 +852,14 @@ class Component extends DCLogic {
     try {
       localStorage.setItem(STORE + ':lang', this.state.lang);
       if (this.state.step > 0 && this.state.pid && !this.frozen()) {
-        localStorage.setItem(STORE + ':' + this.state.pid, JSON.stringify({ savedAt: Date.now(), pid: this.state.pid, cards: this.state.cards, notes: this.state.notes, arrows: this.state.arrows, seq: this.state.seq, panelW: this.state.panelW, step: this.state.step, lang: this.state.lang, rules: this.state.rules }));
+        localStorage.setItem(STORE + ':' + this.state.pid, JSON.stringify({ savedAt: Date.now(), pid: this.state.pid, cards: this.state.cards, notes: this.state.notes, arrows: this.state.arrows, strokes: this.state.strokes, seq: this.state.seq, panelW: this.state.panelW, step: this.state.step, lang: this.state.lang, rules: this.state.rules }));
       }
     } catch (e) {}
     this.scheduleAutosave();
   }
 
   sig() {
-    return JSON.stringify([this.state.pid, this.state.step, this.state.cards, this.state.notes, this.state.arrows, this.state.rules]);
+    return JSON.stringify([this.state.pid, this.state.step, this.state.cards, this.state.notes, this.state.arrows, this.state.strokes, this.state.rules]);
   }
 
   scheduleAutosave() {
@@ -908,6 +947,10 @@ class Component extends DCLogic {
     const rs = [];
     this.state.cards.forEach((c) => { if (!c.sm) rs.push(this.cardRect(c)); });
     (this.state.notes || []).forEach((n) => { if (!n.sm) rs.push({ x: n.x, y: n.y, w: CARD, h: n.h || 70 }); });
+    (this.state.strokes || []).forEach((k) => {
+      if (k.sm) return;
+      for (let i = 0; i < k.pts.length; i += 2) rs.push({ x: k.pts[i] - 2, y: k.pts[i + 1] - 2, w: 4, h: 4 });
+    });
     if (!rs.length) return null;
     let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
     rs.forEach((r) => {
@@ -979,6 +1022,7 @@ class Component extends DCLogic {
       cards: s.cards.filter((c) => !c.sm),
       notes: (s.notes || []).filter((n) => !n.sm),
       arrows: (s.arrows || []).filter((a) => !a.sm),
+      strokes: (s.strokes || []).filter((k) => !k.sm),
       sel: []
     }));
   }
@@ -1117,7 +1161,7 @@ class Component extends DCLogic {
     const lang = this.state.lang;
     this.setState({ pid: pid, loginPid: '' });
     if (d) this.applyState(d, lang);
-    else this.setState({ step: 1, rules: [], cards: [], notes: [], arrows: [], seq: 1, panelW: 566, pan: { x: 0, y: 0 }, zoom: 1, noteMode: false }, () => this.seedSig());
+    else this.setState({ step: 1, rules: [], cards: [], notes: [], arrows: [], strokes: [], seq: 1, panelW: 566, pan: { x: 0, y: 0 }, zoom: 1, noteMode: false }, () => this.seedSig());
     // 데모는 서버에서 읽지도 않는다 / a demo does not read from the server either: it has
     // nothing of its own there, and a row left by an older build would resurrect itself
     if (!this.isDemo(pid)) this.syncDown(pid, d ? d.savedAt || 0 : 0);
@@ -1256,7 +1300,7 @@ class Component extends DCLogic {
     ]);
 
     // ── 새 아이콘 / icons added with the 5-deck set ──────────────────────────
-    // 같은 어휘를 따른다: INK 윤곽, FNT 흐린 채움, 발동 덱은 ORG, 제약 덱은 GRN.
+    // 같은 어휘를 따른다: INK 윤곽, FNT 흐린 채움, 조건 덱은 ORG, 유도 덱은 GRN.
     // Same vocabulary as the rest: INK outlines, FNT for filler, ORG accents the
     // trigger deck and GRN the constraint deck, so a new card reads as a sibling.
 
@@ -1371,7 +1415,47 @@ class Component extends DCLogic {
     this.addCard(type, tpl, col, 32 + n * 32);
   }
 
+  /* 펜 도구 / THE PEN
+     pen is null (off), an ink from INKS, or 'erase'. Turning it on turns the arrow and
+     note modes off: three modes that all claim a plain drag on the canvas cannot be on
+     at once, and silently losing a stroke to the note tool is worse than a click wasted
+     switching. */
+  togglePen() {
+    if (this.state.travel) return;   // 기록 열람 중에는 그릴 수 없다 / not while browsing history
+    this.setState((st) => ({ pen: st.pen ? null : (st.lastInk || INKS[0]), arrowMode: false, noteMode: false }));
+  }
+  pickInk(ink) { this.setState({ pen: ink, lastInk: ink, arrowMode: false, noteMode: false }); }
+  toggleErase() { this.setState((st) => ({ pen: st.pen === 'erase' ? (st.lastInk || INKS[0]) : 'erase' })); }
+
+  // 지우개는 획 단위 / the eraser removes whole strokes, not pixels: a stroke is one
+  // gesture and half an erased circle is never what anyone wanted.
+  eraseAt(x, y) {
+    const R = 14;
+    this.setState((st) => ({
+      strokes: (st.strokes || []).filter((k) => {
+        if (this.isView() && !k.sm) return true;    // 참여자 필기는 열람 모드에서 못 지운다
+        for (let i = 0; i < k.pts.length; i += 2) {
+          const dx = k.pts[i] - x, dy = k.pts[i + 1] - y;
+          if (dx * dx + dy * dy < R * R) return false;
+        }
+        return true;
+      })
+    }));
+  }
+
   onCanvasDown(e) {
+    if (this.state.pen) {
+      e.preventDefault();
+      const q = this.toCanvas(e.clientX, e.clientY);
+      if (this.state.pen === 'erase') {
+        this.drag = { kind: 'erase' };
+        this.eraseAt(q.x, q.y);
+        return;
+      }
+      this.drag = { kind: 'draw', pts: [Math.round(q.x), Math.round(q.y)] };
+      this.setState({ drawing: { ink: this.state.pen, pts: this.drag.pts } });
+      return;
+    }
     if (this.state.selArrow) this.setState({ selArrow: null });
     if (this.state.noteMode) {
       const p = this.toCanvas(e.clientX, e.clientY);
@@ -1700,6 +1784,18 @@ class Component extends DCLogic {
       this.setState((s) => ({ cards: s.cards.map((c) => (c.id === d.id ? Object.assign({}, c, { w: Math.round(w) }) : c)) }));
     } else if (d.kind === 'resize') {
       this.setState({ panelW: Math.min(940, Math.max(210, d.pw + (e.clientX - d.sx) / UI)) });
+    } else if (d.kind === 'draw') {
+      const q = this.toCanvas(e.clientX, e.clientY);
+      const n = d.pts.length;
+      // 1px 미만 이동은 버린다 / drop sub-pixel moves: they bloat the saved record and
+      // a 30-minute session can otherwise run to tens of thousands of points
+      if (n < 2 || Math.abs(d.pts[n - 2] - q.x) > 1.5 || Math.abs(d.pts[n - 1] - q.y) > 1.5) {
+        d.pts.push(Math.round(q.x), Math.round(q.y));
+        this.setState({ drawing: { ink: this.state.pen, pts: d.pts.slice() } });
+      }
+    } else if (d.kind === 'erase') {
+      const q = this.toCanvas(e.clientX, e.clientY);
+      this.eraseAt(q.x, q.y);
     } else if (d.kind === 'pan') {
       this.setState({ pan: { x: d.px + (e.clientX - d.sx) / UI, y: d.py + (e.clientY - d.sy) / UI } });
     }
@@ -1708,6 +1804,17 @@ class Component extends DCLogic {
     const d = this.drag;
     this.drag = null;
     if (!d) return;
+    if (d.kind === 'erase') { this.drag = null; return; }
+    if (d.kind === 'draw') {
+      const pts = d.pts;
+      this.drag = null;
+      this.setState({ drawing: null });
+      if (pts.length < 4) return;      // 점 하나는 획이 아니다 / a single dot is not a stroke
+      const st = { id: 's' + this.state.seq, ink: this.state.pen, pts: pts };
+      if (this.isView()) st.sm = true; // 관리자 필기는 해석 레이어에 / admin ink is sensemaking
+      this.setState((x) => ({ strokes: (x.strokes || []).concat([st]), seq: x.seq + 1 }));
+      return;
+    }
     if (d.kind === 'marq') { this.setState({ marquee: null }); return; }
     if (d.kind === 'move' || d.kind === 'note') { this.keepOutOfRegion(); }
     if (d.kind === 'multi') {
@@ -1793,6 +1900,21 @@ class Component extends DCLogic {
       }));
       kids.push(h('line', { key: a.id, x1: e.p1.x, y1: e.p1.y, x2: e.p2.x, y2: e.p2.y, stroke: sel ? SEL : INK, strokeWidth: sel ? 3 : 2.2, strokeLinecap: 'round', markerEnd: 'url(#' + (sel ? 'om-ah-sel' : 'om-ah') + ')' }));
     });
+    // 필기는 화살표 아래 / ink sits under the arrows, as a highlighter would
+    (this.state.strokes || []).forEach((k) => {
+      kids.unshift(h('polyline', {
+        key: k.id, points: k.pts.join(' '), fill: 'none', stroke: k.ink,
+        strokeWidth: PEN_W, strokeLinecap: 'round', strokeLinejoin: 'round',
+        opacity: 0.5, strokeDasharray: k.sm ? '9 6' : null
+      }));
+    });
+    const dr = this.state.drawing;
+    if (dr && dr.pts.length >= 4) {
+      kids.push(h('polyline', {
+        key: 'drawing', points: dr.pts.join(' '), fill: 'none', stroke: dr.ink,
+        strokeWidth: PEN_W, strokeLinecap: 'round', strokeLinejoin: 'round', opacity: 0.5
+      }));
+    }
     const p = this.state.pendingArrow;
     if (p) {
       const A = this.anchor(p.from);
@@ -1842,7 +1964,7 @@ class Component extends DCLogic {
       }),
       raw: this.state.cards,
       // 다른 기기에서 그대로 복원하기 위한 전체 상태 / full state for cross-device restore
-      state: { savedAt: Date.now(), pid: this.state.pid, step: this.state.step, lang: this.state.lang, rules: this.state.rules, cards: this.state.cards, notes: this.state.notes, arrows: this.state.arrows, seq: this.state.seq, panelW: this.state.panelW }
+      state: { savedAt: Date.now(), pid: this.state.pid, step: this.state.step, lang: this.state.lang, rules: this.state.rules, cards: this.state.cards, notes: this.state.notes, arrows: this.state.arrows, strokes: this.state.strokes, seq: this.state.seq, panelW: this.state.panelW }
     };
     return data;
   }
@@ -1903,7 +2025,7 @@ class Component extends DCLogic {
       step: d.step > 0 ? d.step : 1,
       lang: lang,
       rules: d.rules || [],
-      cards: d.cards || [], notes: d.notes || [], arrows: d.arrows || [],
+      cards: d.cards || [], notes: d.notes || [], arrows: d.arrows || [], strokes: d.strokes || [],
       seq: d.seq || 1, panelW: d.panelW || 566,
       pan: { x: 0, y: 0 }, zoom: 1, noteMode: false
     }, () => this.seedSig());
@@ -2022,10 +2144,20 @@ class Component extends DCLogic {
     const keep = (o) => (withSense ? true : !o.sm);
     const cards = this.state.cards.filter(keep);
     const notes = (this.state.notes || []).filter(keep);
-    if (!cards.length && !notes.length) return;
+    if (!cards.length && !notes.length && !(this.state.strokes || []).filter(keep).length) return;
 
+    const strokes = (this.state.strokes || []).filter(keep);
     const rects = cards.map((c) => this.cardRect(c))
-      .concat(notes.map((n) => ({ x: n.x, y: n.y, w: CARD, h: n.h || 70 })));
+      .concat(notes.map((n) => ({ x: n.x, y: n.y, w: CARD, h: n.h || 70 })))
+      .concat(strokes.map((k) => {
+        // 필기가 카드 밖으로 나가도 잘리지 않게 / ink outside the cards must not be cropped
+        let a = Infinity, b = Infinity, c2 = -Infinity, d2 = -Infinity;
+        for (let i = 0; i < k.pts.length; i += 2) {
+          a = Math.min(a, k.pts[i]); c2 = Math.max(c2, k.pts[i]);
+          b = Math.min(b, k.pts[i + 1]); d2 = Math.max(d2, k.pts[i + 1]);
+        }
+        return { x: a - PEN_W, y: b - PEN_W, w: c2 - a + PEN_W * 2, h: d2 - b + PEN_W * 2 };
+      }));
     const PAD = 40;
     let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
     rects.forEach((r) => {
@@ -2070,7 +2202,22 @@ class Component extends DCLogic {
       return y + n * lh;
     };
 
-    // 화살표 먼저 (카드 아래로) / arrows first, so cards sit on top of them
+    // 필기가 맨 아래 / ink first: on screen it sits under the arrows and cards, and an
+    // export that reorders the layers is not the board the participant saw
+    g.lineCap = 'round'; g.lineJoin = 'round'; g.lineWidth = PEN_W;
+    g.globalAlpha = 0.5;
+    strokes.forEach((k) => {
+      if (k.pts.length < 4) return;
+      g.strokeStyle = k.ink;
+      g.setLineDash(k.sm ? [9, 6] : []);
+      g.beginPath();
+      g.moveTo(k.pts[0], k.pts[1]);
+      for (let i = 2; i < k.pts.length; i += 2) g.lineTo(k.pts[i], k.pts[i + 1]);
+      g.stroke();
+    });
+    g.setLineDash([]); g.globalAlpha = 1;
+
+    // 화살표 (카드 아래로) / arrows next, so cards sit on top of them
     g.lineWidth = 2.2; g.lineCap = 'round';
     (this.state.arrows || []).filter(keep).forEach((a) => {
       const e = this.arrowEnds(a);
@@ -2366,10 +2513,24 @@ class Component extends DCLogic {
       noteBtnBg: this.state.noteMode ? '#1b1a17' : '#fff',
       noteBtnColor: this.state.noteMode ? '#faf8f3' : '#1b1a17',
       toggleNoteMode: () => this.setState((s) => ({ noteMode: !s.noteMode, arrowMode: false })),
+      penOpen: !!this.state.pen,
+      penBtnBg: this.state.pen ? '#1b1a17' : '#fff',
+      penBtnColor: this.state.pen ? '#faf8f3' : '#1b1a17',
+      penInks: INKS.map((ink, i) => ({
+        key: ink, ink: ink, label: (t.inkNames || [])[i] || ink,
+        // 고른 색만 테두리로 표시 / only the chosen ink gets a ring
+        ring: this.state.pen === ink ? '#1b1a17' : 'transparent',
+        onPick: () => this.pickInk(ink)
+      })),
+      onErase: () => this.toggleErase(),
+      eraseBg: this.state.pen === 'erase' ? '#1b1a17' : 'transparent',
+      eraseFg: this.state.pen === 'erase' ? '#faf8f3' : '#7a776f',
+      eraseBd: this.state.pen === 'erase' ? '#1b1a17' : '#e2dfd7',
+      togglePen: () => this.togglePen(),
       arrowBtnBg: this.state.arrowMode ? '#1b1a17' : '#fff',
       arrowBtnColor: this.state.arrowMode ? '#faf8f3' : '#1b1a17',
       toggleArrowMode: () => this.setState((s) => ({ arrowMode: !s.arrowMode, noteMode: false, pendingArrow: null })),
-      canvasCursor: this.state.noteMode ? 'text' : this.state.arrowMode ? 'crosshair' : 'default',
+      canvasCursor: this.state.pen ? 'crosshair' : this.state.noteMode ? 'text' : this.state.arrowMode ? 'crosshair' : 'default',
       cardCursor: this.state.arrowMode ? 'crosshair' : 'grab',
       arrowsLayer: this.arrowsLayer(),
       selArrowInfo: !!(this.state.selArrow && this.arrowMid(this.state.selArrow)),
@@ -2389,7 +2550,7 @@ class Component extends DCLogic {
         onText: (!RO || n.sm) ? (e) => this.setState((s) => ({ notes: s.notes.map((k) => k.id === n.id ? Object.assign({}, k, { text: e.target.value }) : k) })) : NOOP,
         onDel: (!RO || n.sm) ? () => this.setState((s) => ({ notes: s.notes.filter((k) => k.id !== n.id) })) : NOOP
       })),
-      clearAll: () => { if (confirm(t.confirmClear)) this.setState({ cards: [], notes: [], arrows: [], selArrow: null }); },
+      clearAll: () => { if (confirm(t.confirmClear)) this.setState({ cards: [], notes: [], arrows: [], strokes: [], selArrow: null }); },
       exportJson: () => this.exportJson(),
       cards: this.state.cards.map((c) => {
         // 'rule' 타입도, 접기 UI도 사라졌다. collapsed 는 옛 보드 데이터에 남아 있을 뿐이다.

@@ -988,6 +988,99 @@ async function dragTileToBoard(page, title, fx = 0.45, fy = 0.4) {
     await page.close();
   }
 
+  // ------------------------------------------------- pen and step-1 arrows
+  console.log("\ndrawing tools: the pen, and arrows in step 1 too");
+  {
+    const { page, errors } = await boot(browser, { width: 1700, height: 1000 });
+    await toStep1(page, "INK");
+    // 1단계에도 있어야 한다 / step 1 needs them too: a workflow is where people most want
+    // to circle a group or join two things no card connects
+    check((await page.getByRole("button", { name: "화살표" }).count()) === 1, "step 1 has the arrow tool");
+    check((await page.getByRole("button", { name: "펜" }).count()) === 1, "step 1 has the pen");
+
+    const box = await (await page.$('div[style*="radial-gradient"]')).boundingBox();
+    const strokes = () => page.evaluate(() => document.querySelectorAll("polyline").length);
+    const inks = () => page.evaluate(() => [...document.querySelectorAll("polyline")].map((x) => x.getAttribute("stroke")));
+    const swatch = (i) => page.evaluate((n) => {
+      const b = [...document.querySelectorAll("button")]
+        .filter((x) => x.style.borderRadius === "50%" && x.style.width === "19px")[n];
+      if (b) b.click();
+      return !!b;
+    }, i);
+    const draw = async (y, n) => {
+      await page.mouse.move(box.x + 300, box.y + y);
+      await page.mouse.down();
+      for (let i = 0; i < n; i++) { await page.mouse.move(box.x + 300 + i * 18, box.y + y + (i % 2) * 20); await page.waitForTimeout(16); }
+      await page.mouse.up();
+      await page.waitForTimeout(250);
+    };
+
+    await page.getByRole("button", { name: "펜" }).click();
+    await page.waitForTimeout(250);
+    const count = await page.evaluate(() => [...document.querySelectorAll("button")]
+      .filter((x) => x.style.borderRadius === "50%" && x.style.width === "19px").length);
+    check(count === 4, "four inks to choose from", ` (${count})`);
+    await draw(300, 12);
+    check((await strokes()) === 1, "a drag draws a stroke", ` (${await strokes()})`);
+    await swatch(2);
+    await draw(430, 10);
+    const two = await inks();
+    check(two.length === 2 && two[0] !== two[1], "a second stroke takes the newly picked ink", ` (${JSON.stringify(two)})`);
+
+    // 지우개는 획 단위 / the eraser takes whole strokes
+    await page.getByRole("button", { name: "지우개" }).click();
+    await page.waitForTimeout(200);
+    await page.mouse.move(box.x + 320, box.y + 430);
+    await page.mouse.down();
+    await page.mouse.move(box.x + 400, box.y + 430);
+    await page.mouse.up();
+    await page.waitForTimeout(300);
+    check((await strokes()) === 1, "the eraser removes a whole stroke, not part of one", ` (${await strokes()})`);
+
+    // 펜을 켜면 다른 모드는 꺼진다 / three modes cannot own the same drag
+    await page.getByRole("button", { name: "화살표" }).click();
+    await page.waitForTimeout(150);
+    await page.getByRole("button", { name: "펜" }).click();
+    await page.waitForTimeout(150);
+    const bg = await page.evaluate(() => {
+      const b = [...document.querySelectorAll("button")].find((x) => x.textContent.includes("화살표"));
+      return b ? b.style.background : "NO BUTTON";
+    });
+    check(bg !== "NO BUTTON" && bg !== "rgb(27, 26, 23)" && bg !== "#1b1a17",
+      "turning the pen on turns the arrow tool off", ` (${bg})`);
+
+    // 저장되고 다시 돌아온다 / it is board content, so it comes back
+    await page.waitForTimeout(3000);
+    await page.reload({ waitUntil: "load" });
+    await page.waitForSelector('input[placeholder="P00"]', { timeout: 120000 });
+    await page.getByRole("button", { name: "INK" }).click();
+    await page.waitForTimeout(800);
+    check((await strokes()) === 1, "ink survives a reload", ` (${await strokes()})`);
+    check(errors.length === 0, "no console errors", errors.length ? ` (${errors[0]})` : "");
+    await page.close();
+  }
+
+  // ------------------------------------------------- deck naming and order
+  console.log("\nthe decks are 규칙 (①②) and 가드레일 (③④)");
+  {
+    const { page, errors } = await boot(browser, { width: 1700, height: 1050 });
+    await toBoard(page, "DCK");
+    const tabs = await page.evaluate(() => [...document.querySelectorAll("button")]
+      .filter((b) => (b.style.borderBottom || "").includes("2px")).map((b) => b.textContent.trim()));
+    check(JSON.stringify(tabs) === JSON.stringify(["규칙", "가드레일"]), "the tabs name the two sets", ` (${JSON.stringify(tabs)})`);
+    const heads = await page.evaluate(() => [...document.querySelectorAll("span")]
+      .filter((s) => s.style.fontSize === "14px" && s.style.fontWeight === "600")
+      .map((s) => s.textContent.trim()));
+    check(JSON.stringify(heads) === JSON.stringify(["③", "시점", "·", "조건", "④", "유도"]),
+      "③ is 시점 · 조건 and ④ is 유도", ` (${JSON.stringify(heads)})`);
+    const badges = await page.evaluate(() => [...document.querySelectorAll("span")]
+      .filter((s) => s.style.fontSize === "9px").map((s) => s.textContent.trim()));
+    check(!badges.includes("제약") && !badges.includes("발동") && badges.includes("시점") && badges.includes("조건"),
+      "and the card badges follow", ` (${JSON.stringify([...new Set(badges)])})`);
+    check(errors.length === 0, "no console errors", errors.length ? ` (${errors[0]})` : "");
+    await page.close();
+  }
+
   // ------------------------------------------------- demo sessions
   // 데모는 리허설이지 데이터가 아니다 / a demo is a rehearsal, not data: nothing may reach
   // the sheet and nothing may be left in this browser for the next participant to find.

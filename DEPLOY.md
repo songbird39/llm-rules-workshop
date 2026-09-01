@@ -53,6 +53,19 @@ python3 tools/consent.py     # re-rasterise into src (--check tells you if it is
 python3 tools/build.py       # splice src into index.html
 ```
 
+**1단계 · 규칙** — the two sets are named for the participant: decks ① 활동 and
+② 수단 are **규칙**, decks ③ 시점 · 조건 and ④ 유도 are **가드레일**. ③ is one deck holding
+two kinds of card: the timing cards and the condition cards keep separate colours, because
+that distinction is the researcher's coding dimension, but the participant meets a single
+numbered deck and composes freely across it. Deck names are tinted to match their cards.
+
+Both steps carry the **화살표** and **펜** tools. The pen draws directly on the board in four
+inks at marker opacity, so a stroke reads as annotation over the cards rather than a line
+replacing them, and two crossing strokes both stay visible. The eraser removes whole
+strokes rather than pixels — a stroke is one gesture, and half an erased circle is never
+what anyone wanted. Ink is board content: it saves, restores, exports into the image, and
+belongs to the sensemaking layer when an admin draws it (dashed, like their other marks).
+
 **1단계 · 워크플로 만들기** — participants lay ① **활동** tags left to right in the order
 they study, and attach ② **수단** post-its saying what each is done with. Tags are wider
 than cards with a larger title, so the timeline reads as a different level from the cards
