@@ -28,17 +28,11 @@ Works on phones, tablets and laptops; participants just open the link.
 ### What a session looks like
 
 **로그인 화면** — the IRB information sheet and consent form sit open beside the
-participant-code box, so it can be read without clicking anything first. Above it, a
-notice states in prose where the approved document and the study as actually run differ:
-the study moved from in-person to remote and the detailed procedure changed. It stays
-deliberately short and hands the detail to the researcher, who is in the room to explain
-it — a wall of corrections above a consent form does not get read. **The PDF
-itself is never edited** — it is the approved file byte for byte, and the notice is the
-app's own text (`changeTitle` / `changeBody` in the i18n block). It sits outside the
-scrolling page list on purpose, so it is still on screen when a participant scrolls down
-to the signature page. Two buttons
+participant-code box, so it can be read without clicking anything first. Two buttons
 download the **last page** — the sheet that actually gets signed — as a PDF or as a
-200dpi PNG for printing.
+200dpi PNG for printing. The screen carries no commentary of its own: the deviations from
+the approved document (remote rather than in person, and the changed procedure) are
+explained by the researcher in the session.
 
 The pages are baked in as images, not as an embedded PDF: `<embed>`/`<iframe>` PDF
 rendering varies by browser (Safari and iOS show only the first page, or nothing), and a

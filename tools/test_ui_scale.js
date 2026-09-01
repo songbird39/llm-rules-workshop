@@ -255,18 +255,6 @@ console.log("\nconsent document is embedded without a parse-time fetch");
 
   // 안내문은 PDF를 고치지 않고 앱에서만 알린다 / the deviation notice lives in the app,
   // never in the PDF: the embedded document is the IRB-approved file untouched.
-  check(/changeTitle:/.test(src) && /changeBody:/.test(src), "the deviation notice is translated");
-  for (const [word, what] of [["대면 실험에서 비대면", "the move to remote"],
-                              ["세부 실험 절차가 변경", "the change of procedure"],
-                              ["실험 진행자가 설명", "who explains the detail"]])
-    check(src.includes(word), `the notice states ${what}`);
-  const body = (src.match(/changeBody: '([^']*)'/) || [])[1] || "";
-  check(body.length < 120, "and stays short enough to actually be read", ` (${body.length} chars)`);
-  // it must sit OUTSIDE the scrolling list, or it scrolls away before the signature page
-  const notice = step0.indexOf("{{ t.changeBody }}");
-  const scroller = step0.indexOf("overflow-y:auto");
-  check(notice > 0 && notice < scroller, "the notice is above the scrolling page list");
-  // both download buttons are the LAST page — the sheet that gets signed
   check(/downloadConsent\(kind\)/.test(src) && /kind === 'pdf' \? CONSENT\.lastPdf : CONSENT\.lastPng/.test(src),
     "both downloads are scoped to the last page");
   check(/atob\(src\.slice\(comma \+ 1\)\)/.test(src),
@@ -417,10 +405,13 @@ console.log("\nview mode cannot write");
   // 7d. read-only UI
   // Protection is per-object now, not a blanket layer setting: that is what lets the
   // admin sensemaking objects be editable while the participant's stay inert.
-  check(/pe: \(!RO \|\| c\.sm\) \? 'auto' : 'none'/.test(doc),
+  check(/pe: \(PEN \|\| \(RO && !c\.sm\)\) \? 'none' : 'auto'/.test(doc),
     "participant cards are inert in admin; sensemaking cards are not");
-  check(/pe: \(!RO \|\| n\.sm\) \? 'auto' : 'none'/.test(doc),
+  check(/pe: \(PEN \|\| \(RO && !n\.sm\)\) \? 'none' : 'auto'/.test(doc),
     "same for notes");
+  // 같은 값이 펜도 처리한다 / the same value answers to the pen: with it up the board is
+  // paper, so a stroke can start on top of a card instead of dragging it
+  check(/const PEN = !!this\.state\.pen;/.test(doc), "and both go inert while the pen is up");
   check(/onDown: \(!RO \|\| c\.sm\) \? \(e\) => this\.startMove\(c\.id, e\) : NOOP/.test(doc),
     "card drag handler gated per object");
   check(/showPanel: !RO/.test(doc), "card panel hidden while viewing");
@@ -462,9 +453,9 @@ console.log("\nview mode cannot write");
   check(/pointer-events:auto/.test(doc), "card text re-enabled under pointer-events:none");
   // three now: the card description, the note, and the card title. The two rule-card
   // text boxes went with the rule type.
-  check((doc.match(/pointer-events:auto/g) || []).length === 3,
+  check((doc.match(/;pointer-events:auto/g) || []).length === 3,
     "every remaining text element is re-enabled",
-    ` (${(doc.match(/pointer-events:auto/g) || []).length})`);
+    ` (${(doc.match(/;pointer-events:auto/g) || []).length})`);
   check(/descOverflow: RO \? 'auto' : 'hidden'/.test(doc),
     "collapsed rule card scrolls in view mode, stays clipped for participants");
 

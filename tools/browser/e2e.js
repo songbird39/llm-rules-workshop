@@ -1277,22 +1277,6 @@ async function dragTileToBoard(page, title, fx = 0.45, fy = 0.4) {
       return { scrolls: scroller.scrollHeight > scroller.clientHeight + 2,
                clear: p.right <= c.x + 1 && p.bottom <= innerHeight + 1 && c.right <= innerWidth + 1 };
     });
-    const notice = () => page.evaluate(() => {
-      const n = [...document.querySelectorAll("div")]
-        .find((d) => d.textContent.trim().startsWith("동의서와 달라진 점") && d.children.length === 2);
-      if (!n) return null;
-      const r = n.getBoundingClientRect();
-      return { onScreen: r.top >= 0 && r.bottom <= innerHeight, text: n.textContent };
-    });
-    const before = await notice();
-    check(before && before.text.includes("비대면") && before.text.includes("세부 실험 절차"),
-      "the deviation notice names both changes");
-    // 서명 페이지까지 내려가도 보여야 한다 / it must still be in view at the signature page
-    await page.evaluate(() => [...document.querySelectorAll('[role="img"]')].pop().scrollIntoView({ block: "center" }));
-    await page.waitForTimeout(300);
-    const after = await notice();
-    check(after && after.onScreen, "and stays in view at the signature page");
-
     check(fits.scrolls, "the document scrolls inside its panel");
     check(fits.clear, "and does not overlap or overflow the sign-in card");
 
