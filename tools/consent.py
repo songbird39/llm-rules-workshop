@@ -67,10 +67,39 @@ def png_uri(img):
     return "data:image/png;base64," + base64.b64encode(buf.getvalue()).decode()
 
 
+def check_watermark(images, pdf_bytes):
+    """워터마크가 살아남았는지 확인 / the IRB stamp must survive every step.
+
+    The approval watermark ("IRB No. …" / "유효기간 …" / the seal) is an ezPDF
+    optional-content layer, not page text, so it can be dropped silently by page
+    extraction or crushed by quantisation without anything failing. It is the one
+    thing on these pages that proves the document is the approved version, so it
+    gets checked rather than assumed: the header band of every page image must
+    carry ink, and the extracted PDF must still say "IRB No.".
+    """
+    for i, img in enumerate(images, 1):
+        band = img.crop((0, 0, img.width, int(img.height * 0.045)))
+        dark = sum(band.histogram()[:160])
+        if dark < 200:
+            sys.exit(f"page {i}: the watermark band is blank ({dark} dark px) — "
+                     "the IRB stamp was lost somewhere in rendering")
+    with tempfile.TemporaryDirectory() as d:
+        tmp = pathlib.Path(d)
+        (tmp / "last.pdf").write_bytes(pdf_bytes)
+        subprocess.run(["pdftoppm", "-gray", "-r", "100", "-png",
+                        str(tmp / "last.pdf"), str(tmp / "chk")],
+                       check=True, capture_output=True)
+        page = Image.open(next(tmp.glob("chk-*.png"))).convert("L")
+    band = page.crop((0, 0, page.width, int(page.height * 0.045)))
+    if sum(band.histogram()[:160]) < 200:
+        sys.exit("the extracted last page has lost the IRB watermark")
+
+
 def build():
     with tempfile.TemporaryDirectory() as d:
         tmp = pathlib.Path(d)
-        pages = [png_uri(im) for im in render(tmp, READ_DPI)]
+        read_imgs = render(tmp, READ_DPI)
+        pages = [png_uri(im) for im in read_imgs]
         n = len(pages)
         last_png = png_uri(render(tmp, PRINT_DPI, first=n)[0])
         out = tmp / "last.pdf"
@@ -80,6 +109,11 @@ def build():
                         "--", str(out)],
                        check=False, capture_output=True)  # warns on this file, still correct
         last_pdf = "data:application/pdf;base64," + base64.b64encode(out.read_bytes()).decode()
+        last_pdf_path = str(out)
+        # the temp dir dies at the end of this block, so read what the check needs now
+        last_pdf_bytes = out.read_bytes()
+
+    check_watermark(read_imgs, last_pdf_bytes)
 
     body = ",\n".join("    '" + p + "'" for p in pages)
     block = ("const CONSENT = {\n  pages: [\n" + body + "\n  ],\n"
