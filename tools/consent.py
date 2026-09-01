@@ -17,6 +17,18 @@ WHY IT IS SO SMALL
   and quantised to 4 levels. That is visually identical to full greyscale (checked
   side by side) at roughly a third of the bytes: ~240KB of base64 for five pages.
 
+WHAT GOES IN — AND WHAT MUST NOT
+  assets/동의서-참여자배포용.pdf is the PARTICIPANT-FACING extract only: the
+  information sheet and the two consent sheets. The IRB submission packet also
+  carries the recruitment notice, the screening survey and the interview script,
+  and none of those may be embedded here or committed to this repo — the site is
+  public, and showing a participant the interview probes before the session
+  invalidates it. Re-extract with:
+
+      qpdf --decrypt PACKET.pdf --pages PACKET.pdf 1-5 -- assets/동의서-참여자배포용.pdf
+
+  (check the page range against the packet first; it is not guaranteed to stay 1-5)
+
 WHAT ELSE GOES IN
   lastPdf  the FINAL page alone, as a real one-page PDF   → the "consent PDF" button
   lastPng  the same page at 200dpi, for printing/signing  → the "consent image" button
