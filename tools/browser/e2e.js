@@ -1073,10 +1073,14 @@ async function dragTileToBoard(page, title, fx = 0.45, fy = 0.4) {
         .map((c) => ({ title: c.querySelector("input").value, body: !!c.querySelector("textarea") }));
     });
     const laid = await objects();
-    check(laid.length === 3 && laid.every((o) => o.body),
-      "tag, post-it and card all render a description field", ` (${JSON.stringify(laid)})`);
+    // 활동 태그는 제목 줄만 / the activity tag is a title bar; the other two keep a body
+    const tag = laid.find((o) => o.title === "첫 학습");
+    check(laid.length === 3, "three objects on the board", ` (${laid.length})`);
+    check(tag && !tag.body, "the activity tag is a title bar only", ` (${JSON.stringify(laid)})`);
+    check(laid.filter((o) => o.title !== "첫 학습").every((o) => o.body),
+      "the post-it and the card still have a description");
 
-    for (const name of ["첫 학습", "AI 사용 안 함", "규칙 상기"]) {
+    for (const name of ["AI 사용 안 함", "규칙 상기"]) {
       const focused = await page.evaluate((n) => {
         const layer = [...document.querySelectorAll("div")].find((d) => d.style.width === "5000px");
         const el = [...layer.children].find((c) => c.tagName === "DIV"

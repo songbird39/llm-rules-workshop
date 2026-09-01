@@ -56,7 +56,9 @@ python3 tools/build.py       # splice src into index.html
 **1단계 · 워크플로 만들기** — participants lay ① **활동** tags left to right in the order
 they study, and attach ② **수단** post-its saying what each is done with. Tags are wider
 than cards with a larger title, so the timeline reads as a different level from the cards
-placed under it. A tag's width can be dragged from its right edge; the handle is
+placed under it. A tag is a **title bar only** — its deck description explains the activity
+while the participant is choosing it, but on the board a tag is a label, and giving it a
+body would make the timeline row as tall as the guardrail cards sitting beneath it. A tag's width can be dragged from its right edge; the handle is
 invisible until the pointer is over it, so nobody who isn't looking for it is bothered by
 it. 다음 unlocks once at least one activity is on the board.
 

@@ -185,7 +185,7 @@ console.log("\nrule card keeps its size on drop");
   check(/const CARD = 168, TAG_W = 352/.test(doc), "a tag is wider than a card");
   check(/w: \(type === 'act' \? TAG_W : CARD\)/.test(doc), "activity tags are created at tag width");
   check(/tfs: c\.type === 'act' \? '15px' : '12\.5px'/.test(doc), "tags carry a larger title");
-  check(/dmin: c\.type === 'act' \? '17px' : '48px'/.test(doc), "tags start as a bar, not a card");
+  check(/dmin: '48px'/.test(doc), "a description box opens at a usable height");
   check(/hasDiagram: !!c\.dia/.test(doc), "only objects with an icon render a diagram box");
 
   // 모든 보드 객체는 편집 가능한 본문을 가져야 한다 / EVERY board object needs a body to type
@@ -199,10 +199,35 @@ console.log("\nrule card keeps its size on drop");
     const desc = board.indexOf("c.onDesc");
     const lastGuard = board.lastIndexOf("<sc-if value=\"{{ c.hasDiagram }}\"", desc);
     const closeAfterGuard = board.indexOf("</sc-if>", lastGuard);
-    check(desc > 0 && closeAfterGuard < desc, "every board object renders a description field");
+    check(desc > 0 && closeAfterGuard < desc, "the icon guard does not swallow the description");
+    // 활동 태그만 예외 / the ONE deliberate exception: an activity tag is a title bar.
+    // Everything else must keep a body — that was a real bug once, when the description
+    // sat inside the icon guard and the two icon-less types silently lost it.
+    check(/hasDesc: c\.type !== 'act'/.test(doc), "only activity tags drop the description");
+    check(board.indexOf('sc-if value="{{ c.hasDesc }}"') < desc,
+      "and they drop it by a guard around the description, not by hiding it");
+    check(/desc: type === 'act' \? '' : \(tpl\.desc \|\| ''\)/.test(doc),
+      "a tag does not carry a description it can never show");
+    check(/if \(!tag\) wrap\(c\.desc/.test(doc), "and the exported image matches the screen");
     check(/dsep: c\.dia \? '1px solid #eae7df' : 'none'/.test(doc), "the separator line appears only under an icon");
   }
   check(/act: '#6f6b62', means: '#6f6b62'/.test(doc), "workflow decks are neutral");
+
+  // 모든 카드에 설명이 있어야 한다 / every deck entry needs a description: it is what a
+  // participant reads while choosing, and for 활동 it is the ONLY place one appears.
+  const decks = doc.slice(doc.indexOf("deck: {"), doc.indexOf("rules: ["));
+  const empty = (decks.match(/desc: '' \}/g) || []).length;
+  check(empty === 0, "no deck card is left without a description", ` (${empty} empty)`);
+  check(/title: 'AI 사용', desc: 'ChatGPT\/Gemini\/Claude 등 사용'/.test(doc),
+    "the AI card names the tools it means");
+  // 발동 사건은 조건이지 동작이 아니다 / a trigger states a CONDITION, never an action:
+  // both of these used to end in an open padlock, which said the guardrail lifts. What
+  // happens is the 제약 card's job (규칙 일시 중지 is the one that releases).
+  for (const k of ["w_retry", "w_struggle"]) {
+    const body = doc.slice(doc.indexOf(`key === '${k}'`), doc.indexOf(";", doc.indexOf(`key === '${k}'`)));
+    check(!body.includes("openLock"), `${k} no longer implies a release`);
+  }
+  check(/규칙 일시 중지/.test(doc), "releasing is still available, as a 제약 card");
   check(/con: 'oklch\(0\.51 0\.08 160\)'/.test(doc), "guardrail decks are colour-coded");
 
 }

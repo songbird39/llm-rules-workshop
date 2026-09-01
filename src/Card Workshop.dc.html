@@ -320,9 +320,11 @@
             <sc-if value="{{ c.hasDiagram }}" hint-placeholder-val="{{ true }}">
               <div style="flex:none;height:50px;display:flex;align-items:center;justify-content:center;border:1px solid #eae7df;border-radius:5px;background:#f7f5f0;padding:1px 2px;overflow:hidden">{{ c.diagram }}</div>
             </sc-if>
+            <sc-if value="{{ c.hasDesc }}" hint-placeholder-val="{{ true }}">
             <div style="flex:none;border-top:{{ c.dsep }};padding-top:4px">
               <textarea value="{{ c.desc }}" onChange="{{ c.onDesc }}" data-grow="1" placeholder="{{ t.descPh }}" style="width:100%;height:auto;min-height:{{ c.dmin }};overflow:hidden;resize:none;border:none;background:transparent;font-size:12px;line-height:1.45;color:#5b584f;outline:none;padding:0;pointer-events:auto"></textarea>
             </div>
+            </sc-if>
             <sc-if value="{{ c.isTag }}" hint-placeholder-val="{{ false }}">
               <div onPointerDown="{{ c.onWidth }}" title="{{ t.widthTip }}" style="position:absolute;right:0;top:0;bottom:0;width:12px;cursor:ew-resize;opacity:0;display:flex;align-items:center;justify-content:center" style-hover="opacity:1">
                 <div style="width:3px;height:22px;border-radius:2px;background:#b6b3aa"></div>
@@ -511,21 +513,21 @@ const I18N = {
     mark: { act: '활동', means: '수단', con: '제약', when: '언제', trig: '발동' },
     deck: {
       act: [
-        { title: '계획 세우기', desc: '' },
-        { title: '브레인스토밍 · 아이디어 발산', desc: '' },
-        { title: '초안 작성', desc: '' },
+        { title: '계획 세우기', desc: '무엇을 · 어떤 순서로 할지 정하기' },
+        { title: '브레인스토밍 · 아이디어 발산', desc: '쓸 내용 · 소재 떠올리기' },
+        { title: '초안 작성', desc: '처음부터 끝까지 한 번 써보기' },
         { title: '첫 학습', desc: '처음 배우는 개념 도입' },
         { title: '보충 설명', desc: '첫 학습에서 다루지 않은 부분' },
         { title: '연습', desc: '반복 수행' },
-        { title: '복습 · 인출', desc: '' },
+        { title: '복습 · 인출', desc: '배운 내용 다시 떠올리기' },
         { title: '학습 자료 만들기 · 변형하기', desc: '퀴즈, 예문 등' },
-        { title: '퀴즈 풀기 · 채점받기', desc: '' },
+        { title: '퀴즈 풀기 · 채점받기', desc: '문제를 풀고 맞았는지 확인' },
         { title: '피드백 받기', desc: '내 산출물에 대해' },
-        { title: '자기평가 · 성찰', desc: '' },
+        { title: '자기평가 · 성찰', desc: '얼마나 늘었는지 돌아보기' },
         { title: '', desc: '', blank: '＋ 기타 (직접 작성)' }
       ],
       means: [
-        { title: 'AI', desc: '' },
+        { title: 'AI 사용', desc: 'ChatGPT/Gemini/Claude 등 사용' },
         { title: 'AI 사용 안 함', desc: '이 활동은 AI로 하지 않는다' },
         { title: '외부 설명 자료', desc: '교재 · 사전 · 강의' },
         { title: '외부 읽기 · 듣기 자료', desc: '텍스트 · 영상 · 음성' },
@@ -552,13 +554,13 @@ const I18N = {
         { title: '활동 후', desc: '성찰', dia: 'w_after' }
       ],
       trig: [
-        { title: '규칙 대상 활동 시작 시', desc: '', dia: 'w_auto' },
-        { title: '규칙 위반 요청 감지 시', desc: '', dia: 'w_violate' },
-        { title: '거듭 요청 시', desc: '', dia: 'w_retry' },
-        { title: '어려움 감지 시', desc: '', dia: 'w_struggle' },
-        { title: '목표 도달 시', desc: '', dia: 'w_goal' },
-        { title: '시간 제한 시', desc: '', dia: 'w_time' },
-        { title: '횟수 · 턴 제한 시', desc: '', dia: 'w_count' },
+        { title: '규칙 대상 활동 시작 시', desc: '규칙이 걸린 활동을 시작하면', dia: 'w_auto' },
+        { title: '규칙 위반 요청 감지 시', desc: '규칙을 어기는 요청이 감지되면', dia: 'w_violate' },
+        { title: '거듭 요청 시', desc: '사용자가 같은 요청을 거듭하면', dia: 'w_retry' },
+        { title: '어려움 감지 시', desc: '사용자가 어려움을 느끼고 있음이 감지되면', dia: 'w_struggle' },
+        { title: '목표 도달 시', desc: '정해 둔 목표에 도달하면', dia: 'w_goal' },
+        { title: '시간 제한 시', desc: '정해 둔 시간에 이르면', dia: 'w_time' },
+        { title: '횟수 · 턴 제한 시', desc: '정해 둔 횟수 · 대화 턴에 이르면', dia: 'w_count' },
         { title: '', desc: '', dia: null, blank: '＋ 기타 (직접 작성)' }
       ]
     },
@@ -611,21 +613,21 @@ const I18N = {
     mark: { act: 'Activity', means: 'Means', con: 'Constraint', when: 'When', trig: 'Trigger' },
     deck: {
       act: [
-        { title: 'Plan', desc: '' },
-        { title: 'Brainstorm · generate ideas', desc: '' },
-        { title: 'Draft', desc: '' },
+        { title: 'Plan', desc: 'deciding what to study and in what order' },
+        { title: 'Brainstorm · generate ideas', desc: 'coming up with material to work from' },
+        { title: 'Draft', desc: 'a first pass, end to end' },
         { title: 'First learning', desc: 'meeting a concept for the first time' },
         { title: 'Extra explanation', desc: 'what first learning did not cover' },
         { title: 'Practice', desc: 'repeated performance' },
-        { title: 'Review · retrieval', desc: '' },
+        { title: 'Review · retrieval', desc: 'recalling what was learnt' },
         { title: 'Make · adapt materials', desc: 'quizzes, example sentences' },
-        { title: 'Take a quiz · get marked', desc: '' },
+        { title: 'Take a quiz · get marked', desc: 'answering, then checking' },
         { title: 'Get feedback', desc: 'on my own work' },
-        { title: 'Self-assess · reflect', desc: '' },
+        { title: 'Self-assess · reflect', desc: 'looking back at your own progress' },
         { title: '', desc: '', blank: '＋ Other (write your own)' }
       ],
       means: [
-        { title: 'AI', desc: '' },
+        { title: 'Using AI', desc: 'ChatGPT, Gemini, Claude and the like' },
         { title: 'No AI', desc: 'do not use AI for this activity' },
         { title: 'Reference materials', desc: 'textbook · dictionary · lecture' },
         { title: 'Reading · listening material', desc: 'text · video · audio' },
@@ -652,13 +654,13 @@ const I18N = {
         { title: 'After the activity', desc: 'reflection', dia: 'w_after' }
       ],
       trig: [
-        { title: 'When the activity starts', desc: '', dia: 'w_auto' },
-        { title: 'When a rule-breaking request is detected', desc: '', dia: 'w_violate' },
-        { title: 'When the user asks repeatedly', desc: '', dia: 'w_retry' },
-        { title: 'When the user seems to struggle', desc: '', dia: 'w_struggle' },
-        { title: 'When the goal is reached', desc: '', dia: 'w_goal' },
-        { title: 'On a time limit', desc: '', dia: 'w_time' },
-        { title: 'On a count · turn limit', desc: '', dia: 'w_count' },
+        { title: 'When the activity starts', desc: 'an activity the rule covers begins', dia: 'w_auto' },
+        { title: 'When a rule-breaking request is detected', desc: 'a request that breaks the rule is detected', dia: 'w_violate' },
+        { title: 'When the user asks repeatedly', desc: 'the same request is made again and again', dia: 'w_retry' },
+        { title: 'When the user seems to struggle', desc: 'the user appears to be stuck', dia: 'w_struggle' },
+        { title: 'When the goal is reached', desc: 'a goal you set is reached', dia: 'w_goal' },
+        { title: 'On a time limit', desc: 'a time you set is reached', dia: 'w_time' },
+        { title: 'On a count · turn limit', desc: 'a number of turns you set is reached', dia: 'w_count' },
         { title: '', desc: '', dia: null, blank: '＋ Other (write your own)' }
       ]
     },
@@ -1173,19 +1175,19 @@ class Component extends DCLogic {
       h('circle', { key: 'ed', cx: 30, cy: 35.5, r: 1.8, fill: RED })
     ]));
     if (key === 'w_retry') return wrap([
-      h('rect', { key: 'b1', x: 8, y: 5, width: 46, height: 13, rx: 5, fill: '#ecece7' }),
-      h('rect', { key: 'b2', x: 14, y: 21, width: 46, height: 13, rx: 5, fill: '#ecece7' }),
-      h('rect', { key: 'b3', x: 20, y: 37, width: 46, height: 13, rx: 5, fill: '#ecece7' }),
-      h('rect', { key: 'l3', x: 26, y: 41.5, width: 34, height: 4, rx: 2, fill: RED })
-    ].concat(openLock(84, ORG)));
+      h('rect', { key: 'b1', x: 31, y: 5, width: 46, height: 13, rx: 5, fill: '#ecece7' }),
+      h('rect', { key: 'b2', x: 37, y: 21, width: 46, height: 13, rx: 5, fill: '#ecece7' }),
+      h('rect', { key: 'b3', x: 43, y: 37, width: 46, height: 13, rx: 5, fill: '#ecece7' }),
+      h('rect', { key: 'l3', x: 49, y: 41.5, width: 34, height: 4, rx: 2, fill: RED })
+    ]);
     if (key === 'w_settings') return wrap([
       h('rect', { key: 'tg', x: 14, y: 15, width: 44, height: 22, rx: 11, stroke: INK, strokeWidth: 2.2 }),
       h('circle', { key: 'kn', cx: 25, cy: 26, r: 5.5, fill: ORG })
     ].concat(openLock(84, ORG)));
     if (key === 'w_struggle') return wrap([
-      h('rect', { key: 'b', x: 10, y: 15, width: 54, height: 22, rx: 6, fill: '#ecece7' }),
-      h('path', { key: 'sq', d: 'M18 26 q4 -7 8 0 t8 0 t8 0 t8 0', stroke: RED, strokeWidth: 2.2 })
-    ].concat(openLock(84, ORG)));
+      h('rect', { key: 'b', x: 33, y: 15, width: 54, height: 22, rx: 6, fill: '#ecece7' }),
+      h('path', { key: 'sq', d: 'M41 26 q4 -7 8 0 t8 0 t8 0 t8 0', stroke: RED, strokeWidth: 2.2 })
+    ]);
 
     if (key === 'h_self') return wrap([
       h('circle', { key: 'hd', cx: 52, cy: 15, r: 7.5, stroke: INK, strokeWidth: 2.2 }),
@@ -1345,7 +1347,11 @@ class Component extends DCLogic {
     this.setState({ ghost: { x: e.clientX, y: e.clientY, type: type, text: tpl.title || tpl.blank || '' } });
   }
   addCard(type, tpl, x, y) {
-    const card = { id: 'c' + this.state.seq, type: type, title: tpl.title || '', desc: tpl.desc || '', dia: tpl.dia || null, collapsed: false, w: (type === 'act' ? TAG_W : CARD), x: this.fix(x), y: this.fix(y) };
+    const card = { id: 'c' + this.state.seq, type: type, title: tpl.title || '',
+      // 활동 태그는 보드에서 설명을 보여주지 않으므로 들고 오지도 않는다 / a tag never
+      // shows a description, so it does not carry one either — otherwise the export
+      // and the saved record would hold text nobody can see or edit
+      desc: type === 'act' ? '' : (tpl.desc || ''), dia: tpl.dia || null, collapsed: false, w: (type === 'act' ? TAG_W : CARD), x: this.fix(x), y: this.fix(y) };
     this.setState((s) => ({ cards: s.cards.concat([card]), seq: s.seq + 1 }));
   }
   quickAdd(type, tpl) {
@@ -2100,8 +2106,8 @@ class Component extends DCLogic {
       g.fillText(mk, r.x + r.w - 13 - g.measureText(mk).width, r.y + (tag ? 23 : 21));
       // 설명 / description
       g.fillStyle = '#5b584f'; g.font = font(12);
-      wrap(c.desc, r.x + 12, r.y + (tag ? 45 : 42) + (c.dia ? 52 : 0), r.w - 24, 17,
-        Math.max(1, Math.floor((r.h - (tag ? 52 : 49) - (c.dia ? 52 : 0)) / 17)));
+      if (!tag) wrap(c.desc, r.x + 12, r.y + 42 + (c.dia ? 52 : 0), r.w - 24, 17,
+        Math.max(1, Math.floor((r.h - 49 - (c.dia ? 52 : 0)) / 17)));
       if (c.dia) {           // 아이콘 / the card's own icon, lifted off the page
         g.strokeStyle = '#eae7df'; g.lineWidth = 1; g.fillStyle = '#f7f5f0';
         round(r.x + 8, r.y + 34, r.w - 16, 46, 5).fill(); round(r.x + 8, r.y + 34, r.w - 16, 46, 5).stroke();
@@ -2389,9 +2395,11 @@ class Component extends DCLogic {
           tfs: c.type === 'act' ? '15px' : '12.5px',
           // 태그는 한 줄짜리 막대에서 시작해 내용만큼만 자란다 / a tag starts as a one-line
           // bar and grows only with its content, so it never looks like a card
-          dmin: c.type === 'act' ? '17px' : '48px',
+          dmin: '48px',
           // 아이콘이 있을 때만 구분선 / the separator only makes sense under an icon
           dsep: c.dia ? '1px solid #eae7df' : 'none',
+          // 활동 태그는 제목 줄만 / an activity tag is a label, not a card
+          hasDesc: c.type !== 'act',
           // 해석 레이어 카드만 조작 가능 / only sensemaking objects are interactive in admin
           pe: (!RO || c.sm) ? 'auto' : 'none',
           bg: c.sm ? '#fdfbf5' : '#fffefb',
