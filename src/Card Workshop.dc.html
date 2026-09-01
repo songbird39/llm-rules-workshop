@@ -568,7 +568,7 @@ const I18N = {
       title: '나의 AI 학습 규칙 만들기', step1: '1단계 · 워크플로 만들기', step2: '2단계 · 가드레일 붙이기',
       participant: '참여자', prev: '← 이전', next: '다음 →', choose: '활동 태그를 놓아 주세요', selSuffix: '개 활동',
       syncPending: '저장 중…', syncSaved: '서버 저장됨', syncOffline: '오프라인 · 재시도 대기',
-      syncLocal: '⚠ 로컬 저장만 · 서버 미연결', syncReady: '서버 연결됨', syncLoading: '서버에서 불러오는 중…',
+      syncDemo: '데모 · 저장하지 않음', syncLocal: '⚠ 로컬 저장만 · 서버 미연결', syncReady: '서버 연결됨', syncLoading: '서버에서 불러오는 중…',
       fit: '화면 맞춤', note: '✎ 메모', exportBtn: '제출 · JSON 저장', clear: '초기화', confirmClear: '보드의 모든 카드를 지울까요?',
       arrow: '↗ 화살표', arrowTip: '카드에서 카드로 드래그해 화살표로 잇기', arrowDelTip: '화살표 삭제',
       imgBtn: '이미지 저장', imgSenseBtn: '이미지 (해석 포함)',
@@ -668,7 +668,7 @@ const I18N = {
       title: 'Design My AI Learning Rules', step1: 'Step 1 · Build the workflow', step2: 'Step 2 · Add guardrails',
       participant: 'Participant', prev: '← Back', next: 'Next →', choose: 'Place an activity tag', selSuffix: ' activities',
       syncPending: 'Saving…', syncSaved: 'Saved to server', syncOffline: 'Offline · will retry',
-      syncLocal: '⚠ Local only · no server', syncReady: 'Server connected', syncLoading: 'Loading from server…',
+      syncDemo: 'Demo · nothing is saved', syncLocal: '⚠ Local only · no server', syncReady: 'Server connected', syncLoading: 'Loading from server…',
       fit: 'Reset view', note: '✎ Note', exportBtn: 'Submit · Save JSON', clear: 'Clear', confirmClear: 'Clear all cards on the board?',
       arrow: '↗ Arrow', arrowTip: 'Drag from one card to another to connect them', arrowDelTip: 'Delete arrow',
       imgBtn: 'Save image', imgSenseBtn: 'Image (with workspace)',
@@ -844,7 +844,17 @@ class Component extends DCLogic {
 
   // 저장이 멈춘 상태 / writes are frozen: admin view mode, or while browsing an old
   // version. Browsing history must never push the old board over the newest one.
-  frozen() { return this.isView() || !!this.state.travel; }
+  /* 데모 세션 / DEMO SESSIONS
+     demo, demo0, DEMO-2 … — anything starting with "demo", case-insensitive. A demo is a
+     rehearsal or a walkthrough, not data: it must never reach the research spreadsheet,
+     and it leaves nothing in this browser either, so the next participant does not find
+     it waiting on the sign-in screen. The Apps Script drops demo rows too, so a stale
+     cached build cannot post one. */
+  isDemo(pid) { return /^demo/i.test(String(pid === undefined ? this.state.pid : pid) || ''); }
+
+  // 저장이 멈추는 세 가지 / the three states in which nothing is written anywhere:
+  // 열람 모드 · 기록 열람 중 · 데모 (admin view, browsing history, a demo session)
+  frozen() { return this.isView() || !!this.state.travel || this.isDemo(); }
 
   // 관리자 코드로 로그인하면 참여자 목록 화면으로 / admin code opens the roster
   loginAdmin() {
@@ -1108,7 +1118,9 @@ class Component extends DCLogic {
     this.setState({ pid: pid, loginPid: '' });
     if (d) this.applyState(d, lang);
     else this.setState({ step: 1, rules: [], cards: [], notes: [], arrows: [], seq: 1, panelW: 566, pan: { x: 0, y: 0 }, zoom: 1, noteMode: false }, () => this.seedSig());
-    this.syncDown(pid, d ? d.savedAt || 0 : 0);
+    // 데모는 서버에서 읽지도 않는다 / a demo does not read from the server either: it has
+    // nothing of its own there, and a row left by an older build would resurrect itself
+    if (!this.isDemo(pid)) this.syncDown(pid, d ? d.savedAt || 0 : 0);
   }
   logout() { this.setState({ pid: '', loginPid: '', step: 0, noteMode: false, admin: false, viewPid: '', roster: [], rosterMsg: '' }); }
 
@@ -2258,10 +2270,10 @@ class Component extends DCLogic {
       onBackList: () => this.backToRoster(),
       isLoggedIn: this.state.step > 0 || viewing,
       showSync: this.state.step > 0 && !RO,
-      syncLabel: !this.syncUrl() ? t.syncLocal : this.state.loadingRemote ? t.syncLoading : this.state.sync === 'saved' ? t.syncSaved : this.state.sync === 'offline' ? t.syncOffline : this.state.sync ? t.syncPending : t.syncReady,
-      syncColor: !this.syncUrl() ? '#8a6a1f' : this.state.sync === 'saved' ? '#5b7a5e' : this.state.sync === 'offline' ? '#b03f34' : '#98958c',
+      syncLabel: this.isDemo() ? t.syncDemo : !this.syncUrl() ? t.syncLocal : this.state.loadingRemote ? t.syncLoading : this.state.sync === 'saved' ? t.syncSaved : this.state.sync === 'offline' ? t.syncOffline : this.state.sync ? t.syncPending : t.syncReady,
+      syncColor: this.isDemo() ? '#8a6a1f' : !this.syncUrl() ? '#8a6a1f' : this.state.sync === 'saved' ? '#5b7a5e' : this.state.sync === 'offline' ? '#b03f34' : '#98958c',
       syncBg: !this.syncUrl() ? '#f7f0dc' : '#f4f2eb',
-      syncDot: !this.syncUrl() ? '#d0a531' : this.state.sync === 'saved' ? '#7d9a80' : this.state.sync === 'offline' ? '#c9776c' : '#c9c5ba',
+      syncDot: this.isDemo() ? '#d0a531' : !this.syncUrl() ? '#d0a531' : this.state.sync === 'saved' ? '#7d9a80' : this.state.sync === 'offline' ? '#c9776c' : '#c9c5ba',
       isStep1: this.state.step === 1,
       emptyA: this.state.step === 1 ? t.empty1 : t.empty2A,
       emptyB: this.state.step === 1 ? t.empty1b : t.empty2B,

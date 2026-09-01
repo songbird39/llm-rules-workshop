@@ -988,6 +988,70 @@ async function dragTileToBoard(page, title, fx = 0.45, fy = 0.4) {
     await page.close();
   }
 
+  // ------------------------------------------------- demo sessions
+  // 데모는 리허설이지 데이터가 아니다 / a demo is a rehearsal, not data: nothing may reach
+  // the sheet and nothing may be left in this browser for the next participant to find.
+  console.log("\na demo id saves nothing, anywhere");
+  {
+    const page = await browser.newPage({ viewport: { width: 1600, height: 1000 } });
+    const errors = [], posts = [];
+    page.on("pageerror", (e) => errors.push(e.message));
+    await page.route("**/macros/s/**", async (route) => {
+      const req = route.request();
+      if (req.method() === "POST") posts.push(req.postData() || "");
+      else posts.push("GET " + req.url().split("?")[1]);
+      await route.fulfill({ status: 200, body: "{}" });
+    });
+    await page.goto(APP, { waitUntil: "load", timeout: 120000 });
+    await page.waitForSelector('input[placeholder="P00"]', { timeout: 120000 });
+
+    await page.fill('input[placeholder="P00"]', "demo0");
+    await page.getByText("시작하기", { exact: false }).click();
+    await page.waitForSelector("text=무엇을 하나요?", { timeout: 30000 });
+    await dragTileToBoard(page, "계획 세우기", 0.15, 0.12);
+    await page.getByRole("button", { name: /다음/ }).click();
+    await page.waitForSelector("text=시스템이 어떻게 개입하나요?", { timeout: 30000 });
+    await dragTileToBoard(page, "규칙 상기", 0.5, 0.45);
+    await page.waitForTimeout(4000);            // well past the 2.5s autosave
+    check(posts.length === 0, "a demo neither posts nor reads from the sheet",
+      posts.length ? ` (${posts[0].slice(0, 80)})` : "");
+    const keys = await page.evaluate(() => Object.keys(localStorage)
+      .filter((k) => k.indexOf("llm-guardrail-workshop-v4:") === 0)
+      .filter((k) => !/:(lang|queue)$/.test(k)));
+    check(keys.length === 0, "and writes no board of its own to this browser", ` (${JSON.stringify(keys)})`);
+    const queued = await page.evaluate(() => {
+      try { return JSON.parse(localStorage.getItem("llm-guardrail-workshop-v4:queue") || "[]"); }
+      catch (e) { return []; }
+    });
+    check(queued.length === 0, "and nothing is sitting in the outbound queue", ` (${queued.length})`);
+    check((await page.locator("text=데모").count()) > 0, "the header says it is a demo");
+
+    // 완료를 눌러도 마찬가지 / finishing must not post either
+    await page.getByRole("button", { name: /완료/ }).click();
+    await page.waitForTimeout(1200);
+    check(posts.length === 0, "finishing a demo still posts nothing",
+      posts.length ? ` (${posts[0].slice(0, 80)})` : "");
+    await page.keyboard.press("Escape");
+
+    // 다음 참여자에게 흔적이 남지 않는다 / the next participant finds no trace of it
+    await page.reload({ waitUntil: "load" });
+    await page.waitForSelector('input[placeholder="P00"]', { timeout: 120000 });
+    check((await page.getByRole("button", { name: "demo0" }).count()) === 0,
+      "and leaves no chip on the sign-in screen");
+
+    // 진짜 참여자는 평소대로 저장된다 / a real participant is unaffected
+    await page.fill('input[placeholder="P00"]', "R01");
+    await page.getByText("시작하기", { exact: false }).click();
+    await page.waitForSelector("text=무엇을 하나요?", { timeout: 30000 });
+    await dragTileToBoard(page, "계획 세우기", 0.15, 0.12);
+    await page.waitForTimeout(4000);
+    check(posts.some((x) => x.includes("R01")), "a real participant still saves",
+      ` (${posts.length} request${posts.length === 1 ? "" : "s"})`);
+    check(!posts.some((x) => /demo/i.test(x)), "and no demo rode along with it");
+    check(errors.length === 0, "no console errors", errors.length ? ` (${errors[0]})` : "");
+    await page.close();
+  }
+
   // ------------------------------------------------- language switch
   console.log("\nswitching language translates the board and survives old records");
   {

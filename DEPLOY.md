@@ -151,6 +151,17 @@ Three checks before a session:
    fire-and-forget (`no-cors`), so the badge means "sent", not "stored" — the sheet is
    the only real confirmation.
 
+## Demo sessions
+
+Sign in with any code starting with **`demo`** (case-insensitive: `demo`, `demo0`,
+`DEMO-2`) and the session saves nothing at all — no rows in the sheet, no board in this
+browser, nothing in the outbound queue, and no chip on the sign-in screen afterwards. It
+also does not *read* from the sheet, so a demo cannot resurrect a row left by an older
+build. The header shows **데모 · 저장하지 않음** so you can tell at a glance.
+
+Use it for walkthroughs and rehearsals. The Apps Script drops demo rows as well, which
+matters because a participant may be on a cached build that still posts them.
+
 ## View mode (admin)
 
 Sign in with the participant code **`admin`** instead of a real code. You get a list of

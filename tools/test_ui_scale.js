@@ -287,6 +287,20 @@ console.log("\nlanguage switching has no rule-deck left in it");
     "a restored record with no rules cannot break the snapshot");
 }
 
+// ---- 6d. demo sessions ----
+console.log("\ndemo ids are frozen out of every write path");
+{
+  check(/isDemo\(pid\) \{ return \/\^demo\/i\.test/.test(src), "any id starting with demo, case-insensitive");
+  check(/frozen\(\) \{ return this\.isView\(\) \|\| !!this\.state\.travel \|\| this\.isDemo\(\); \}/.test(src),
+    "and frozen() covers them, so localStorage, autosave and the queue all stop");
+  check(/if \(!this\.isDemo\(pid\)\) this\.syncDown/.test(src), "a demo does not read from the sheet either");
+  check(/syncDemo:/.test(src) && /this\.isDemo\(\) \? t\.syncDemo/.test(src), "and the header says so");
+  const gs = fs.readFileSync(path.join(ROOT, "server", "Code.gs"), "utf8");
+  check(/function isDemo_\(pid\)/.test(gs) && /skipped: 'demo'/.test(gs),
+    "the server drops demo rows as a backstop for stale builds");
+  check(/if \(isDemo_\(pid\)\) continue;/.test(gs), "and never lists one as a participant");
+}
+
 // ---- 7. view mode must not be able to write ----
 // The whole point: viewing P01 must never produce a localStorage write or a sheet
 // POST, because latestState_() takes the newest row and would adopt the accident.
@@ -308,8 +322,8 @@ console.log("\nview mode cannot write");
   check(guardedFirst("downloadJson()", "isView"), "downloadJson bails on isView() first");
   check(/this\.state\.pid && !this\.frozen\(\)/.test(doc),
     "componentDidUpdate localStorage write checks frozen()");
-  check(/frozen\(\) \{ return this\.isView\(\) \|\| !!this\.state\.travel; \}/.test(doc),
-    "frozen() covers both view mode and version browsing");
+  check(/frozen\(\) \{ return this\.isView\(\) \|\| !!this\.state\.travel \|\| this\.isDemo\(\); \}/.test(src),
+    "frozen() covers view mode, version browsing and demo sessions");
 
   // 7b. admin mode must leave state.pid empty — that alone disables every path
   check(/admin: true, viewPid: '', loginPid: '', pid: '', step: 0/.test(doc),

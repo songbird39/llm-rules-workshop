@@ -28,6 +28,11 @@ function doPost(e) {
   lock.waitLock(30000);
   try {
     var body = JSON.parse(e.postData.contents);
+    // 데모는 기록하지 않는다 / demo sessions are rehearsals, not data. The client already
+    // refuses to send them; this is the backstop for a stale cached build that still does.
+    if (isDemo_(body.participant || (body.payload && body.payload.participant))) {
+      return json_({ ok: true, skipped: 'demo' });
+    }
     // 삭제는 되돌릴 수 없다 / deletion is irreversible: it removes the participant's rows
     // AND the admin sensemaking record keyed to them, which would otherwise be orphaned.
     if (body.action === 'delete' && body.participant) {
@@ -85,6 +90,11 @@ function doGet(e) {
  *  Returns how many rows went. Rows are deleted bottom-up so the indices collected
  *  first stay valid as the sheet shrinks.
  */
+/** demo, demo0, DEMO-2 … — anything starting with "demo", case-insensitive. */
+function isDemo_(pid) {
+  return /^demo/i.test(String(pid || ''));
+}
+
 function deleteParticipant_(pid) {
   if (!pid || pid.indexOf(SENSE_PREFIX) === 0) return { ok: false, error: 'bad id' };
   var sh = sheet_();
@@ -115,6 +125,7 @@ function roster_() {
     // 관리자 해석용 레코드는 참여자 목록에 넣지 않는다 / admin sensemaking records are
     // stored under a "sm:" key and are not participants
     if (pid.indexOf(SENSE_PREFIX) === 0) continue;
+    if (isDemo_(pid)) continue;   // 데모는 참여자가 아니다 / a demo is not a participant
     if (!map[pid]) { map[pid] = { participant: pid, rows: 0, submits: 0, lastAt: null }; order.push(pid); }
     var rec = map[pid];
     rec.rows++;
