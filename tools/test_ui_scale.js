@@ -275,8 +275,15 @@ console.log("\nconsent document is embedded without a parse-time fetch");
   check(pages === 6, "five page images plus the print-resolution last page", ` (${pages})`);
   check(/lastPdf: 'data:application\/pdf;base64,/.test(src), "the last page ships as a real PDF");
   check(/mountConsentStyles\(\)/.test(src), "pages are attached through an injected stylesheet");
-  check(/componentDidMount\(\) \{\s*this\.mountConsentStyles\(\);/.test(src),
+  check(/componentDidMount\(\)[\s\S]{0,220}?this\.mountConsentStyles\(\);/.test(src),
     "and that runs at mount");
+  // 하이드레이션 전에는 감춘다 / hide until hydrated: the raw template was readable for a
+  // moment on load, and what it read was "{{ t.delTitle }}" in a dialog nobody opened
+  check(/x-dc\{visibility:hidden/.test(doc) && /html\[data-dc-ready\] x-dc\{visibility:visible/.test(doc),
+    "the raw template is hidden until the engine has run");
+  check(/animation:dc-ready 0s linear 10s forwards/.test(doc),
+    "with a CSS-only reveal, so a boot failure is not a blank page");
+  check(/setAttribute\('data-dc-ready', '1'\)/.test(src), "and mount is what reveals it");
 
   const step0 = doc.slice(doc.indexOf("{{ isStep0 }}"), doc.indexOf("{{ isRoster }}"));
   check(!/src="\{\{/.test(step0), "no interpolated src on the sign-in screen");
@@ -512,12 +519,13 @@ console.log("\nview mode cannot write");
   }
 
   // 7d-ter. text inside a card must be reachable and scrollable while viewing
-  check(/pointer-events:auto/.test(doc), "card text re-enabled under pointer-events:none");
-  // four: the card description, the note, the card title, and the chevron's own title
-  // input, which lives in the tag markup rather than the shared card markup.
-  check((doc.match(/;pointer-events:auto/g) || []).length === 4,
+  check(/pointer-events:\{\{ [cn]\.tpe \}\}/.test(doc), "card text re-enabled under pointer-events:none");
+  check(/const TPE = PEN \? 'none' : 'auto';/.test(doc), "but not while the pen is up");
+  // 이제 값으로 넘긴다 / the value is passed in now, because text must also go inert while
+  // the pen is up: an input that hard-codes auto keeps taking presses whatever its card says
+  check((doc.match(/;pointer-events:\{\{ [cn]\.tpe \}\}/g) || []).length === 4,
     "every remaining text element is re-enabled",
-    ` (${(doc.match(/;pointer-events:auto/g) || []).length})`);
+    ` (${(doc.match(/;pointer-events:\{\{ [cn]\.tpe \}\}/g) || []).length})`);
   check(/descOverflow: RO \? 'auto' : 'hidden'/.test(doc),
     "collapsed rule card scrolls in view mode, stays clipped for participants");
 
@@ -559,8 +567,10 @@ console.log("\nview mode cannot write");
   check(/const key = 'sm:' \+ pid;/.test(doc), "sensemaking writes build an sm: key");
   check(/if \(key\.indexOf\('sm:'\) !== 0\) return;/.test(doc), "and assert the prefix before sending");
   check(/participant: key, kind: 'sensemaking'/.test(doc), "posted as kind sensemaking under that key");
-  check(/if \(!this\.isView\(\) \|\| !pid \|\| !url\) return;/.test(doc),
-    "pushSense refuses outside admin view mode");
+  check(/if \(!this\.isView\(\) \|\| !pid \|\| !url \|\| this\.state\.travel\) return;/.test(doc),
+    "pushSense refuses outside admin view mode, and while browsing history");
+  check(/if \(!this\.isView\(\) \|\| !this\.state\.viewPid \|\| this\.state\.travel\) return;/.test(doc),
+    "and it is never even scheduled from an old version");
   check(/cards: this\.state\.cards\.filter\(\(c\) => c\.sm\)/.test(doc),
     "only sm-flagged objects are sent, participant objects are filtered out");
 

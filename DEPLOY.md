@@ -27,6 +27,14 @@ Works on phones, tablets and laptops; participants just open the link.
 
 ### What a session looks like
 
+Participants get **↩ 되돌리기** (Ctrl+Z), which steps back up to five changes; edits made
+within half a second of each other collapse into one step, so a burst of typing is one
+undo rather than one per keystroke. Version browsing (**기록**) is admin-only — it was more
+machinery than a 30-minute session needs, and what a participant actually wants is "undo
+that". Browsing an old version never writes: not to the sheet, not to this browser, and
+not to the admin's sensemaking record, which the board is holding an old copy of while you
+look.
+
 Both steps share **one toolbar** — zoom, 기록, 화면 맞춤, 화살표, 펜, 메모, 초기화 — with only
 the trailing action differing: 다음 in step 1, 제출 in step 2. 제출 can be pressed as often as
 the participant likes; each press is another row, and the newest one is what you read.

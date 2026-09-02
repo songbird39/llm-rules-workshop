@@ -648,14 +648,24 @@ async function dragTileToBoard(page, title, fx = 0.45, fy = 0.4) {
       const reply = (o) => route.fulfill({ status: 200, contentType: "application/javascript", body: cbn + "(" + JSON.stringify(o) + ");" });
       if (u.searchParams.get("versions")) return reply({ ok: true, versions: V });
       if (u.searchParams.get("row")) return reply({ ok: true, row: +u.searchParams.get("row"), state: mk(u.searchParams.get("row") === "9" ? 2 : 1) });
-      if (u.searchParams.get("participant")) return reply({ ok: true, state: mk(2) });
+      if (u.searchParams.get("list")) return reply({ ok: true, participants: [
+        { participant: "H1", rows: 9, submits: 1, lastAt: "2026-08-29T10:00:00.000Z" }] });
+      const who = u.searchParams.get("participant");
+      if (who && who.indexOf("sm:") === 0) return reply({ ok: true, state: null });
+      if (who) return reply({ ok: true, state: mk(2) });
       return reply({ ok: true, rows: 0 });
     });
     await page.goto(APP + "?sync=" + encodeURIComponent(EP), { waitUntil: "load", timeout: 120000 });
     await page.waitForSelector('input[placeholder="P00"]', { timeout: 120000 });
-    await page.fill('input[placeholder="P00"]', "H1");
+    await page.fill('input[placeholder="P00"]', "admin");
     await page.getByText("시작하기", { exact: false }).click();
-    await page.waitForTimeout(1200);
+    await page.waitForTimeout(1000);
+    await page.evaluate(() => {
+      const row = [...document.querySelectorAll("div")].find((d) => d.style.cursor === "pointer"
+        && d.textContent.includes("H1"));
+      if (row) row.click();
+    });
+    await page.waitForTimeout(1500);
     const nCards = () => page.evaluate(() => {
       const L = [...document.querySelectorAll("div")].find((d) => d.style.width === "5000px");
       return L ? [...L.children].filter((c) => c.tagName === "DIV" && c.querySelector("input")).length : 0;
@@ -664,7 +674,8 @@ async function dragTileToBoard(page, title, fx = 0.45, fy = 0.4) {
       const o = [...document.querySelectorAll("div")].find((d) => d.style.position === "fixed" && d.style.zIndex === "60");
       [...o.querySelectorAll("button")].find((x) => /제출됨/.test(x.innerText)).click();
     });
-    check(await nCards() === 2, "latest board loaded");
+    for (let k = 0; k < 20 && (await nCards()) !== 2; k++) await page.waitForTimeout(200);
+    check(await nCards() === 2, "latest board loaded", ` (${await nCards()})`);
 
     await page.getByText("기록", { exact: true }).click();
     await page.waitForTimeout(700);
@@ -697,20 +708,8 @@ async function dragTileToBoard(page, title, fx = 0.45, fy = 0.4) {
     check(await nCards() === 2, "cancel returns to the latest board");
     check(await page.evaluate(() => !document.body.innerText.includes("기록 보는 중")), "banner cleared after cancel");
 
-    await page.getByText("기록", { exact: true }).click();
-    await page.waitForTimeout(700);
-    await pickSubmit();
-    await page.waitForTimeout(900);
-    posts = 0;
-    await page.getByText("이 버전으로 되돌리기", { exact: false }).click();
-    await page.waitForTimeout(600);
-    const ta2 = page.locator("textarea").first();
-    await ta2.click();
-    await ta2.type("after restore");
-    await page.waitForTimeout(3800);
-    check(posts > 0, "after restore, editing saves again", ` (${posts} posts)`);
-    check(await nCards() === 1, "the restored board is the old one");
-    if (SHOTS) await page.screenshot({ path: `${SHOTS}/history.png` });
+    check((await page.getByText("이 버전으로 되돌리기").count()) === 0,
+      "admin is never offered restore — view mode exists to protect the record");
     check(errors.length === 0, "no console errors", errors.length ? ` (${errors[0]})` : "");
     await page.close();
   }
@@ -1151,7 +1150,7 @@ async function dragTileToBoard(page, title, fx = 0.45, fy = 0.4) {
       .map((b) => b.textContent.trim()).filter(Boolean));
     await toStep1(page, "TB1");
     const step1 = await tools();
-    for (const label of ["↗ 화살표", "펜", "✎ 메모", "기록", "화면 맞춤", "초기화"])
+    for (const label of ["↗ 화살표", "펜", "✎ 메모", "↩ 되돌리기", "화면 맞춤", "초기화"])
       check(step1.some((t) => t === label), `step 1 has ${label}`, ` (${JSON.stringify(step1.slice(0, 12))})`);
     check(step1.some((t) => t.includes("다음")), "and 다음, not 제출");
     check(!step1.some((t) => t === "제출"), "step 1 does not offer 제출");
@@ -1160,7 +1159,7 @@ async function dragTileToBoard(page, title, fx = 0.45, fy = 0.4) {
     await page.getByRole("button", { name: /다음/ }).click();
     await page.waitForSelector("text=시스템이 어떻게 개입하나요?", { timeout: 30000 });
     const step2 = await tools();
-    for (const label of ["↗ 화살표", "펜", "✎ 메모", "기록", "화면 맞춤", "초기화"])
+    for (const label of ["↗ 화살표", "펜", "✎ 메모", "↩ 되돌리기", "화면 맞춤", "초기화"])
       check(step2.some((t) => t === label), `step 2 keeps ${label}`);
     check(step2.some((t) => t === "제출"), "and offers 제출, which can be pressed more than once");
 
@@ -1210,6 +1209,53 @@ async function dragTileToBoard(page, title, fx = 0.45, fy = 0.4) {
       return layer.querySelector("input").value === "고친 이름";
     }), "and keeps what was typed");
 
+    check(errors.length === 0, "no console errors", errors.length ? ` (${errors[0]})` : "");
+    await page.close();
+  }
+
+  // ------------------------------------------------- undo
+  console.log("\nundo steps back five changes; 기록 is admin-only now");
+  {
+    const { page, errors } = await boot(browser, { width: 1700, height: 1000 });
+    await toStep1(page, "UND");
+    check((await page.getByRole("button", { name: "기록" }).count()) === 0,
+      "a participant is not offered version browsing");
+    check((await page.getByRole("button", { name: /되돌리기/ }).count()) === 1, "but is offered undo");
+
+    const count = () => page.evaluate(() => {
+      const layer = [...document.querySelectorAll("div")].find((d) => d.style.width === "5000px");
+      return layer ? [...layer.children].filter((c) => c.querySelector && c.querySelector("input")).length : -1;
+    });
+    const box = await (await page.$('div[style*="radial-gradient"]')).boundingBox();
+    const dropNth = async (i, fx, fy) => {
+      const t = await page.evaluate((n) => {
+        const d = [...document.querySelectorAll("div")].filter((x) => getComputedStyle(x).cursor === "grab")[n];
+        const r = d.getBoundingClientRect();
+        return { x: r.x, y: r.y, h: r.height };
+      }, i);
+      await page.mouse.move(t.x + 40, t.y + t.h / 2);
+      await page.mouse.down();
+      await page.mouse.move(box.x + box.width * fx, box.y + box.height * fy, { steps: 6 });
+      await page.mouse.up();
+      await page.waitForTimeout(700);          // 단계가 뭉치지 않도록 / clear of UNDO_GROUP_MS
+    };
+    const spots = [[0, 0.15, 0.15], [1, 0.15, 0.35], [2, 0.15, 0.55], [3, 0.45, 0.15],
+                   [4, 0.45, 0.35], [5, 0.45, 0.55], [6, 0.75, 0.15]];
+    for (const [i, x, y] of spots) await dropNth(i, x, y);
+    check((await count()) === 7, "seven tags laid down", ` (${await count()})`);
+    for (let k = 0; k < 6; k++) {
+      await page.getByRole("button", { name: /되돌리기/ }).click();
+      await page.waitForTimeout(250);
+    }
+    // 다섯 장만 들고 있으므로 여섯 번 눌러도 다섯 단계 / only five snapshots are kept, so a
+    // sixth press has nothing left to undo — it must not wipe the board
+    check((await count()) === 2, "six presses step back five changes and then stop", ` (${await count()})`);
+
+    await dropNth(0, 0.75, 0.5);
+    check((await count()) === 3, "a new change after undoing is kept");
+    await page.keyboard.press("Control+z");
+    await page.waitForTimeout(300);
+    check((await count()) === 2, "and Ctrl+Z undoes it too");
     check(errors.length === 0, "no console errors", errors.length ? ` (${errors[0]})` : "");
     await page.close();
   }

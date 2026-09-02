@@ -20,6 +20,11 @@
   ::selection{background:#dfe4ec}
 </style>
 </helmet>
+<style>
+  x-dc{visibility:hidden;animation:dc-ready 0s linear 10s forwards}
+  @keyframes dc-ready{to{visibility:visible}}
+  html[data-dc-ready] x-dc{visibility:visible;animation:none}
+</style>
 <template id="__bundler_thumbnail"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200"><rect width="200" height="200" fill="#2f3b52"/><g transform="rotate(-8 100 100)"><rect x="58" y="62" width="84" height="60" rx="8" fill="#fff" opacity=".55"/></g><g transform="rotate(6 100 108)"><rect x="62" y="74" width="84" height="60" rx="8" fill="#fff"/><rect x="74" y="88" width="46" height="7" rx="3.5" fill="#2f3b52"/><rect x="74" y="102" width="60" height="5" rx="2.5" fill="#9aa5b8"/><rect x="74" y="113" width="38" height="5" rx="2.5" fill="#9aa5b8"/></g></svg></template>
 <div style="display:flex;flex-direction:column;height:calc(100vh / {{ ui }});zoom:{{ ui }};overflow:hidden">
 
@@ -69,10 +74,11 @@
           <button onClick="{{ onImg }}" style="padding:7px 12px;border:1px solid #d6d3ca;border-radius:7px;background:#fff;font-size:13.5px;cursor:pointer" style-hover="background:#f1efe8">{{ t.imgBtn }}</button>
           <button onClick="{{ onImgSense }}" style="padding:7px 12px;border:1px dashed oklch(0.62 0.11 62);border-radius:7px;background:#fdfbf5;color:#7a5a1f;font-size:13.5px;cursor:pointer">{{ t.imgSenseBtn }}</button>
           <button onClick="{{ onClearSense }}" style="padding:7px 10px;border:1px solid #e2dfd7;border-radius:7px;background:transparent;color:#98958c;font-size:13.5px;cursor:pointer" style-hover="color:#b03f34">{{ t.clearSenseBtn }}</button>
+          <button onClick="{{ onHistory }}" style="padding:7px 12px;border:1px solid #d6d3ca;border-radius:7px;background:#fff;font-size:13.5px;cursor:pointer" style-hover="background:#f1efe8">{{ t.histBtn }}</button>
         </sc-if>
-        <button onClick="{{ onHistory }}" style="padding:7px 12px;border:1px solid #d6d3ca;border-radius:7px;background:#fff;font-size:13.5px;cursor:pointer" style-hover="background:#f1efe8">{{ t.histBtn }}</button>
         <button onClick="{{ resetView }}" style="padding:7px 12px;border:1px solid #d6d3ca;border-radius:7px;background:#fff;font-size:13.5px;cursor:pointer" style-hover="background:#f1efe8">{{ t.fit }}</button>
         <sc-if value="{{ canEdit }}" hint-placeholder-val="{{ true }}">
+        <button onClick="{{ onUndo }}" title="{{ t.undoTip }}" style="padding:7px 12px;border:1px solid #d6d3ca;border-radius:7px;background:#fff;font-size:13.5px;cursor:pointer;opacity:{{ undoOpacity }}" style-hover="background:#f1efe8">{{ t.undoBtn }}</button>
         <button onClick="{{ toggleArrowMode }}" title="{{ t.arrowTip }}" style="padding:7px 12px;border:1px solid #d6d3ca;border-radius:7px;background:{{ arrowBtnBg }};color:{{ arrowBtnColor }};font-size:13.5px;cursor:pointer">{{ t.arrow }}</button>
         <button onClick="{{ togglePen }}" title="{{ t.penTip }}" style="padding:7px 12px;border:1px solid #d6d3ca;border-radius:7px;background:{{ penBtnBg }};color:{{ penBtnColor }};font-size:13.5px;cursor:pointer">{{ t.pen }}</button>
         <sc-if value="{{ penOpen }}" hint-placeholder-val="{{ false }}">
@@ -306,7 +312,7 @@
         </sc-if>
         <sc-for list="{{ notes }}" as="n" hint-placeholder-count="0">
           <div onPointerDown="{{ n.onDown }}" style="position:absolute;left:{{ n.x }}px;top:{{ n.y }}px;width:168px;padding:0 8px 8px;display:flex;flex-direction:column;gap:2px;border-radius:10px;background:{{ n.bg }};box-shadow:{{ n.ring }};outline:{{ n.outline }};outline-offset:2px;pointer-events:{{ n.pe }};cursor:grab">
-            <textarea value="{{ n.text }}" onChange="{{ n.onText }}" autoFocus="{{ n.autoFocus }}" data-grow="1" placeholder="{{ t.notePh }}" rows="3" style="width:100%;height:auto;min-height:62px;overflow:hidden;resize:none;border:1px dashed #c2beb2;border-radius:7px;background:rgba(255,254,251,0.7);font-size:12px;line-height:1.55;color:#44423b;outline:none;padding:8px 10px;font-family:inherit;pointer-events:auto" style-focus="border-color:oklch(0.51 0.08 253);background:#fffefb"></textarea>
+            <textarea value="{{ n.text }}" onChange="{{ n.onText }}" autoFocus="{{ n.autoFocus }}" data-grow="1" placeholder="{{ t.notePh }}" rows="3" style="width:100%;height:auto;min-height:62px;overflow:hidden;resize:none;border:1px dashed #c2beb2;border-radius:7px;background:rgba(255,254,251,0.7);font-size:12px;line-height:1.55;color:#44423b;outline:none;padding:8px 10px;font-family:inherit;pointer-events:{{ n.tpe }}" style-focus="border-color:oklch(0.51 0.08 253);background:#fffefb"></textarea>
             <div style="display:flex;align-items:center;gap:5px;height:13px">
               <div style="flex:1"></div>
               <button onClick="{{ n.onDel }}" title="{{ t.noteDelTip }}" style="border:none;background:transparent;color:#bfbcb3;font-size:11px;line-height:13px;cursor:pointer;padding:0 2px" style-hover="color:#b03f34">✕</button>
@@ -322,10 +328,12 @@
             <span style="position:absolute;inset:0;background:#9c9789;clip-path:polygon(0 0, calc(100% - 17px) 0, 100% 50%, calc(100% - 17px) 100%, 0 100%, 17px 50%)"></span>
             <span style="position:absolute;top:0;bottom:0;left:-1.6px;right:1.6px;background:#413e37;clip-path:polygon(0 0, calc(100% - 17px) 0, 100% 50%, calc(100% - 17px) 100%, 0 100%, 17px 50%)"></span>
             <span style="position:relative;flex:none;width:8px;height:8px;border-radius:2px;background:#c9c3b2"></span>
-            <input value="{{ c.title }}" onChange="{{ c.onTitle }}" placeholder="{{ c.titlePlaceholder }}" style="position:relative;flex:1;min-width:0;border:none;background:transparent;font-size:14.5px;font-weight:700;letter-spacing:-0.015em;white-space:nowrap;color:#f7f5ef;outline:none;padding:0;pointer-events:auto" />
-            <button onPointerDown="{{ c.onEditDown }}" title="{{ t.editTip }}" style="position:relative;flex:none;width:24px;height:24px;border:none;border-radius:6px;background:rgba(255,255,255,0.08);color:#cdc7b8;font-size:12.5px;line-height:1;cursor:pointer;padding:0" style-hover="background:rgba(255,255,255,0.2);color:#f7f5ef">{{ t.edit }}</button>
-            <button onPointerDown="{{ c.onDupDown }}" title="{{ t.dupTip }}" style="position:relative;flex:none;width:24px;height:24px;border:none;border-radius:6px;background:transparent;color:#9c9689;font-size:12px;line-height:1;cursor:pointer;padding:0" style-hover="background:rgba(255,255,255,0.14);color:#f7f5ef">⧉</button>
-            <button onPointerDown="{{ c.onDelDown }}" title="{{ t.delTip }}" style="position:relative;flex:none;width:24px;height:24px;border:none;border-radius:6px;background:transparent;color:#9c9689;font-size:12px;line-height:1;cursor:pointer;padding:0" style-hover="background:rgba(255,255,255,0.14);color:#e0a99f">✕</button>
+            <input value="{{ c.title }}" onChange="{{ c.onTitle }}" placeholder="{{ c.titlePlaceholder }}" style="position:relative;flex:1;min-width:0;border:none;background:transparent;font-size:14.5px;font-weight:700;letter-spacing:-0.015em;white-space:nowrap;color:#f7f5ef;outline:none;padding:0;pointer-events:{{ c.tpe }}" />
+            <span style="position:relative;flex:none;display:flex;align-items:center;gap:0">
+              <button onPointerDown="{{ c.onEditDown }}" title="{{ t.editTip }}" style="position:relative;flex:none;width:24px;height:24px;border:none;border-radius:6px;background:transparent;color:#b3ad9e;font-size:12.5px;line-height:1;cursor:pointer;padding:0" style-hover="color:#f7f5ef">{{ t.edit }}</button>
+              <button onPointerDown="{{ c.onDupDown }}" title="{{ t.dupTip }}" style="position:relative;flex:none;width:24px;height:24px;border:none;border-radius:6px;background:transparent;color:#9c9689;font-size:12px;line-height:1;cursor:pointer;padding:0" style-hover="color:#f7f5ef">⧉</button>
+              <button onPointerDown="{{ c.onDelDown }}" title="{{ t.delTip }}" style="position:relative;flex:none;width:24px;height:24px;border:none;border-radius:6px;background:transparent;color:#9c9689;font-size:12px;line-height:1;cursor:pointer;padding:0" style-hover="color:#e0a99f">✕</button>
+            </span>
             <div onPointerDown="{{ c.onWidth }}" title="{{ t.widthTip }}" style="position:absolute;right:0;top:0;bottom:0;width:17px;cursor:ew-resize;opacity:0;display:flex;align-items:center;justify-content:center" style-hover="opacity:1">
               <div style="width:3px;height:20px;border-radius:2px;background:#c9c3b2"></div>
             </div>
@@ -337,7 +345,7 @@
               <sc-if value="{{ c.isMeans }}" hint-placeholder-val="{{ false }}">
                 <span style="flex:none;width:6px;height:6px;border-radius:50%;background:#8f8b81"></span>
               </sc-if>
-              <input value="{{ c.title }}" onChange="{{ c.onTitle }}" placeholder="{{ c.titlePlaceholder }}" style="flex:1;min-width:0;border:none;background:transparent;font-size:{{ c.tfs }};font-weight:600;letter-spacing:-0.01em;color:{{ c.tcol }};outline:none;padding:0;pointer-events:auto" />
+              <input value="{{ c.title }}" onChange="{{ c.onTitle }}" placeholder="{{ c.titlePlaceholder }}" style="flex:1;min-width:0;border:none;background:transparent;font-size:{{ c.tfs }};font-weight:600;letter-spacing:-0.01em;color:{{ c.tcol }};outline:none;padding:0;pointer-events:{{ c.tpe }}" />
               <sc-if value="{{ c.notMeans }}" hint-placeholder-val="{{ true }}">
                 <span style="font-size:9px;letter-spacing:0.02em;color:{{ c.accent }};border:1px solid {{ c.accent }};border-radius:3px;padding:0 3px">{{ c.mark }}</span>
               </sc-if>
@@ -347,7 +355,7 @@
             </sc-if>
             <sc-if value="{{ c.hasDesc }}" hint-placeholder-val="{{ true }}">
             <div style="flex:none;border-top:{{ c.dsep }};padding-top:4px">
-              <textarea value="{{ c.desc }}" onChange="{{ c.onDesc }}" data-grow="1" placeholder="{{ t.descPh }}" style="width:100%;height:auto;min-height:{{ c.dmin }};overflow:hidden;resize:none;border:none;background:transparent;font-size:12px;line-height:1.45;color:#5b584f;outline:none;padding:0;pointer-events:auto"></textarea>
+              <textarea value="{{ c.desc }}" onChange="{{ c.onDesc }}" data-grow="1" placeholder="{{ t.descPh }}" style="width:100%;height:auto;min-height:{{ c.dmin }};overflow:hidden;resize:none;border:none;background:transparent;font-size:12px;line-height:1.45;color:#5b584f;outline:none;padding:0;pointer-events:{{ c.tpe }}"></textarea>
             </div>
             </sc-if>
             <div style="display:flex;align-items:center;gap:5px;height:13px">
@@ -526,6 +534,14 @@ const UI = (function () {
 const SYNC_URL = 'https://script.google.com/macros/s/AKfycbwOKZ3D8lRPMXtdpkhj6GR-QNAtYIIhQfyIBrecUOdCIQJYhiwjM6BOs0F_ty1rAw79cQ/exec';
 const AUTOSAVE_MS = 2500;
 
+/* 되돌리기 / UNDO
+   기록(버전 열람)은 참여자에게 과했다 — 30분짜리 세션에서 필요한 건 "방금 그거 취소"
+   하나다. 스냅숏 다섯 장을 들고 있으면 충분하고, 그 이상은 워크숍 중에 아무도 쓰지 않는다.
+   Version browsing was too much machinery for a participant: in a 30-minute session what
+   is wanted is "undo that". Five snapshots cover it. Changes inside UNDO_GROUP_MS collapse
+   into one step, so a burst of typing is one undo rather than one per keystroke. */
+const UNDO_STEPS = 5, UNDO_GROUP_MS = 500;
+
 /* ─────────────────────────────────────────────────────────────────
    열람(관리자) 모드 / ADMIN VIEW MODE
    이 코드로 로그인하면 참여자 목록을 열고 각자의 보드를 '읽기 전용'으로
@@ -630,7 +646,7 @@ const I18N = {
       imgBtn: '이미지 저장', imgSenseBtn: '이미지 (해석 포함)',
       dupAllBtn: '전체 복제', dupSelBtn: '선택 복제', clearSenseBtn: '해석 지우기',
       regionLabel: '참여자 산출물 (수정 불가)',
-      histBtn: '기록', histTitle: '저장 기록', histSub: '되돌아갈 시점을 선택하세요. 지금 작업은 그대로 남아 있습니다.',
+      undoBtn: '↩ 되돌리기', undoTip: '최근 5단계까지 되돌립니다 (Ctrl+Z)', histBtn: '기록', histTitle: '저장 기록', histSub: '되돌아갈 시점을 선택하세요. 지금 작업은 그대로 남아 있습니다.',
       histLoading: '불러오는 중…', histEmpty: '아직 저장 기록이 없습니다.',
       histError: '기록을 불러오지 못했습니다. Apps Script를 새 버전으로 다시 배포했는지 확인해 주세요.',
       autoTag: '자동 저장', travelPrefix: '기록 보는 중 · ', travelBody: '이 시점의 보드입니다. 저장은 멈춰 있습니다.',
@@ -733,7 +749,7 @@ const I18N = {
       imgBtn: 'Save image', imgSenseBtn: 'Image (with workspace)',
       dupAllBtn: 'Duplicate all', dupSelBtn: 'Duplicate selection', clearSenseBtn: 'Clear workspace',
       regionLabel: "Participant's output (read-only)",
-      histBtn: 'History', histTitle: 'Saved versions', histSub: 'Pick a point to go back to. Your current work stays where it is.',
+      undoBtn: '↩ Undo', undoTip: 'steps back up to 5 changes (Ctrl+Z)', histBtn: 'History', histTitle: 'Saved versions', histSub: 'Pick a point to go back to. Your current work stays where it is.',
       histLoading: 'Loading…', histEmpty: 'No saved versions yet.',
       histError: 'Could not load history. Check that the Apps Script was redeployed as a new version.',
       autoTag: 'autosave', travelPrefix: 'Viewing history · ', travelBody: 'This is the board at that moment. Saving is paused.',
@@ -774,7 +790,7 @@ const I18N = {
 class Component extends DCLogic {
   constructor(props) {
     super(props);
-    this.state = { sync: '', step: 0, lang: 'ko', rules: [], pid: '', loginPid: '', cards: [], notes: [], arrows: [], arrowMode: false, pendingArrow: null, pen: null, strokes: [], selArrow: null, noteMode: false, focusNote: null, pan: { x: 0, y: 0 }, zoom: 1, ghost: null, seq: 1, panelW: 566, sel: [], marquee: null, finish: null, tab: 'flow', hist: null, histList: [], travel: null, senseOn: true, del: null, delTyped: '', delBusy: false, admin: false, viewPid: '', roster: [], rosterMsg: '' };
+    this.state = { sync: '', step: 0, lang: 'ko', rules: [], pid: '', loginPid: '', cards: [], notes: [], arrows: [], arrowMode: false, pendingArrow: null, pen: null, strokes: [], selArrow: null, noteMode: false, undoDepth: 0, focusNote: null, pan: { x: 0, y: 0 }, zoom: 1, ghost: null, seq: 1, panelW: 566, sel: [], marquee: null, finish: null, tab: 'flow', hist: null, histList: [], travel: null, senseOn: true, del: null, delTyped: '', delBusy: false, admin: false, viewPid: '', roster: [], rosterMsg: '' };
     this.canvasRef = React.createRef();
     this.drag = null;
   }
@@ -795,6 +811,8 @@ class Component extends DCLogic {
   }
 
   componentDidMount() {
+    // 이제 보여도 된다 / safe to show now: everything below is interpolated
+    try { document.documentElement.setAttribute('data-dc-ready', '1'); } catch (e) {}
     this.mountConsentStyles();
     try {
       const lg = localStorage.getItem(STORE + ':lang');
@@ -802,12 +820,17 @@ class Component extends DCLogic {
     } catch (e) {}
     this._move = (e) => this.onMove(e);
     this._up = (e) => this.onUp(e);
+    this._blur = (e) => this.blurUnlessTarget(e);
+    window.addEventListener('pointerdown', this._blur, true);
     window.addEventListener('pointermove', this._move);
     window.addEventListener('pointerup', this._up);
     // Space 를 누르고 있는 동안은 화면 이동 / hold Space to pan instead of marquee
     this._key = (e) => {
       const t = e.target && e.target.tagName;
       if (t === 'TEXTAREA' || t === 'INPUT') return;
+      if (e.type === 'keydown' && (e.ctrlKey || e.metaKey) && (e.key === 'z' || e.key === 'Z')) {
+        e.preventDefault(); this.undo(); return;
+      }
       if (e.code === 'Space' || e.key === ' ') this._space = e.type === 'keydown';
     };
     window.addEventListener('keydown', this._key);
@@ -819,6 +842,7 @@ class Component extends DCLogic {
   }
 
   componentWillUnmount() {
+    window.removeEventListener('pointerdown', this._blur, true);
     window.removeEventListener('pointermove', this._move);
     window.removeEventListener('pointerup', this._up);
     window.removeEventListener('online', this._online);
@@ -856,7 +880,43 @@ class Component extends DCLogic {
     this._wheelEl = null;
   }
 
+  /* 스냅숏 방식 / snapshot-based, taken from the rendered state rather than pushed by each
+     action: there are a dozen places that mutate the board, and one of them would have been
+     forgotten. The cost is a JSON.stringify per update, which is nothing next to a render. */
+  trackUndo() {
+    const snap = {
+      cards: this.state.cards, notes: this.state.notes || [],
+      arrows: this.state.arrows || [], strokes: this.state.strokes || []
+    };
+    const sig = JSON.stringify([snap.cards, snap.notes, snap.arrows, snap.strokes]);
+    if (sig === this._undoSig) return;
+    if (this._undoSig === undefined) { this._undoSig = sig; this._undoPrev = snap; return; }
+    const now = Date.now();
+    if (now - (this._undoAt || 0) > UNDO_GROUP_MS) {
+      this._undo = (this._undo || []).concat([this._undoPrev]);
+      while (this._undo.length > UNDO_STEPS) this._undo.shift();
+      this._undoAt = now;
+      // 밀어 넣었을 때만 기준선을 옮긴다 / the baseline only moves when we pushed, which is
+      // what makes a burst of edits collapse into a single step
+      this._undoPrev = snap;
+      if (this.state.undoDepth !== this._undo.length) this.setState({ undoDepth: this._undo.length });
+    }
+    this._undoSig = sig;
+  }
+
+  undo() {
+    if (!this._undo || !this._undo.length || this.state.travel) return;
+    const snap = this._undo.pop();
+    this._undoSig = undefined;      // 다음 갱신은 기준선만 다시 잡는다 / re-baseline, no push
+    this._undoPrev = snap;
+    this.setState({
+      cards: snap.cards, notes: snap.notes, arrows: snap.arrows, strokes: snap.strokes,
+      sel: [], selArrow: null, undoDepth: this._undo.length
+    });
+  }
+
   componentDidUpdate() {
+    this.trackUndo();
     if (this.state.step === 2) this.bindWheel();
     // 드래그 중에는 높이를 재지 않는다. 이동은 높이를 바꾸지 않는데, 매 이동마다
     // autoGrow + 강제 레이아웃을 돌리면 렌더 루프가 되어 포인터 이벤트가 굶는다.
@@ -1071,7 +1131,10 @@ class Component extends DCLogic {
   }
 
   scheduleSense() {
-    if (!this.isView() || !this.state.viewPid) return;
+    // 기록을 보는 중에는 해석 레이어를 쓰지 않는다 / never while browsing history: the board
+    // then holds an OLD version's content, and saving it would overwrite the admin's real
+    // sensemaking record with a snapshot they were only looking at.
+    if (!this.isView() || !this.state.viewPid || this.state.travel) return;
     if (this._st) clearTimeout(this._st);
     this._st = setTimeout(() => { this._st = null; this.pushSense(); }, 1500);
   }
@@ -1079,7 +1142,7 @@ class Component extends DCLogic {
   // 반드시 'sm:' 키로만 저장한다 / writes ONLY ever to the 'sm:' key, never a bare id
   pushSense() {
     const pid = this.state.viewPid, url = this.syncUrl();
-    if (!this.isView() || !pid || !url) return;
+    if (!this.isView() || !pid || !url || this.state.travel) return;
     const key = 'sm:' + pid;
     if (key.indexOf('sm:') !== 0) return;                 // assertion, not decoration
     const state = {
@@ -1473,6 +1536,13 @@ class Component extends DCLogic {
   }
 
   onCanvasDown(e) {
+    // 글자 위에서 시작한 누름은 여기서 끝난다 / a press that began on a text field is not a
+    // board gesture. startMove returns early for text WITHOUT stopping propagation, so the
+    // event reached here and the marquee guard below called preventDefault — which
+    // suppresses the compatibility mousedown and with it the focus. The field received the
+    // pointerdown and then simply never got the caret.
+    const tag = e.target && e.target.tagName;
+    if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'BUTTON') return;
     this.blurUnlessTarget(e);
     if (this.state.pen) {
       e.preventDefault();
@@ -2439,6 +2509,8 @@ class Component extends DCLogic {
     // A descendant that sets pointer-events:auto re-enables hit-testing whatever an
     // ancestor says, so this has to be applied per card and per note, not on the layer.
     const PEN = !!this.state.pen;
+    // 글자 칸은 펜을 들면 잠긴다 / text fields answer to the pen too
+    const TPE = PEN ? 'none' : 'auto';
     const NOOP = () => {};
     const viewing = RO && !!this.state.viewPid;
 
@@ -2541,6 +2613,8 @@ class Component extends DCLogic {
       doLogout: () => this.logout(),
       doFinish: () => this.finish(),
       onHistory: () => this.openHistory(),
+      onUndo: () => this.undo(),
+      undoOpacity: this.state.undoDepth ? 1 : 0.35,
       histOpen: !!this.state.hist,
       histBusy: this.state.hist === 'loading',
       histNote: this.state.hist === 'loading' ? t.histLoading
@@ -2628,6 +2702,7 @@ class Component extends DCLogic {
         x: n.x, y: n.y,
         outline: this.isSel(n.id) ? '2px solid oklch(0.51 0.08 253)' : 'none',
         pe: (PEN || (RO && !n.sm)) ? 'none' : 'auto',
+        tpe: TPE,
         bg: n.sm ? '#fdfbf5' : 'transparent',
         ring: n.sm ? '0 0 0 1.5px oklch(0.62 0.11 62)' : 'none',
         text: n.text,
@@ -2682,6 +2757,7 @@ class Component extends DCLogic {
           // pointerdown, a stroke can never START on top of one — striking a card
           // through is the most obvious thing to do with a marker
           pe: (PEN || (RO && !c.sm)) ? 'none' : 'auto',
+          tpe: TPE,
           bg: c.sm ? '#fdfbf5' : '#fffefb',
           bstyle: c.sm ? 'dashed' : 'solid',
           bd: c.sm ? 'oklch(0.62 0.11 62)' : (c.type === 'means' ? '#ddd9cf' : '#e2dfd7'),
