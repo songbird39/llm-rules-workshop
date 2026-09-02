@@ -589,11 +589,11 @@ async function dragTileToBoard(page, title, fx = 0.45, fy = 0.4) {
     };
 
     let pg = await start(false);
-    check(await pg.getByText("완료", { exact: true }).count() > 0, "toolbar shows Finish");
+    check(await pg.getByText("제출", { exact: true }).count() > 0, "toolbar shows Submit");
     check(await pg.getByText("제출 · JSON 저장", { exact: false }).count() === 0, "old Submit-and-save label gone");
     let dl = null;
     pg.on("download", (d) => { dl = d; });
-    await pg.getByText("완료", { exact: true }).click();
+    await pg.getByText("제출", { exact: true }).click();
     await pg.waitForTimeout(2200);
     const okText = await dialogText(pg);
     check(!!okText && okText.includes("제출했습니다"), "success dialog when the endpoint answers");
@@ -603,7 +603,7 @@ async function dragTileToBoard(page, title, fx = 0.45, fy = 0.4) {
     await pg.close();
 
     pg = await start(true);
-    await pg.getByText("완료", { exact: true }).click();
+    await pg.getByText("제출", { exact: true }).click();
     await pg.waitForTimeout(2500);
     const failText = await dialogText(pg);
     check(!!failText && failText.includes("보내지 못했습니다"), "failure dialog when unreachable");
@@ -1085,7 +1085,7 @@ async function dragTileToBoard(page, title, fx = 0.45, fy = 0.4) {
     await page.waitForTimeout(3000);
     await page.reload({ waitUntil: "load" });
     await page.waitForSelector('input[placeholder="P00"]', { timeout: 120000 });
-    await page.getByRole("button", { name: "INK" }).click();
+    await toStep1(page, "INK");
     await page.waitForTimeout(800);
     check((await strokes()) === 2, "ink survives a reload", ` (${await strokes()})`);
     check(errors.length === 0, "no console errors", errors.length ? ` (${errors[0]})` : "");
@@ -1143,6 +1143,89 @@ async function dragTileToBoard(page, title, fx = 0.45, fy = 0.4) {
     await page.close();
   }
 
+  // ------------------------------------------------- toolbar, edit button, ghost
+  console.log("\nboth steps share one toolbar; a tag says how to rename it");
+  {
+    const { page, errors } = await boot(browser, { width: 1700, height: 1000 });
+    const tools = () => page.evaluate(() => [...document.querySelectorAll("button")]
+      .map((b) => b.textContent.trim()).filter(Boolean));
+    await toStep1(page, "TB1");
+    const step1 = await tools();
+    for (const label of ["↗ 화살표", "펜", "✎ 메모", "기록", "화면 맞춤", "초기화"])
+      check(step1.some((t) => t === label), `step 1 has ${label}`, ` (${JSON.stringify(step1.slice(0, 12))})`);
+    check(step1.some((t) => t.includes("다음")), "and 다음, not 제출");
+    check(!step1.some((t) => t === "제출"), "step 1 does not offer 제출");
+
+    await dragTileToBoard(page, "학습 계획", 0.3, 0.25);
+    await page.getByRole("button", { name: /다음/ }).click();
+    await page.waitForSelector("text=시스템이 어떻게 개입하나요?", { timeout: 30000 });
+    const step2 = await tools();
+    for (const label of ["↗ 화살표", "펜", "✎ 메모", "기록", "화면 맞춤", "초기화"])
+      check(step2.some((t) => t === label), `step 2 keeps ${label}`);
+    check(step2.some((t) => t === "제출"), "and offers 제출, which can be pressed more than once");
+
+    // 태그의 ✎ 는 이름 칸에 커서를 넣는다 / the ✎ puts the caret in the label. autoFocus cannot
+    // do this: the input is already mounted, so the flag re-renders and focuses nothing.
+    const clicked = await page.evaluate(() => {
+      const layer = [...document.querySelectorAll("div")].find((d) => d.style.width === "5000px");
+      const card = [...layer.children].find((c) => c.querySelector && c.querySelector("input"));
+      const b = [...card.querySelectorAll("button")].find((x) => x.textContent.trim() === "✎");
+      if (!b) return false;
+      b.click();
+      return true;
+    });
+    check(clicked, "the tag carries an edit button");
+    await page.waitForTimeout(250);
+    check(await page.evaluate(() => document.activeElement && document.activeElement.tagName === "INPUT"),
+      "and clicking it focuses the label");
+    await page.keyboard.type("고친 이름");
+    await page.waitForTimeout(250);
+    check(await page.evaluate(() => {
+      const layer = [...document.querySelectorAll("div")].find((d) => d.style.width === "5000px");
+      return layer.querySelector("input").value === "고친 이름";
+    }), "so typing replaces the name");
+    check(errors.length === 0, "no console errors", errors.length ? ` (${errors[0]})` : "");
+    await page.close();
+  }
+
+  // ------------------------------------------------- a session starts blank
+  // 다음 참여자가 앞사람 보드를 보면 안 된다 / the next participant must not open onto the
+  // previous one's board. Per-code storage makes that true; this keeps it true.
+  console.log("\nevery new participant starts on an empty board");
+  {
+    const { page, errors } = await boot(browser, { width: 1500, height: 950 });
+    const count = () => page.evaluate(() => {
+      const layer = [...document.querySelectorAll("div")].find((d) => d.style.width === "5000px");
+      return {
+        objects: layer ? [...layer.children].filter((c) => c.querySelector && c.querySelector("input")).length : -1,
+        strokes: document.querySelectorAll("polyline").length
+      };
+    });
+    await toStep1(page, "BLK1");
+    let st = await count();
+    check(st.objects === 0 && st.strokes === 0, "a fresh code opens onto nothing", ` (${JSON.stringify(st)})`);
+
+    // 앞 참여자가 작업을 남긴 뒤에도 / and still nothing after the previous one left work behind
+    await dragTileToBoard(page, "학습 계획", 0.3, 0.3);
+    await page.waitForTimeout(3000);              // let the autosave land
+    await page.getByText("나가기", { exact: false }).click();
+    await page.waitForTimeout(400);
+    await toStep1(page, "BLK2");
+    st = await count();
+    check(st.objects === 0 && st.strokes === 0,
+      "and so does the next participant on the same machine", ` (${JSON.stringify(st)})`);
+
+    // 그렇다고 앞사람 작업이 사라지면 안 된다 / without losing the first participant's work
+    await page.getByText("나가기", { exact: false }).click();
+    await page.waitForTimeout(400);
+    await toStep1(page, "BLK1");
+    await page.waitForTimeout(800);
+    st = await count();
+    check(st.objects === 1, "while the first participant's board is still theirs", ` (${JSON.stringify(st)})`);
+    check(errors.length === 0, "no console errors", errors.length ? ` (${errors[0]})` : "");
+    await page.close();
+  }
+
   // ------------------------------------------------- demo sessions
   // 데모는 리허설이지 데이터가 아니다 / a demo is a rehearsal, not data: nothing may reach
   // the sheet and nothing may be left in this browser for the next participant to find.
@@ -1181,8 +1264,8 @@ async function dragTileToBoard(page, title, fx = 0.45, fy = 0.4) {
     check(queued.length === 0, "and nothing is sitting in the outbound queue", ` (${queued.length})`);
     check((await page.locator("text=데모").count()) > 0, "the header says it is a demo");
 
-    // 완료를 눌러도 마찬가지 / finishing must not post either
-    await page.getByRole("button", { name: /완료/ }).click();
+    // 제출를 눌러도 마찬가지 / finishing must not post either
+    await page.getByRole("button", { name: /제출/ }).click();
     await page.waitForTimeout(1200);
     check(posts.length === 0, "finishing a demo still posts nothing",
       posts.length ? ` (${posts[0].slice(0, 80)})` : "");
@@ -1191,8 +1274,9 @@ async function dragTileToBoard(page, title, fx = 0.45, fy = 0.4) {
     // 다음 참여자에게 흔적이 남지 않는다 / the next participant finds no trace of it
     await page.reload({ waitUntil: "load" });
     await page.waitForSelector('input[placeholder="P00"]', { timeout: 120000 });
-    check((await page.getByRole("button", { name: "demo0" }).count()) === 0,
-      "and leaves no chip on the sign-in screen");
+    check((await page.evaluate(() => Object.keys(localStorage)
+      .some((k) => k.indexOf("llm-guardrail-workshop-v4:demo") === 0))) === false,
+      "and leaves nothing behind for the next session to find");
 
     // 진짜 참여자는 평소대로 저장된다 / a real participant is unaffected
     await page.fill('input[placeholder="P00"]', "R01");
@@ -1264,8 +1348,9 @@ async function dragTileToBoard(page, title, fx = 0.45, fy = 0.4) {
     })));
     await old.reload({ waitUntil: "load" });
     await old.waitForSelector('input[placeholder="P00"]', { timeout: 120000 });
-    await old.getByRole("button", { name: "OLD" }).click();
-    await old.waitForTimeout(600);
+    await old.fill('input[placeholder="P00"]', "OLD");
+    await old.getByText("시작하기", { exact: false }).click();
+    await old.waitForTimeout(900);
     await old.selectOption("select", "en");
     await old.waitForTimeout(700);
     check(oldErrors.length === 0, "a pre-rule-step record survives a language switch",

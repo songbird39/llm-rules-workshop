@@ -51,24 +51,10 @@
       <option value="en">English</option>
     </select>
     <div style="flex:1"></div>
-    <sc-if value="{{ isStep1 }}" hint-placeholder-val="{{ true }}">
-      <div style="display:flex;align-items:center;gap:8px">
-        <button onClick="{{ toggleArrowMode }}" title="{{ t.arrowTip }}" style="padding:7px 12px;border:1px solid #d6d3ca;border-radius:7px;background:{{ arrowBtnBg }};color:{{ arrowBtnColor }};font-size:13.5px;cursor:pointer">{{ t.arrow }}</button>
-        <button onClick="{{ togglePen }}" title="{{ t.penTip }}" style="padding:7px 12px;border:1px solid #d6d3ca;border-radius:7px;background:{{ penBtnBg }};color:{{ penBtnColor }};font-size:13.5px;cursor:pointer">{{ t.pen }}</button>
-        <sc-if value="{{ penOpen }}" hint-placeholder-val="{{ false }}">
-          <div style="display:flex;align-items:center;gap:5px;padding:3px 7px;border:1px solid #e2dfd7;border-radius:20px;background:#fffefb">
-            <sc-for list="{{ penInks }}" as="k" hint-placeholder-count="4">
-              <button onClick="{{ k.onPick }}" title="{{ k.label }}" style="width:19px;height:19px;padding:0;border:2px solid {{ k.ring }};border-radius:50%;background:{{ k.ink }};cursor:pointer"></button>
-            </sc-for>
-            <span style="width:1px;height:15px;background:#e2dfd7"></span>
-            <button onClick="{{ onErase }}" title="{{ t.eraseTip }}" style="padding:1px 7px;border:1px solid {{ eraseBd }};border-radius:11px;background:{{ eraseBg }};color:{{ eraseFg }};font-size:11.5px;cursor:pointer">{{ t.erase }}</button>
-          </div>
-        </sc-if>
-        <span style="font-size:12.5px;color:#7a776f;margin-left:4px">{{ selLabel }}</span>
-        <button onClick="{{ goNext }}" style="padding:8px 20px;border:1px solid transparent;border-radius:7px;background:#1b1a17;color:#faf8f3;font-size:13.5px;cursor:pointer;opacity:{{ nextOpacity }}" style-hover="background:#35332c">{{ t.next }}</button>
-      </div>
-    </sc-if>
-    <sc-if value="{{ isStep2 }}" hint-placeholder-val="{{ false }}">
+    <!-- 두 단계가 같은 툴바를 쓴다 / ONE toolbar for both steps. They used to be two blocks
+         with the same buttons copied into each, which is how step 1 quietly ended up
+         without 메모: only the trailing action differs, so only that is branched. -->
+    <sc-if value="{{ onBoard }}" hint-placeholder-val="{{ true }}">
       <div style="display:flex;flex-wrap:wrap;justify-content:flex-end;align-items:center;gap:8px;min-width:0">
         <div style="display:flex;align-items:center;border:1px solid #d6d3ca;border-radius:7px;overflow:hidden;background:#fff">
           <button onClick="{{ zoomOut }}" style="width:32px;height:33px;border:none;background:transparent;cursor:pointer;font-size:16px;line-height:1" style-hover="background:#f1efe8">−</button>
@@ -99,7 +85,13 @@
           </div>
         </sc-if>
         <button onClick="{{ toggleNoteMode }}" title="{{ t.noteTip }}" style="padding:7px 12px;border:1px solid #d6d3ca;border-radius:7px;background:{{ noteBtnBg }};color:{{ noteBtnColor }};font-size:13.5px;cursor:pointer">{{ t.note }}</button>
-        <button onClick="{{ doFinish }}" style="padding:7px 13px;border:1px solid transparent;border-radius:7px;background:#1b1a17;color:#faf8f3;font-size:13.5px;cursor:pointer" style-hover="background:#35332c">{{ t.finishBtn }}</button>
+        <sc-if value="{{ isStep1 }}" hint-placeholder-val="{{ true }}">
+          <span style="font-size:12.5px;color:#7a776f;margin-left:4px">{{ selLabel }}</span>
+          <button onClick="{{ goNext }}" style="padding:7px 20px;border:1px solid transparent;border-radius:7px;background:#1b1a17;color:#faf8f3;font-size:13.5px;cursor:pointer;opacity:{{ nextOpacity }}" style-hover="background:#35332c">{{ t.next }}</button>
+        </sc-if>
+        <sc-if value="{{ isStep2 }}" hint-placeholder-val="{{ false }}">
+          <button onClick="{{ doFinish }}" style="padding:7px 13px;border:1px solid transparent;border-radius:7px;background:#1b1a17;color:#faf8f3;font-size:13.5px;cursor:pointer" style-hover="background:#35332c">{{ t.finishBtn }}</button>
+        </sc-if>
         <button onClick="{{ clearAll }}" title="{{ t.clearTip }}" style="padding:7px 10px;border:1px solid #e2dfd7;border-radius:7px;background:transparent;color:#98958c;font-size:13.5px;cursor:pointer" style-hover="color:#b03f34;border-color:#ddc0bb">{{ t.clear }}</button>
         </sc-if>
       </div>
@@ -152,16 +144,6 @@
           <input value="{{ loginPid }}" onChange="{{ onLoginPid }}" onKeyDown="{{ onLoginKey }}" placeholder="P00" autoFocus="{{ true }}" style="flex:1;min-width:0;padding:9px 12px;border:1px solid #dedbd3;border-radius:8px;background:#fdfcf9;font-size:15px;font-weight:600;outline:none" style-focus="border-color:oklch(0.51 0.08 253)" />
           <button onClick="{{ doLogin }}" style="padding:9px 18px;border:1px solid transparent;border-radius:8px;background:#1b1a17;color:#faf8f3;font-size:14px;cursor:pointer;opacity:{{ startOpacity }}" style-hover="background:#35332c">{{ t.start }}</button>
         </div>
-        <sc-if value="{{ hasSaved }}" hint-placeholder-val="{{ false }}">
-          <div style="display:flex;flex-direction:column;gap:8px;border-top:1px solid #ece9e1;padding-top:14px">
-            <div style="font-size:11.5px;letter-spacing:0.04em;color:#98958c">{{ t.continueAs }}</div>
-            <div style="display:flex;flex-wrap:wrap;gap:7px">
-              <sc-for list="{{ savedList }}" as="s" hint-placeholder-count="0">
-                <button onClick="{{ s.onPick }}" style="padding:5px 12px;border:1px solid #d6d3ca;border-radius:16px;background:#faf8f3;font-size:13px;font-weight:600;cursor:pointer" style-hover="border-color:oklch(0.51 0.08 253);color:oklch(0.51 0.08 253)">{{ s.label }}</button>
-              </sc-for>
-            </div>
-          </div>
-        </sc-if>
       </div>
 
     </div>
@@ -174,6 +156,7 @@
           <div style="font-size:17px;font-weight:700;letter-spacing:-0.01em">{{ t.rosterTitle }}</div>
           <div style="flex:1"></div>
           <button onClick="{{ onRefresh }}" style="padding:6px 12px;border:1px solid #d6d3ca;border-radius:7px;background:#fff;font-size:13px;cursor:pointer" style-hover="background:#faf8f3">{{ t.refreshBtn }}</button>
+          <button onClick="{{ doLogout }}" style="padding:6px 12px;border:1px solid transparent;border-radius:7px;background:transparent;color:#98958c;font-size:13px;cursor:pointer" style-hover="color:#1b1a17">{{ t.logout }}</button>
         </div>
         <div style="font-size:12.5px;line-height:1.6;color:#7a776f">{{ t.viewBanner }}</div>
         <sc-if value="{{ hasRosterNote }}" hint-placeholder-val="{{ false }}">
@@ -241,12 +224,12 @@
       </sc-if>
       <sc-if value="{{ showGuard }}" hint-placeholder-val="{{ false }}">
       <div style="padding:8px 16px 4px;display:flex;align-items:baseline;gap:8px;border-top:1px solid #ece9e1">
-        <span style="width:9px;height:9px;border-radius:2px;background:oklch(0.62 0.105 68);align-self:center"></span>
+        <span style="width:9px;height:9px;border-radius:2px;background:oklch(0.62 0.100 68);align-self:center"></span>
         <span style="font-size:14px;font-weight:600;color:#6f6b62">③</span>
-        <span style="font-size:14px;font-weight:600;color:oklch(0.62 0.105 68)">{{ t.whenCards }}</span>
+        <span style="font-size:14px;font-weight:600;color:oklch(0.62 0.100 68)">{{ t.whenCards }}</span>
         <span style="font-size:14px;font-weight:600;color:#c9c6bd">·</span>
-        <span style="width:9px;height:9px;border-radius:2px;background:oklch(0.45 0.105 32);align-self:center"></span>
-        <span style="font-size:14px;font-weight:600;color:oklch(0.45 0.105 32)">{{ t.trigCards }}</span>
+        <span style="width:9px;height:9px;border-radius:2px;background:oklch(0.45 0.100 32);align-self:center"></span>
+        <span style="font-size:14px;font-weight:600;color:oklch(0.45 0.100 32)">{{ t.trigCards }}</span>
         <span style="font-size:11.5px;color:#a7a49b">{{ t.guardHeadSub }}</span>
       </div>
       <div style="display:flex;flex-wrap:wrap;gap:10px;padding:8px 16px 4px">
@@ -278,9 +261,9 @@
         </sc-for>
       </div>
       <div style="padding:8px 16px 4px;display:flex;align-items:baseline;gap:8px;border-top:1px solid #ece9e1">
-        <span style="width:9px;height:9px;border-radius:2px;background:oklch(0.51 0.08 160);align-self:center"></span>
+        <span style="width:9px;height:9px;border-radius:2px;background:oklch(0.53 0.100 160);align-self:center"></span>
         <span style="font-size:14px;font-weight:600;color:#6f6b62">④</span>
-        <span style="font-size:14px;font-weight:600;color:oklch(0.51 0.08 160)">{{ t.conCards }}</span>
+        <span style="font-size:14px;font-weight:600;color:oklch(0.53 0.100 160)">{{ t.conCards }}</span>
         <span style="font-size:11.5px;color:#a7a49b">{{ t.conCardsSub }}</span>
       </div>
       <div style="display:flex;flex-wrap:wrap;gap:10px;padding:8px 16px 18px">
@@ -340,6 +323,7 @@
             <span style="position:absolute;top:0;bottom:0;left:-1.6px;right:1.6px;background:#413e37;clip-path:polygon(0 0, calc(100% - 17px) 0, 100% 50%, calc(100% - 17px) 100%, 0 100%, 17px 50%)"></span>
             <span style="position:relative;flex:none;width:8px;height:8px;border-radius:2px;background:#c9c3b2"></span>
             <input value="{{ c.title }}" onChange="{{ c.onTitle }}" placeholder="{{ c.titlePlaceholder }}" style="position:relative;flex:1;min-width:0;border:none;background:transparent;font-size:14.5px;font-weight:700;letter-spacing:-0.015em;white-space:nowrap;color:#f7f5ef;outline:none;padding:0;pointer-events:auto" />
+            <button onClick="{{ c.onEdit }}" title="{{ t.editTip }}" style="position:relative;border:none;background:transparent;color:#8f8a7d;font-size:11px;line-height:13px;cursor:pointer;padding:0 2px" style-hover="color:#f7f5ef">{{ t.edit }}</button>
             <button onClick="{{ c.onDup }}" title="{{ t.dupTip }}" style="position:relative;border:none;background:transparent;color:#8f8a7d;font-size:11px;line-height:13px;cursor:pointer;padding:0 2px" style-hover="color:#f7f5ef">⧉</button>
             <button onClick="{{ c.onDel }}" title="{{ t.delTip }}" style="position:relative;border:none;background:transparent;color:#8f8a7d;font-size:11px;line-height:13px;cursor:pointer;padding:0 2px" style-hover="color:#e0a99f">✕</button>
             <div onPointerDown="{{ c.onWidth }}" title="{{ t.widthTip }}" style="position:absolute;right:0;top:0;bottom:0;width:17px;cursor:ew-resize;opacity:0;display:flex;align-items:center;justify-content:center" style-hover="opacity:1">
@@ -383,7 +367,23 @@
         </div>
       </sc-if>
 
-      <sc-if value="{{ ghost }}" hint-placeholder-val="{{ false }}">
+      <!-- 끄는 모습 = 놓이는 모습 / the ghost is the thing that lands, not a stand-in: a
+           chevron for 활동, a paper tag for 수단, a card for the guardrail decks. -->
+      <sc-if value="{{ ghostTag }}" hint-placeholder-val="{{ false }}">
+        <div style="position:fixed;left:{{ ghostX }}px;top:{{ ghostY }}px;width:352px;height:50px;transform:scale({{ ghostScale }});transform-origin:0 0;pointer-events:none;z-index:50;opacity:0.92;display:flex;align-items:center;gap:10px;padding:0 26px 0 34px;filter:drop-shadow(0 12px 24px rgba(0,0,0,0.22))">
+          <span style="position:absolute;inset:0;background:#9c9789;clip-path:polygon(0 0, calc(100% - 17px) 0, 100% 50%, calc(100% - 17px) 100%, 0 100%, 17px 50%)"></span>
+          <span style="position:absolute;top:0;bottom:0;left:-1.6px;right:1.6px;background:#413e37;clip-path:polygon(0 0, calc(100% - 17px) 0, 100% 50%, calc(100% - 17px) 100%, 0 100%, 17px 50%)"></span>
+          <span style="position:relative;flex:none;width:8px;height:8px;border-radius:2px;background:#c9c3b2"></span>
+          <span style="position:relative;font-size:14.5px;font-weight:700;letter-spacing:-0.015em;white-space:nowrap;color:#f7f5ef">{{ ghostText }}</span>
+        </div>
+      </sc-if>
+      <sc-if value="{{ ghostMeans }}" hint-placeholder-val="{{ false }}">
+        <div style="position:fixed;left:{{ ghostX }}px;top:{{ ghostY }}px;transform:scale({{ ghostScale }});transform-origin:0 0;pointer-events:none;z-index:50;opacity:0.92;display:flex;align-items:center;gap:7px;padding:6px 13px;background:#fffefb;border:1px solid #ddd9cf;border-radius:15px;box-shadow:0 10px 22px rgba(0,0,0,0.16)">
+          <span style="flex:none;width:6px;height:6px;border-radius:50%;background:#8f8b81"></span>
+          <span style="font-size:12px;font-weight:600;letter-spacing:-0.01em;white-space:nowrap;color:#3a382f">{{ ghostText }}</span>
+        </div>
+      </sc-if>
+      <sc-if value="{{ ghostCard }}" hint-placeholder-val="{{ false }}">
         <div style="position:fixed;left:{{ ghostX }}px;top:{{ ghostY }}px;width:168px;height:168px;transform:scale({{ ghostScale }});transform-origin:0 0;pointer-events:none;z-index:50;opacity:0.92;display:flex;flex-direction:column;gap:5px;background:#fffefb;border:1px solid #d6d3ca;border-radius:10px;padding:7px;box-shadow:0 14px 30px rgba(0,0,0,0.18)">
           <div style="background:{{ ghostTint }};border-radius:5px;padding:3px 5px;font-size:12.5px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ ghostText }}</div>
           <div style="flex:1;border:1px solid #eae7df;border-radius:6px;background:#f7f5f0"></div>
@@ -458,17 +458,17 @@
 // belonging to any deck.
 const ACC = {
   act: '#6f6b62', means: '#6f6b62',
-  con: 'oklch(0.51 0.08 160)',
-  when: 'oklch(0.62 0.105 68)',   // 시점 — 밝은 주황 / orange
-  trig: 'oklch(0.45 0.105 32)'    // 조건 — 짙은 테라코타 / deep terracotta
+  con: 'oklch(0.53 0.100 160)',
+  when: 'oklch(0.62 0.100 68)',   // 시점 — 밝은 주황 / orange
+  trig: 'oklch(0.45 0.100 32)'    // 조건 — 짙은 테라코타 / deep terracotta
 };
 const TINT = {
   act: '#e8e5dd', means: '#eeece5',
-  con: 'oklch(0.93 0.026 160)',
-  when: 'oklch(0.94 0.050 68)',
-  trig: 'oklch(0.89 0.055 32)'
+  con: 'oklch(0.93 0.045 160)',
+  when: 'oklch(0.94 0.045 68)',
+  trig: 'oklch(0.90 0.048 32)'
 };
-const SELECT_BLUE = 'oklch(0.51 0.08 253)';
+const SELECT_BLUE = 'oklch(0.53 0.100 248)';
 // 활동 태그는 카드 두 장(168*2 + 16 간격) 폭 — 태그 아래 카드가 가지런히 들어간다
 // A tag is two cards wide plus the 16px gap, so cards line up underneath it.
 const CARD = 168, TAG_W = 352, TAG_MIN = 200, TAG_MAX = 900;
@@ -485,7 +485,7 @@ const GHOST_DX = 14, GHOST_DY = 12;
    marker over the cards rather than a line replacing them, and so two strokes that
    cross still show both. Strokes are plain point lists in board coordinates, which is
    what makes them survive pan, zoom, saving and the image export unchanged. */
-const INKS = ['#e0a33a', '#cf5f7a', '#5b9464', '#4d7fbf'];
+const INKS = ['oklch(0.76 0.130 70)', 'oklch(0.66 0.140 15)', 'oklch(0.64 0.110 155)', 'oklch(0.62 0.100 248)'];
 const PEN_W = 6, PEN_A = 0.55;
 
 /* ─────────────────────────────────────────────────────────────────
@@ -625,7 +625,7 @@ const I18N = {
       pen: '펜', penTip: '보드에 직접 그리기 (색을 고르세요)', erase: '지우개', eraseTip: '그린 선을 지웁니다',
       inkNames: ['노랑', '분홍', '초록', '파랑'],
       syncDemo: '데모 · 저장하지 않음', syncLocal: '⚠ 로컬 저장만 · 서버 미연결', syncReady: '서버 연결됨', syncLoading: '서버에서 불러오는 중…',
-      fit: '화면 맞춤', note: '✎ 메모', exportBtn: '제출 · JSON 저장', clear: '초기화', confirmClear: '보드의 모든 카드를 지울까요?',
+      edit: '✎', editTip: '이름 고치기', fit: '화면 맞춤', note: '✎ 메모', exportBtn: '제출 · JSON 저장', clear: '초기화', confirmClear: '보드의 모든 카드를 지울까요?',
       arrow: '↗ 화살표', arrowTip: '카드에서 카드로 드래그해 화살표로 잇기', arrowDelTip: '화살표 삭제',
       imgBtn: '이미지 저장', imgSenseBtn: '이미지 (해석 포함)',
       dupAllBtn: '전체 복제', dupSelBtn: '선택 복제', clearSenseBtn: '해석 지우기',
@@ -635,7 +635,7 @@ const I18N = {
       histError: '기록을 불러오지 못했습니다. Apps Script를 새 버전으로 다시 배포했는지 확인해 주세요.',
       autoTag: '자동 저장', travelPrefix: '기록 보는 중 · ', travelBody: '이 시점의 보드입니다. 저장은 멈춰 있습니다.',
       restoreBtn: '이 버전으로 되돌리기', cancelTravelBtn: '최신으로 돌아가기',
-      finishBtn: '완료', finishWait: '보내는 중…', finishWaitBody: '작업을 서버로 보내고 있습니다.',
+      finishBtn: '제출', finishWait: '보내는 중…', finishWaitBody: '작업을 서버로 보내고 있습니다.',
       finishOkTitle: '제출했습니다', finishOkBody: '작업을 서버로 보냈습니다. 이 창을 닫아도 됩니다.',
       finishFailTitle: '서버에 보내지 못했습니다', finishFailBody: '인터넷 연결이 끊겼을 수 있습니다. 아래에서 JSON 파일을 내려받아 연구자에게 전달해 주세요. 연결이 돌아오면 자동으로 다시 시도합니다.',
       downloadBtn: 'JSON 내려받기', closeBtn: '닫기',
@@ -728,7 +728,7 @@ const I18N = {
       pen: 'Pen', penTip: 'draw directly on the board (pick a colour)', erase: 'Eraser', eraseTip: 'rub out strokes',
       inkNames: ['yellow', 'pink', 'green', 'blue'],
       syncDemo: 'Demo · nothing is saved', syncLocal: '⚠ Local only · no server', syncReady: 'Server connected', syncLoading: 'Loading from server…',
-      fit: 'Reset view', note: '✎ Note', exportBtn: 'Submit · Save JSON', clear: 'Clear', confirmClear: 'Clear all cards on the board?',
+      edit: '✎', editTip: 'rename', fit: 'Reset view', note: '✎ Note', exportBtn: 'Submit · Save JSON', clear: 'Clear', confirmClear: 'Clear all cards on the board?',
       arrow: '↗ Arrow', arrowTip: 'Drag from one card to another to connect them', arrowDelTip: 'Delete arrow',
       imgBtn: 'Save image', imgSenseBtn: 'Image (with workspace)',
       dupAllBtn: 'Duplicate all', dupSelBtn: 'Duplicate selection', clearSenseBtn: 'Clear workspace',
@@ -738,7 +738,7 @@ const I18N = {
       histError: 'Could not load history. Check that the Apps Script was redeployed as a new version.',
       autoTag: 'autosave', travelPrefix: 'Viewing history · ', travelBody: 'This is the board at that moment. Saving is paused.',
       restoreBtn: 'Restore this version', cancelTravelBtn: 'Back to latest',
-      finishBtn: 'Finish', finishWait: 'Sending…', finishWaitBody: 'Sending your work to the server.',
+      finishBtn: 'Submit', finishWait: 'Sending…', finishWaitBody: 'Sending your work to the server.',
       finishOkTitle: 'Submitted', finishOkBody: 'Your work was sent to the server. You can close this.',
       finishFailTitle: "Couldn't reach the server", finishFailBody: 'You may be offline. Download the JSON below and send it to the researcher. It will also retry automatically once the connection is back.',
       downloadBtn: 'Download JSON', closeBtn: 'Close',
@@ -1122,16 +1122,22 @@ class Component extends DCLogic {
     // no-cors 라 응답을 읽을 수 없다 — 목록을 다시 불러 사라졌는지로 확인한다
     // The response is unreadable under no-cors, so confirm by reloading the roster and
     // checking the participant is actually gone rather than assuming success.
-    setTimeout(() => {
+    // Apps Script 는 첫 요청에서 콜드 스타트로 몇 초가 걸린다 / Apps Script cold-starts, and
+    // the first request of a session can take several seconds. Checking once at 1.4s
+    // declared failure while the delete was still in flight — which is why the FIRST
+    // delete "often" failed and a retry always worked. Poll instead.
+    const check = (tries) => setTimeout(() => {
       this.jsonp('list=1').then((res) => {
         const list = (res && res.ok && res.participants) || [];
         const still = list.some((x) => x.participant === r.participant);
+        if (still && tries > 0) { check(tries - 1); return; }
         this.setState({
           del: null, delBusy: false, delTyped: '',
           roster: list, rosterMsg: still ? 'delfail' : (list.length ? '' : 'empty')
         });
       });
     }, 1400);
+    check(3);
   }
 
   refreshRoster() {
@@ -1199,8 +1205,10 @@ class Component extends DCLogic {
   // 다이어그램: 단일 선 굵기(2.2), 둥근 캡, 잉크 회색 + 덱별 포인트 1색만 사용하는 라인 아이콘 시스템
   diagram(key) {
     const h = React.createElement;
-    const INK = '#96938a', FNT = '#d3d0c6', RED = '#b3554a';
-    const ORG = 'oklch(0.66 0.1 62)', GRN = 'oklch(0.58 0.08 160)';
+    // 아이콘 색은 그 카드가 속한 덱 색과 같은 색상이어야 한다 / an icon's accent must sit on
+    // its own deck's hue, or the card head and the drawing inside it disagree
+    const INK = '#96938a', FNT = '#d3d0c6', RED = 'oklch(0.55 0.120 32)';
+    const ORG = 'oklch(0.66 0.100 68)', GRN = 'oklch(0.58 0.100 160)';
     const wrap = (kids) => h('svg', {
       viewBox: '0 0 120 52', preserveAspectRatio: 'xMidYMid meet',
       fill: 'none', strokeLinecap: 'round', strokeLinejoin: 'round',
@@ -1697,6 +1705,28 @@ class Component extends DCLogic {
       if (s.cards.length !== hs.length) return null;
       return { cards: s.cards.map((c, i) => (hs[i] && Math.abs((c.h || 0) - hs[i]) > 1 ? Object.assign({}, c, { h: hs[i] }) : c)) };
     });
+  }
+
+  /* 이름 고치기 / put the caret in a tag's label.
+     autoFocus 로는 안 된다 — 그 속성은 처음 붙을 때만 동작하는데, 태그의 입력칸은 이미
+     붙어 있다. autoFocus is only honoured when the element mounts, and the tag's input is
+     already mounted, so setting a flag re-renders and focuses nothing. Reach for the
+     element instead. The DOM children are in state.cards order, which is what measureCards
+     relies on too. */
+  focusTitle(id) {
+    const layer = this.cardsLayer();
+    if (!layer) return;
+    const cardEls = [];
+    for (let k = 0; k < layer.children.length; k++) {
+      const child = layer.children[k];
+      if (child.tagName === 'DIV' && child.querySelector('input')) cardEls.push(child);
+    }
+    const i = this.state.cards.findIndex((c) => c.id === id);
+    const el = i >= 0 ? cardEls[i] : null;
+    const input = el ? el.querySelector('input') : null;
+    if (!input) return;
+    input.focus();
+    if (input.select) input.select();
   }
 
   cardsLayer() {
@@ -2606,6 +2636,9 @@ class Component extends DCLogic {
           // An activity tag is wider with a larger title, so the timeline layer reads as a
           // different level from the cards placed under it.
           isTag: c.type === 'act',
+          // 태그 전체가 드래그 손잡이라 글자를 눌러 고칠 수 있다는 걸 알 길이 없었다
+          // the whole tag is a drag handle, so nothing said the label could be typed into
+          onEdit: (!RO || c.sm) ? () => this.focusTitle(c.id) : NOOP,
           notTag: c.type !== 'act',
           isMeans: c.type === 'means',
           notMeans: c.type !== 'means',
@@ -2654,7 +2687,9 @@ class Component extends DCLogic {
           onDel: (!RO || c.sm) ? () => this.del(c.id) : NOOP
         };
       }),
-      ghost: !!this.state.ghost,
+      ghostTag: !!this.state.ghost && this.state.ghost.type === 'act',
+      ghostMeans: !!this.state.ghost && this.state.ghost.type === 'means',
+      ghostCard: !!this.state.ghost && this.state.ghost.type !== 'act' && this.state.ghost.type !== 'means',
       // 보드 확대율만큼 미리보기도 같이 확대 / preview scales with the board, so it is
       // the size of the card that will land
       ghostScale: this.state.zoom || 1,

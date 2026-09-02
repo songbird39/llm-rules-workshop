@@ -27,6 +27,10 @@ const doc = JSON.parse(bundle.slice(b, e).trim());
 const k = doc.indexOf("text/x-dc");
 const src = doc.slice(doc.indexOf(">", k) + 1, doc.indexOf("</script>", k));
 
+// 색 값 도우미 / palette helpers, used by more than one block
+const chroma = (v) => Number(String(v).replace(/oklch\([\d.]+ ([\d.]+).*/, "$1"));
+const accOf = (t) => (src.match(new RegExp("\\n  " + t + ": '([^']+)'")) || [])[1];
+
 let failures = 0;
 const check = (ok, label, extra = "") => {
   if (!ok) failures++;
@@ -188,8 +192,8 @@ console.log("\nrule card keeps its size on drop");
   // an activity tag now has its own markup — the ink chevron — with its own type scale
   check(/font-size:14\.5px;font-weight:700;letter-spacing:-0\.015em;white-space:nowrap;color:#f7f5ef/.test(doc),
     "the chevron label is set in the tag's own scale");
-  check((doc.match(/clip-path:polygon\(0 0, calc\(100% - 17px\) 0, 100% 50%/g) || []).length === 4,
-    "both ends are pointed, on the panel tile and the board tag alike",
+  check((doc.match(/clip-path:polygon\(0 0, calc\(100% - 17px\) 0, 100% 50%/g) || []).length === 6,
+    "both ends are pointed on the panel tile, the board tag and the drag ghost",
     ` (${(doc.match(/clip-path:polygon\(0 0, calc\(100% - 17px\) 0, 100% 50%/g) || []).length} layers)`);
   // 코 끝 실선 / the keyline: without the 1.6px offset layer two snapped tags merge
   check(/left:-1\.6px;right:1\.6px;background:#413e37/.test(doc), "and the nose keeps a keyline");
@@ -251,7 +255,11 @@ console.log("\nrule card keeps its size on drop");
     check(!body.includes("openLock"), `${k} no longer implies a release`);
   }
   check(/규칙 일시 중지/.test(doc), "releasing is still available, as a 제약 card");
-  check(/con: 'oklch\(0\.51 0\.08 160\)'/.test(doc), "guardrail decks are colour-coded");
+  // 세 덱이 같은 채도를 쓰는지 / all three decks must share the accent chroma, or one of
+  // them reads washed out beside the others — which is exactly what happened to 유도
+  const accs = ["con", "when", "trig"].map(accOf);
+  check(accs.every(Boolean) && new Set(accs.map(chroma)).size === 1,
+    "every deck accent carries the same chroma", ` (${accs.map(chroma).join(", ")})`);
 
 }
 
@@ -353,13 +361,21 @@ console.log("\ndecks are renamed, regrouped and colour-coded");
     "and each tint sits on its own deck's hue");
   check(Math.abs(hue(acc("con")) - hue(acc("when"))) > 60, "유도 stays a different hue entirely");
   // 파랑은 이제 선택을 뜻한다 / blue now means selection, and belongs to no deck
-  check(/const SELECT_BLUE = 'oklch\(0\.51 0\.08 253\)'/.test(src) && /const SEL = SELECT_BLUE/.test(src),
+  check(/const SELECT_BLUE = 'oklch\([^']+\)'/.test(src) && /const SEL = SELECT_BLUE/.test(src),
     "a selected arrow uses the selection blue, not a deck colour");
+  const selBlue = (src.match(/const SELECT_BLUE = '([^']+)'/) || [])[1];
+  check(chroma(selBlue) === chroma(accOf("con")), "and the selection blue sits on the same chroma",
+    ` (${selBlue})`);
 }
 
 console.log("\nthe pen draws, erases and is saved like anything else on the board");
 {
-  check(/const INKS = \['#e0a33a', '#cf5f7a', '#5b9464', '#4d7fbf'\]/.test(src), "four inks");
+  // 펜도 같은 색상환 위에 / the markers live on the same wheel, just brighter — they are
+  // drawn at 55%, so a deck-weight chroma would disappear into the paper
+  const inks = (src.match(/const INKS = \[([^\]]+)\]/) || [])[1] || "";
+  const inkList = inks.match(/'([^']+)'/g) || [];
+  check(inkList.length === 4, "four inks", ` (${inkList.length})`);
+  check(inkList.every((v) => v.includes("oklch")), "stated in the same colour space as the decks");
   // 보드마카처럼 / like a board marker: multiply, not plain alpha. Alpha washes out what
   // it crosses; multiply darkens it, and two strokes go deeper where they overlap.
   check(/const PEN_W = 6, PEN_A = 0\.55;/.test(src), "drawn at marker weight and opacity");

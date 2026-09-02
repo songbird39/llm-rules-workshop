@@ -27,6 +27,10 @@ Works on phones, tablets and laptops; participants just open the link.
 
 ### What a session looks like
 
+Both steps share **one toolbar** — zoom, 기록, 화면 맞춤, 화살표, 펜, 메모, 초기화 — with only
+the trailing action differing: 다음 in step 1, 제출 in step 2. 제출 can be pressed as often as
+the participant likes; each press is another row, and the newest one is what you read.
+
 **로그인 화면** — the IRB information sheet and consent form sit open beside the
 participant-code box, so it can be read without clicking anything first. Two buttons
 download the **last page** — the sheet that actually gets signed — as a PDF or as a
