@@ -190,8 +190,16 @@ console.log("\nrule card keeps its size on drop");
   check(/w: \(type === 'act' \? TAG_W : CARD\)/.test(doc), "activity tags are created at tag width");
   // 활동 태그는 이제 독자적인 마크업(잉크 셰브론)이라 카드 글자 크기와 무관하다
   // an activity tag now has its own markup — the ink chevron — with its own type scale
-  check(/font-size:14\.5px;font-weight:700;letter-spacing:-0\.015em;white-space:nowrap;color:#f7f5ef/.test(doc),
-    "the chevron label is set in the tag's own scale");
+  check(/height:62px;[^"]*font-size:16\.5px|font-size:16\.5px/.test(doc),
+    "the board tag is set larger than the library chevron");
+  check(/font-size:15px;font-weight:700;letter-spacing:-0\.015em;white-space:nowrap;color:#f7f5ef/.test(doc),
+    "the library chevron stays compact, still ahead of a guardrail card's 12.5px");
+  // 한 줄 유지 / one line always: a timeline slot that wraps stops reading as one slot
+  check(/white-space:nowrap/.test(doc), "and neither ever wraps");
+  check(/const over = input \? input\.scrollWidth - input\.clientWidth : 0;/.test(doc),
+    "a tag grows by exactly the overflow instead");
+  check(/ws\.push\(Math\.min\(TAG_MAX, want\)\)/.test(doc), "up to the width cap");
+  check(/cw: c\.type === 'means' \? 'auto'/.test(doc), "and a 수단 pill hugs its own text");
   check((doc.match(/clip-path:polygon\(0 0, calc\(100% - 17px\) 0, 100% 50%/g) || []).length === 6,
     "both ends are pointed on the panel tile, the board tag and the drag ghost",
     ` (${(doc.match(/clip-path:polygon\(0 0, calc\(100% - 17px\) 0, 100% 50%/g) || []).length} layers)`);

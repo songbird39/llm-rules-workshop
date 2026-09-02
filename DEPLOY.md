@@ -90,7 +90,10 @@ sensemaking layer when an admin draws it (dashed, like their other marks).
 **1단계 · 워크플로 만들기** — participants lay ① **활동** tags left to right in the order
 they study, and attach ② **수단** post-its saying what each is done with. Tags are wider
 than cards with a larger title, so the timeline reads as a different level from the cards
-placed under it. A tag is an **ink chevron**, 50px tall, pointed at both
+placed under it. A tag is an **ink chevron**, 62px tall on the board and
+50px in the library — bigger where it is the spine of the timeline, tight where it is a
+list you scan while choosing, and ahead of a guardrail card's 12.5px title in both places.
+It is pointed at both
 ends: a 17px notch cut into the tail and a 17px point on the nose, so tags placed 335px
 apart (`TAG_W - 17`) interlock into a chain. The nose carries a hairline keyline — two
 identically clipped layers with the upper one shifted 1.6px — without which two snapped
@@ -99,6 +102,11 @@ placed. Their descriptions exist to help you choose, so they live in the library
 hover tooltip and never reach the board — on the board it is the arrangement that carries
 the meaning. The 가드레일 decks (③④) keep their descriptions on the card, because there the
 description *is* the content: it says what the system does.
+
+Both a tag and a 수단 pill **run longer rather than wrapping**: a tag grows by exactly the
+overflow, up to the width cap, and a pill has no fixed width at all. One slot on a timeline
+has to stay one line to read as one slot. Tags never auto-shrink — the width handle is how
+you do that, and shrinking on its own would fight a width someone set by hand.
 
 ② 수단 is a **paper tag** — a white pill with a hairline and a soft shadow, a 6px dot and a
 12px label. In the panel that is all it is; on the board the same pill grows to hold the

@@ -210,7 +210,7 @@
             <span style="position:absolute;inset:0;background:#9c9789;clip-path:polygon(0 0, calc(100% - 17px) 0, 100% 50%, calc(100% - 17px) 100%, 0 100%, 17px 50%)"></span>
             <span style="position:absolute;top:0;bottom:0;left:-1.6px;right:1.6px;background:#413e37;clip-path:polygon(0 0, calc(100% - 17px) 0, 100% 50%, calc(100% - 17px) 100%, 0 100%, 17px 50%)"></span>
             <span style="position:relative;flex:none;width:8px;height:8px;border-radius:2px;background:#c9c3b2"></span>
-            <span style="position:relative;font-size:14.5px;font-weight:700;letter-spacing:-0.015em;white-space:nowrap;color:#f7f5ef">{{ d.title }}</span>
+            <span style="position:relative;font-size:15px;font-weight:700;letter-spacing:-0.015em;white-space:nowrap;color:#f7f5ef">{{ d.title }}</span>
           </div>
         </sc-for>
       </div>
@@ -321,14 +321,14 @@
         </sc-for>
         <sc-for list="{{ cards }}" as="c" hint-placeholder-count="0">
           <sc-if value="{{ c.isTag }}" hint-placeholder-val="{{ false }}">
-          <div onPointerDown="{{ c.onDown }}" style="position:absolute;left:{{ c.x }}px;top:{{ c.y }}px;width:{{ c.w }}px;height:50px;display:flex;align-items:center;gap:10px;padding:0 26px 0 34px;outline:{{ c.outline }};outline-offset:2px;pointer-events:{{ c.pe }};cursor:{{ c.cursor }}">
+          <div onPointerDown="{{ c.onDown }}" style="position:absolute;left:{{ c.x }}px;top:{{ c.y }}px;width:{{ c.w }}px;height:62px;display:flex;align-items:center;gap:12px;padding:0 28px 0 38px;outline:{{ c.outline }};outline-offset:2px;pointer-events:{{ c.pe }};cursor:{{ c.cursor }}">
             <!-- 코 끝 실선 / the nose keyline: two identically clipped layers, the upper one
                  shifted 1.6px left, so only the nose edge shows pale. Without it two tags
                  snapped nose-to-notch merge into one silhouette. -->
             <span style="position:absolute;inset:0;background:#9c9789;clip-path:polygon(0 0, calc(100% - 17px) 0, 100% 50%, calc(100% - 17px) 100%, 0 100%, 17px 50%)"></span>
             <span style="position:absolute;top:0;bottom:0;left:-1.6px;right:1.6px;background:#413e37;clip-path:polygon(0 0, calc(100% - 17px) 0, 100% 50%, calc(100% - 17px) 100%, 0 100%, 17px 50%)"></span>
-            <span style="position:relative;flex:none;width:8px;height:8px;border-radius:2px;background:#c9c3b2"></span>
-            <input value="{{ c.title }}" onChange="{{ c.onTitle }}" placeholder="{{ c.titlePlaceholder }}" style="position:relative;flex:1;min-width:0;border:none;background:transparent;font-size:14.5px;font-weight:700;letter-spacing:-0.015em;white-space:nowrap;color:#f7f5ef;outline:none;padding:0;pointer-events:{{ c.tpe }}" />
+            <span style="position:relative;flex:none;width:9px;height:9px;border-radius:2px;background:#c9c3b2"></span>
+            <input value="{{ c.title }}" onChange="{{ c.onTitle }}" placeholder="{{ c.titlePlaceholder }}" style="position:relative;flex:1;min-width:0;border:none;background:transparent;font-size:16.5px;font-weight:700;letter-spacing:-0.015em;white-space:nowrap;color:#f7f5ef;outline:none;padding:0;pointer-events:{{ c.tpe }}" />
             <span style="position:relative;flex:none;display:flex;align-items:center;gap:0">
               <button onPointerDown="{{ c.onEditDown }}" title="{{ t.editTip }}" style="position:relative;flex:none;width:24px;height:24px;border:none;border-radius:6px;background:transparent;color:#b3ad9e;font-size:12.5px;line-height:1;cursor:pointer;padding:0" style-hover="color:#f7f5ef">{{ t.edit }}</button>
               <button onPointerDown="{{ c.onDupDown }}" title="{{ t.dupTip }}" style="position:relative;flex:none;width:24px;height:24px;border:none;border-radius:6px;background:transparent;color:#9c9689;font-size:12px;line-height:1;cursor:pointer;padding:0" style-hover="color:#f7f5ef">⧉</button>
@@ -340,12 +340,12 @@
           </div>
           </sc-if>
           <sc-if value="{{ c.notTag }}" hint-placeholder-val="{{ true }}">
-          <div onPointerDown="{{ c.onDown }}" style="position:absolute;left:{{ c.x }}px;top:{{ c.y }}px;width:{{ c.w }}px;display:flex;flex-direction:column;gap:5px;background:{{ c.bg }};border:1px {{ c.bstyle }} {{ c.bd }};border-radius:{{ c.radius }}px;padding:7px;box-shadow:{{ c.shadow }};outline:{{ c.outline }};outline-offset:2px;pointer-events:{{ c.pe }};cursor:{{ c.cursor }}">
+          <div onPointerDown="{{ c.onDown }}" style="position:absolute;left:{{ c.x }}px;top:{{ c.y }}px;width:{{ c.cw }};display:flex;flex-direction:column;gap:5px;background:{{ c.bg }};border:1px {{ c.bstyle }} {{ c.bd }};border-radius:{{ c.radius }}px;padding:7px;box-shadow:{{ c.shadow }};outline:{{ c.outline }};outline-offset:2px;pointer-events:{{ c.pe }};cursor:{{ c.cursor }}">
             <div style="display:flex;align-items:center;gap:{{ c.headGap }};background:{{ c.tint }};border-radius:{{ c.headRadius }};padding:{{ c.headPad }}">
               <sc-if value="{{ c.isMeans }}" hint-placeholder-val="{{ false }}">
                 <span style="flex:none;width:6px;height:6px;border-radius:50%;background:#8f8b81"></span>
               </sc-if>
-              <input value="{{ c.title }}" onChange="{{ c.onTitle }}" placeholder="{{ c.titlePlaceholder }}" style="flex:1;min-width:0;border:none;background:transparent;font-size:{{ c.tfs }};font-weight:600;letter-spacing:-0.01em;color:{{ c.tcol }};outline:none;padding:0;pointer-events:{{ c.tpe }}" />
+              <input value="{{ c.title }}" onChange="{{ c.onTitle }}" placeholder="{{ c.titlePlaceholder }}" size="{{ c.tsize }}" style="flex:1;min-width:{{ c.tmin }};border:none;background:transparent;font-size:{{ c.tfs }};font-weight:600;letter-spacing:-0.01em;color:{{ c.tcol }};outline:none;padding:0;pointer-events:{{ c.tpe }}" />
               <sc-if value="{{ c.notMeans }}" hint-placeholder-val="{{ true }}">
                 <span style="font-size:9px;letter-spacing:0.02em;color:{{ c.accent }};border:1px solid {{ c.accent }};border-radius:3px;padding:0 3px">{{ c.mark }}</span>
               </sc-if>
@@ -378,11 +378,11 @@
       <!-- 끄는 모습 = 놓이는 모습 / the ghost is the thing that lands, not a stand-in: a
            chevron for 활동, a paper tag for 수단, a card for the guardrail decks. -->
       <sc-if value="{{ ghostTag }}" hint-placeholder-val="{{ false }}">
-        <div style="position:fixed;left:{{ ghostX }}px;top:{{ ghostY }}px;width:352px;height:50px;transform:scale({{ ghostScale }});transform-origin:0 0;pointer-events:none;z-index:50;opacity:0.92;display:flex;align-items:center;gap:10px;padding:0 26px 0 34px;filter:drop-shadow(0 12px 24px rgba(0,0,0,0.22))">
+        <div style="position:fixed;left:{{ ghostX }}px;top:{{ ghostY }}px;width:352px;height:62px;transform:scale({{ ghostScale }});transform-origin:0 0;pointer-events:none;z-index:50;opacity:0.92;display:flex;align-items:center;gap:12px;padding:0 28px 0 38px;filter:drop-shadow(0 12px 24px rgba(0,0,0,0.22))">
           <span style="position:absolute;inset:0;background:#9c9789;clip-path:polygon(0 0, calc(100% - 17px) 0, 100% 50%, calc(100% - 17px) 100%, 0 100%, 17px 50%)"></span>
           <span style="position:absolute;top:0;bottom:0;left:-1.6px;right:1.6px;background:#413e37;clip-path:polygon(0 0, calc(100% - 17px) 0, 100% 50%, calc(100% - 17px) 100%, 0 100%, 17px 50%)"></span>
-          <span style="position:relative;flex:none;width:8px;height:8px;border-radius:2px;background:#c9c3b2"></span>
-          <span style="position:relative;font-size:14.5px;font-weight:700;letter-spacing:-0.015em;white-space:nowrap;color:#f7f5ef">{{ ghostText }}</span>
+          <span style="position:relative;flex:none;width:9px;height:9px;border-radius:2px;background:#c9c3b2"></span>
+          <span style="position:relative;font-size:16.5px;font-weight:700;letter-spacing:-0.015em;white-space:nowrap;color:#f7f5ef">{{ ghostText }}</span>
         </div>
       </sc-if>
       <sc-if value="{{ ghostMeans }}" hint-placeholder-val="{{ false }}">
@@ -888,7 +888,12 @@ class Component extends DCLogic {
       cards: this.state.cards, notes: this.state.notes || [],
       arrows: this.state.arrows || [], strokes: this.state.strokes || []
     };
-    const sig = JSON.stringify([snap.cards, snap.notes, snap.arrows, snap.strokes]);
+    const meaningful = (list) => list.map((c) => {
+      const o = {};
+      for (const k in c) if (k !== 'w' && k !== 'h') o[k] = c[k];
+      return o;
+    });
+    const sig = JSON.stringify([meaningful(snap.cards), meaningful(snap.notes), snap.arrows, snap.strokes]);
     if (sig === this._undoSig) return;
     if (this._undoSig === undefined) { this._undoSig = sig; this._undoPrev = snap; return; }
     const now = Date.now();
@@ -923,7 +928,7 @@ class Component extends DCLogic {
     // Skip while dragging: moving cannot change a height, and running autoGrow plus a
     // forced layout on every pointermove starves the main thread — pointer events stop
     // being delivered mid-drag and the drag dies after one step.
-    if (this.state.step === 2 && !this.drag) { this.autoGrow(); this.measureCards(); }
+    if (this.state.step >= 1 && !this.drag) { this.autoGrow(); this.measureCards(); }
     // 해석 레이어만 따로 저장 / persist the sensemaking layer on its own key
     if (this.isView() && this.state.viewPid) {
       const sg = this.senseSig();
@@ -1765,6 +1770,34 @@ class Component extends DCLogic {
         const list = s.notes || [];
         if (list.length !== nhs.length) return null;
         return { notes: list.map((n, i) => (nhs[i] && Math.abs((n.h || 0) - nhs[i]) > 1 ? Object.assign({}, n, { h: nhs[i] }) : n)) };
+      });
+    }
+    /* 폭 / WIDTHS.
+       활동 태그: 글자가 넘치면 넘친 만큼 늘린다. 줄바꿈은 하지 않는다 — 타임라인의 한 칸은
+       한 줄이어야 읽힌다. 줄이지는 않는다: 폭 손잡이가 줄이는 수단이고, 자동으로 줄이면
+       손으로 맞춰 둔 폭과 싸운다.
+       수단: 폭이 auto 라 이미 글자만큼이다. 여기서는 잰 값을 state 로 되돌려 놓을 뿐인데,
+       화살표 끝점·선택 사각형·내보내기가 모두 c.w 를 보기 때문이다.
+       An activity tag grows by exactly the overflow and never wraps — one slot on the
+       timeline has to be one line. It never shrinks: the width handle is how you do that,
+       and shrinking automatically would fight a width someone set by hand. A 수단 pill is
+       already auto-width; this only copies the measured value back into state, because the
+       arrow endpoints, the marquee and the export all read c.w. */
+    const ws = [];
+    for (let i = 0; i < els.length; i++) {
+      const c = this.state.cards[i];
+      if (c.type === 'means') { ws.push(els[i].offsetWidth); continue; }
+      if (c.type !== 'act') { ws.push(c.w || CARD); continue; }
+      const input = els[i].querySelector('input');
+      const over = input ? input.scrollWidth - input.clientWidth : 0;
+      const want = (c.w || TAG_W) + (over > 1 ? over + 2 : 0);
+      ws.push(Math.min(TAG_MAX, want));
+    }
+    if (this.state.cards.some((c, i) => ws[i] && Math.abs((c.w || (c.type === 'act' ? TAG_W : CARD)) - ws[i]) > 1)) {
+      this.setState((st) => {
+        if (st.cards.length !== ws.length) return null;
+        return { cards: st.cards.map((c, i) => (ws[i] && Math.abs((c.w || (c.type === 'act' ? TAG_W : CARD)) - ws[i]) > 1
+          ? Object.assign({}, c, { w: ws[i] }) : c)) };
       });
     }
     if (!this.state.cards.some((c, i) => hs[i] && Math.abs((c.h || 0) - hs[i]) > 1)) return;
@@ -2740,7 +2773,13 @@ class Component extends DCLogic {
           headRadius: c.type === 'means' ? '11px' : '5px',
           headPad: c.type === 'means' ? '2px 6px' : '3px 5px',
           tcol: c.type === 'means' ? '#3a382f' : '#1b1a17',
+          // size 는 글자 수에 맞춰 입력칸이 스스로 늘어나게 한다 / the input sizes itself to
+          // its own content, which is what lets an auto-width pill grow with the text
+          tsize: c.type === 'means' ? Math.max(4, String(c.title || '').length + 1) : 8,
+          tmin: c.type === 'means' ? 'auto' : '0',
           w: c.w || CARD,
+          // 수단은 글자에 맞춰 늘어난다 / a 수단 pill sizes to its text, never wraps
+          cw: c.type === 'means' ? 'auto' : ((c.w || CARD) + 'px'),
           tfs: c.type === 'means' ? '12px' : '12.5px',
           // 태그는 한 줄짜리 막대에서 시작해 내용만큼만 자란다 / a tag starts as a one-line
           // bar and grows only with its content, so it never looks like a card

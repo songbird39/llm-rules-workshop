@@ -1213,6 +1213,59 @@ async function dragTileToBoard(page, title, fx = 0.45, fy = 0.4) {
     await page.close();
   }
 
+  // ------------------------------------------------- sizing
+  console.log("\ntags run longer rather than wrapping; the board reads bigger than the library");
+  {
+    const { page, errors } = await boot(browser, { width: 1700, height: 1000 });
+    await toStep1(page, "SZ1");
+    const libTag = await page.evaluate(() => {
+      const d = [...document.querySelectorAll("div")].filter((x) => getComputedStyle(x).cursor === "grab")[0];
+      const r = d.getBoundingClientRect();
+      return { h: Math.round(r.height), fs: getComputedStyle(d.querySelector("span:nth-of-type(3)") || d).fontSize };
+    });
+    await dragTileToBoard(page, "피드백 받기", 0.15, 0.15);
+    await dragTileToBoard(page, "AI 사용", 0.15, 0.45);
+    const objs = () => page.evaluate(() => {
+      const layer = [...document.querySelectorAll("div")].find((d) => d.style.width === "5000px");
+      return [...layer.children].filter((c) => c.querySelector && c.querySelector("input"))
+        .map((c) => ({ t: c.querySelector("input").value, w: Math.round(c.getBoundingClientRect().width),
+                       h: Math.round(c.getBoundingClientRect().height) }));
+    });
+    const before = await objs();
+    const tagBefore = before.find((o) => o.t === "피드백 받기");
+    const pillBefore = before.find((o) => o.t === "AI 사용");
+    check(tagBefore.h > libTag.h, "the board tag is taller than the library chevron",
+      ` (${tagBefore.h} vs ${libTag.h})`);
+
+    const typeInto = async (name, text) => {
+      await page.evaluate((n) => {
+        const layer = [...document.querySelectorAll("div")].find((d) => d.style.width === "5000px");
+        const el = [...layer.children].find((c) => c.querySelector && c.querySelector("input")
+          && c.querySelector("input").value === n);
+        const i = el.querySelector("input");
+        i.focus();
+        i.setSelectionRange(i.value.length, i.value.length);
+      }, name);
+      await page.keyboard.type(text);
+      await page.waitForTimeout(700);
+    };
+    await typeInto("피드백 받기", " 수정사항을 직접 정리해서 씁니다 그리고 더 길게");
+    await typeInto("AI 사용", " 수정사항을 직접 정리해서 씁니다");
+    const after = await objs();
+    const tagAfter = after.find((o) => o.t.startsWith("피드백"));
+    const pillAfter = after.find((o) => o.t.startsWith("AI 사용"));
+    check(tagAfter.w > tagBefore.w + 100, "the tag runs longer to fit its label",
+      ` (${tagBefore.w} → ${tagAfter.w})`);
+    check(pillAfter.w > pillBefore.w + 100, "and so does the 수단 pill",
+      ` (${pillBefore.w} → ${pillAfter.w})`);
+    // 줄바꿈은 없다 / never wraps: a timeline slot that grows downward stops reading as one slot
+    check(tagAfter.h === tagBefore.h && pillAfter.h === pillBefore.h,
+      "neither grows taller, so neither has wrapped",
+      ` (${tagBefore.h}→${tagAfter.h}, ${pillBefore.h}→${pillAfter.h})`);
+    check(errors.length === 0, "no console errors", errors.length ? ` (${errors[0]})` : "");
+    await page.close();
+  }
+
   // ------------------------------------------------- undo
   console.log("\nundo steps back five changes; 기록 is admin-only now");
   {
