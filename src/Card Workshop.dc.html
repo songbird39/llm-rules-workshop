@@ -60,27 +60,26 @@
          with the same buttons copied into each, which is how step 1 quietly ended up
          without 메모: only the trailing action differs, so only that is branched. -->
     <sc-if value="{{ onBoard }}" hint-placeholder-val="{{ true }}">
-      <div style="display:flex;flex-wrap:wrap;justify-content:flex-end;align-items:center;gap:8px;min-width:0">
+      <div style="display:flex;flex-wrap:wrap;justify-content:flex-end;align-items:center;gap:5px;min-width:0">
         <div style="display:flex;align-items:center;border:1px solid #d6d3ca;border-radius:7px;overflow:hidden;background:#fff">
-          <button onClick="{{ zoomOut }}" style="width:32px;height:33px;border:none;background:transparent;cursor:pointer;font-size:16px;line-height:1" style-hover="background:#f1efe8">−</button>
-          <div style="width:48px;text-align:center;font-family:ui-monospace,Menlo,monospace;font-size:11.5px;color:#7a776f;border-left:1px solid #e8e5dd;border-right:1px solid #e8e5dd;height:33px;line-height:33px">{{ zoomLabel }}</div>
-          <button onClick="{{ zoomIn }}" style="width:32px;height:33px;border:none;background:transparent;cursor:pointer;font-size:16px;line-height:1" style-hover="background:#f1efe8">+</button>
+          <button onClick="{{ zoomOut }}" style="width:26px;height:27px;border:none;background:transparent;cursor:pointer;font-size:15px;line-height:1" style-hover="background:#f1efe8">−</button>
+          <div style="width:42px;text-align:center;font-family:ui-monospace,Menlo,monospace;font-size:11px;color:#7a776f;border-left:1px solid #e8e5dd;border-right:1px solid #e8e5dd;height:27px;line-height:27px">{{ zoomLabel }}</div>
+          <button onClick="{{ zoomIn }}" style="width:26px;height:27px;border:none;background:transparent;cursor:pointer;font-size:15px;line-height:1" style-hover="background:#f1efe8">+</button>
         </div>
         <sc-if value="{{ isViewing }}" hint-placeholder-val="{{ false }}">
-          <button onClick="{{ onBackList }}" style="padding:7px 12px;border:1px solid #d6d3ca;border-radius:7px;background:#fff;font-size:13.5px;cursor:pointer" style-hover="background:#f1efe8">{{ t.backList }}</button>
-          <button onClick="{{ onRefresh }}" style="padding:7px 12px;border:1px solid #d6d3ca;border-radius:7px;background:#fff;font-size:13.5px;cursor:pointer" style-hover="background:#f1efe8">{{ t.refreshBtn }}</button>
-          <button onClick="{{ onDupAll }}" style="padding:7px 12px;border:1px dashed oklch(0.62 0.11 62);border-radius:7px;background:#fdfbf5;color:#7a5a1f;font-size:13.5px;cursor:pointer">{{ t.dupAllBtn }}</button>
-          <button onClick="{{ onDupSel }}" style="padding:7px 12px;border:1px dashed oklch(0.62 0.11 62);border-radius:7px;background:#fdfbf5;color:#7a5a1f;font-size:13.5px;cursor:pointer">{{ t.dupSelBtn }}</button>
-          <button onClick="{{ onImg }}" style="padding:7px 12px;border:1px solid #d6d3ca;border-radius:7px;background:#fff;font-size:13.5px;cursor:pointer" style-hover="background:#f1efe8">{{ t.imgBtn }}</button>
-          <button onClick="{{ onImgSense }}" style="padding:7px 12px;border:1px dashed oklch(0.62 0.11 62);border-radius:7px;background:#fdfbf5;color:#7a5a1f;font-size:13.5px;cursor:pointer">{{ t.imgSenseBtn }}</button>
-          <button onClick="{{ onClearSense }}" style="padding:7px 10px;border:1px solid #e2dfd7;border-radius:7px;background:transparent;color:#98958c;font-size:13.5px;cursor:pointer" style-hover="color:#b03f34">{{ t.clearSenseBtn }}</button>
-          <button onClick="{{ onHistory }}" style="padding:7px 12px;border:1px solid #d6d3ca;border-radius:7px;background:#fff;font-size:13.5px;cursor:pointer" style-hover="background:#f1efe8">{{ t.histBtn }}</button>
+          <button onClick="{{ onBackList }}" style="padding:5px 9px;border:1px solid #d6d3ca;border-radius:6px;background:#fff;font-size:12.5px;cursor:pointer" style-hover="background:#f1efe8">{{ t.backList }}</button>
+          <button onClick="{{ onRefresh }}" style="padding:5px 9px;border:1px solid #d6d3ca;border-radius:6px;background:#fff;font-size:12.5px;cursor:pointer" style-hover="background:#f1efe8">{{ t.refreshBtn }}</button>
+          <button onClick="{{ onDupAll }}" style="padding:5px 9px;border:1px dashed oklch(0.62 0.11 62);border-radius:6px;background:#fdfbf5;color:#7a5a1f;font-size:12.5px;cursor:pointer">{{ t.dupAllBtn }}</button>
+          <button onClick="{{ onDupSel }}" style="padding:5px 9px;border:1px dashed oklch(0.62 0.11 62);border-radius:6px;background:#fdfbf5;color:#7a5a1f;font-size:12.5px;cursor:pointer">{{ t.dupSelBtn }}</button>
+          <button onClick="{{ onImg }}" style="padding:5px 9px;border:1px solid #d6d3ca;border-radius:6px;background:#fff;font-size:12.5px;cursor:pointer" style-hover="background:#f1efe8">{{ t.imgBtn }}</button>
+          <button onClick="{{ onImgSense }}" style="padding:5px 9px;border:1px dashed oklch(0.62 0.11 62);border-radius:6px;background:#fdfbf5;color:#7a5a1f;font-size:12.5px;cursor:pointer">{{ t.imgSenseBtn }}</button>
+          <button onClick="{{ onClearSense }}" style="padding:5px 8px;border:1px solid #e2dfd7;border-radius:6px;background:transparent;color:#98958c;font-size:12.5px;cursor:pointer" style-hover="color:#b03f34">{{ t.clearSenseBtn }}</button>
+          <button onClick="{{ onHistory }}" style="padding:5px 9px;border:1px solid #d6d3ca;border-radius:6px;background:#fff;font-size:12.5px;cursor:pointer" style-hover="background:#f1efe8">{{ t.histBtn }}</button>
         </sc-if>
-        <button onClick="{{ resetView }}" style="padding:7px 12px;border:1px solid #d6d3ca;border-radius:7px;background:#fff;font-size:13.5px;cursor:pointer" style-hover="background:#f1efe8">{{ t.fit }}</button>
         <sc-if value="{{ canEdit }}" hint-placeholder-val="{{ true }}">
-        <button onClick="{{ onUndo }}" title="{{ t.undoTip }}" style="padding:7px 12px;border:1px solid #d6d3ca;border-radius:7px;background:#fff;font-size:13.5px;cursor:pointer;opacity:{{ undoOpacity }}" style-hover="background:#f1efe8">{{ t.undoBtn }}</button>
-        <button onClick="{{ toggleArrowMode }}" title="{{ t.arrowTip }}" style="padding:7px 12px;border:1px solid #d6d3ca;border-radius:7px;background:{{ arrowBtnBg }};color:{{ arrowBtnColor }};font-size:13.5px;cursor:pointer">{{ t.arrow }}</button>
-        <button onClick="{{ togglePen }}" title="{{ t.penTip }}" style="padding:7px 12px;border:1px solid #d6d3ca;border-radius:7px;background:{{ penBtnBg }};color:{{ penBtnColor }};font-size:13.5px;cursor:pointer">{{ t.pen }}</button>
+        <button onClick="{{ onUndo }}" title="{{ t.undoTip }}" style="padding:5px 9px;border:1px solid #d6d3ca;border-radius:6px;background:#fff;font-size:12.5px;cursor:pointer;opacity:{{ undoOpacity }}" style-hover="background:#f1efe8">{{ t.undoBtn }}</button>
+        <button onClick="{{ toggleArrowMode }}" title="{{ t.arrowTip }}" style="padding:5px 9px;border:1px solid #d6d3ca;border-radius:6px;background:{{ arrowBtnBg }};color:{{ arrowBtnColor }};font-size:12.5px;cursor:pointer">{{ t.arrow }}</button>
+        <button onClick="{{ togglePen }}" title="{{ t.penTip }}" style="padding:5px 9px;border:1px solid #d6d3ca;border-radius:6px;background:{{ penBtnBg }};color:{{ penBtnColor }};font-size:12.5px;cursor:pointer">{{ t.pen }}</button>
         <sc-if value="{{ penOpen }}" hint-placeholder-val="{{ false }}">
           <div style="display:flex;align-items:center;gap:5px;padding:3px 7px;border:1px solid #e2dfd7;border-radius:20px;background:#fffefb">
             <sc-for list="{{ penInks }}" as="k" hint-placeholder-count="4">
@@ -90,15 +89,15 @@
             <button onClick="{{ onErase }}" title="{{ t.eraseTip }}" style="padding:1px 7px;border:1px solid {{ eraseBd }};border-radius:11px;background:{{ eraseBg }};color:{{ eraseFg }};font-size:11.5px;cursor:pointer">{{ t.erase }}</button>
           </div>
         </sc-if>
-        <button onClick="{{ toggleNoteMode }}" title="{{ t.noteTip }}" style="padding:7px 12px;border:1px solid #d6d3ca;border-radius:7px;background:{{ noteBtnBg }};color:{{ noteBtnColor }};font-size:13.5px;cursor:pointer">{{ t.note }}</button>
+        <button onClick="{{ toggleNoteMode }}" title="{{ t.noteTip }}" style="padding:5px 9px;border:1px solid #d6d3ca;border-radius:6px;background:{{ noteBtnBg }};color:{{ noteBtnColor }};font-size:12.5px;cursor:pointer">{{ t.note }}</button>
         <sc-if value="{{ isStep1 }}" hint-placeholder-val="{{ true }}">
           <span style="font-size:12.5px;color:#7a776f;margin-left:4px">{{ selLabel }}</span>
-          <button onClick="{{ goNext }}" style="padding:7px 20px;border:1px solid transparent;border-radius:7px;background:#1b1a17;color:#faf8f3;font-size:13.5px;cursor:pointer;opacity:{{ nextOpacity }}" style-hover="background:#35332c">{{ t.next }}</button>
+          <button onClick="{{ goNext }}" style="padding:5px 16px;border:1px solid transparent;border-radius:6px;background:#1b1a17;color:#faf8f3;font-size:12.5px;cursor:pointer;opacity:{{ nextOpacity }}" style-hover="background:#35332c">{{ t.next }}</button>
         </sc-if>
         <sc-if value="{{ isStep2 }}" hint-placeholder-val="{{ false }}">
-          <button onClick="{{ doFinish }}" style="padding:7px 13px;border:1px solid transparent;border-radius:7px;background:#1b1a17;color:#faf8f3;font-size:13.5px;cursor:pointer" style-hover="background:#35332c">{{ t.finishBtn }}</button>
+          <button onClick="{{ doFinish }}" style="padding:5px 12px;border:1px solid transparent;border-radius:6px;background:#1b1a17;color:#faf8f3;font-size:12.5px;cursor:pointer" style-hover="background:#35332c">{{ t.finishBtn }}</button>
         </sc-if>
-        <button onClick="{{ clearAll }}" title="{{ t.clearTip }}" style="padding:7px 10px;border:1px solid #e2dfd7;border-radius:7px;background:transparent;color:#98958c;font-size:13.5px;cursor:pointer" style-hover="color:#b03f34;border-color:#ddc0bb">{{ t.clear }}</button>
+        <button onClick="{{ clearAll }}" title="{{ t.clearTip }}" style="padding:5px 8px;border:1px solid #e2dfd7;border-radius:6px;background:transparent;color:#98958c;font-size:12.5px;cursor:pointer" style-hover="color:#b03f34;border-color:#ddc0bb">{{ t.clear }}</button>
         </sc-if>
       </div>
     </sc-if>
@@ -296,7 +295,7 @@
     </div>
 
     </sc-if>
-    <div ref="{{ canvasRef }}" onPointerDown="{{ onCanvasDown }}" style="position:relative;flex:1;min-width:0;overflow:hidden;cursor:{{ canvasCursor }};background-color:#ebe8e0;background-image:radial-gradient(#dad6cb 1px, transparent 1px);background-size:24px 24px">
+    <div ref="{{ canvasRef }}" onPointerDown="{{ onCanvasDown }}" onDoubleClick="{{ onCanvasDouble }}" style="position:relative;flex:1;min-width:0;overflow:hidden;cursor:{{ canvasCursor }};background-color:#ebe8e0;background-image:radial-gradient(#dad6cb 1px, transparent 1px);background-size:24px 24px">
       <div style="position:absolute;left:0;top:0;width:5000px;height:5000px;transform-origin:0 0;pointer-events:{{ layerPE }};transform:translate({{ panX }}px, {{ panY }}px) scale({{ zoom }})">
         <sc-if value="{{ senseRegion }}" hint-placeholder-val="{{ false }}">
           <div style="position:absolute;left:{{ regionX }}px;top:{{ regionY }}px;width:{{ regionW }}px;height:{{ regionH }}px;border:1.5px dashed #c9c6bd;border-radius:14px;background:rgba(255,255,255,0.35);pointer-events:none">
@@ -637,16 +636,16 @@ const I18N = {
     ui: {
       title: '나의 AI 학습 규칙 만들기', step1: '1단계 · 규칙', step2: '2단계 · 가드레일',
       participant: '참여자', prev: '← 이전', next: '다음 →', choose: '활동 태그를 놓아 주세요', selSuffix: '개 활동',
-      syncPending: '저장 중…', syncSaved: '서버 저장됨', syncOffline: '오프라인 · 재시도 대기',
+      syncPending: '저장 중…', syncSaved: '저장됨', syncOffline: '오프라인',
       pen: '펜', penTip: '보드에 직접 그리기 (색을 고르세요)', erase: '지우개', eraseTip: '그린 선을 지웁니다',
       inkNames: ['노랑', '분홍', '초록', '파랑'],
-      syncDemo: '데모 · 저장하지 않음', syncLocal: '⚠ 로컬 저장만 · 서버 미연결', syncReady: '서버 연결됨', syncLoading: '서버에서 불러오는 중…',
+      syncDemo: '데모 · 저장 안 함', syncLocal: '⚠ 로컬만', syncReady: '연결됨', syncLoading: '불러오는 중…',
       edit: '✎', editTip: '이름 고치기', fit: '화면 맞춤', note: '✎ 메모', exportBtn: '제출 · JSON 저장', clear: '초기화', confirmClear: '보드의 모든 카드를 지울까요?',
       arrow: '↗ 화살표', arrowTip: '카드에서 카드로 드래그해 화살표로 잇기', arrowDelTip: '화살표 삭제',
       imgBtn: '이미지 저장', imgSenseBtn: '이미지 (해석 포함)',
       dupAllBtn: '전체 복제', dupSelBtn: '선택 복제', clearSenseBtn: '해석 지우기',
       regionLabel: '참여자 산출물 (수정 불가)',
-      undoBtn: '↩ 되돌리기', undoTip: '최근 5단계까지 되돌립니다 (Ctrl+Z)', histBtn: '기록', histTitle: '저장 기록', histSub: '되돌아갈 시점을 선택하세요. 지금 작업은 그대로 남아 있습니다.',
+      undoBtn: '↩', undoTip: '최근 5단계까지 되돌립니다 (Ctrl+Z)', histBtn: '기록', histTitle: '저장 기록', histSub: '되돌아갈 시점을 선택하세요. 지금 작업은 그대로 남아 있습니다.',
       histLoading: '불러오는 중…', histEmpty: '아직 저장 기록이 없습니다.',
       histError: '기록을 불러오지 못했습니다. Apps Script를 새 버전으로 다시 배포했는지 확인해 주세요.',
       autoTag: '자동 저장', travelPrefix: '기록 보는 중 · ', travelBody: '이 시점의 보드입니다. 저장은 멈춰 있습니다.',
@@ -740,16 +739,16 @@ const I18N = {
     ui: {
       title: 'Design My AI Learning Rules', step1: 'Step 1 · Rules', step2: 'Step 2 · Guardrails',
       participant: 'Participant', prev: '← Back', next: 'Next →', choose: 'Place an activity tag', selSuffix: ' activities',
-      syncPending: 'Saving…', syncSaved: 'Saved to server', syncOffline: 'Offline · will retry',
+      syncPending: 'Saving…', syncSaved: 'Saved', syncOffline: 'Offline',
       pen: 'Pen', penTip: 'draw directly on the board (pick a colour)', erase: 'Eraser', eraseTip: 'rub out strokes',
       inkNames: ['yellow', 'pink', 'green', 'blue'],
-      syncDemo: 'Demo · nothing is saved', syncLocal: '⚠ Local only · no server', syncReady: 'Server connected', syncLoading: 'Loading from server…',
+      syncDemo: 'Demo · not saved', syncLocal: '⚠ Local only', syncReady: 'Connected', syncLoading: 'Loading…',
       edit: '✎', editTip: 'rename', fit: 'Reset view', note: '✎ Note', exportBtn: 'Submit · Save JSON', clear: 'Clear', confirmClear: 'Clear all cards on the board?',
       arrow: '↗ Arrow', arrowTip: 'Drag from one card to another to connect them', arrowDelTip: 'Delete arrow',
       imgBtn: 'Save image', imgSenseBtn: 'Image (with workspace)',
       dupAllBtn: 'Duplicate all', dupSelBtn: 'Duplicate selection', clearSenseBtn: 'Clear workspace',
       regionLabel: "Participant's output (read-only)",
-      undoBtn: '↩ Undo', undoTip: 'steps back up to 5 changes (Ctrl+Z)', histBtn: 'History', histTitle: 'Saved versions', histSub: 'Pick a point to go back to. Your current work stays where it is.',
+      undoBtn: '↩', undoTip: 'steps back up to 5 changes (Ctrl+Z)', histBtn: 'History', histTitle: 'Saved versions', histSub: 'Pick a point to go back to. Your current work stays where it is.',
       histLoading: 'Loading…', histEmpty: 'No saved versions yet.',
       histError: 'Could not load history. Check that the Apps Script was redeployed as a new version.',
       autoTag: 'autosave', travelPrefix: 'Viewing history · ', travelBody: 'This is the board at that moment. Saving is paused.',
@@ -831,6 +830,7 @@ class Component extends DCLogic {
       if (e.type === 'keydown' && (e.ctrlKey || e.metaKey) && (e.key === 'z' || e.key === 'Z')) {
         e.preventDefault(); this.undo(); return;
       }
+      if (e.type === 'keydown' && e.key === '0') { this.setState({ pan: { x: 0, y: 0 }, zoom: 1 }); return; }
       if (e.code === 'Space' || e.key === ' ') this._space = e.type === 'keydown';
     };
     window.addEventListener('keydown', this._key);
@@ -2700,6 +2700,11 @@ class Component extends DCLogic {
       zoomIn: () => this.zoomBy(0.1),
       zoomOut: () => this.zoomBy(-0.1),
       resetView: () => this.setState({ pan: { x: 0, y: 0 }, zoom: 1 }),
+      // 빈 보드를 더블클릭하면 화면이 돌아온다 / double-clicking empty board brings it back
+      onCanvasDouble: (e) => {
+        const t = e.target;
+        if (t === this.canvasRef.current || t === this.cardsLayer()) this.setState({ pan: { x: 0, y: 0 }, zoom: 1 });
+      },
       isEmpty: this.state.cards.length === 0 && (this.state.notes || []).length === 0,
       noteMode: this.state.noteMode,
       noteBtnBg: this.state.noteMode ? '#1b1a17' : '#fff',

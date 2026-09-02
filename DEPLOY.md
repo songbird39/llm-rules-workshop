@@ -35,8 +35,10 @@ that". Browsing an old version never writes: not to the sheet, not to this brows
 not to the admin's sensemaking record, which the board is holding an old copy of while you
 look.
 
-Both steps share **one toolbar** — zoom, 기록, 화면 맞춤, 화살표, 펜, 메모, 초기화 — with only
-the trailing action differing: 다음 in step 1, 제출 in step 2. 제출 can be pressed as often as
+Both steps share **one toolbar** — zoom, ↩ undo, 화살표, 펜, 메모, 초기화 — with only the
+trailing action differing: 다음 in step 1, 제출 in step 2. There is no 화면 맞춤 button; a
+board pushed off-screen comes back by **double-clicking empty board** or pressing **0**.
+The sync indicator says only the state (저장 중… / 저장됨 / 오프라인), not a sentence about it. 제출 can be pressed as often as
 the participant likes; each press is another row, and the newest one is what you read.
 
 **로그인 화면** — the IRB information sheet and consent form sit open beside the

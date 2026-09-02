@@ -1150,7 +1150,7 @@ async function dragTileToBoard(page, title, fx = 0.45, fy = 0.4) {
       .map((b) => b.textContent.trim()).filter(Boolean));
     await toStep1(page, "TB1");
     const step1 = await tools();
-    for (const label of ["↗ 화살표", "펜", "✎ 메모", "↩ 되돌리기", "화면 맞춤", "초기화"])
+    for (const label of ["↗ 화살표", "펜", "✎ 메모", "↩", "초기화"])
       check(step1.some((t) => t === label), `step 1 has ${label}`, ` (${JSON.stringify(step1.slice(0, 12))})`);
     check(step1.some((t) => t.includes("다음")), "and 다음, not 제출");
     check(!step1.some((t) => t === "제출"), "step 1 does not offer 제출");
@@ -1159,7 +1159,7 @@ async function dragTileToBoard(page, title, fx = 0.45, fy = 0.4) {
     await page.getByRole("button", { name: /다음/ }).click();
     await page.waitForSelector("text=시스템이 어떻게 개입하나요?", { timeout: 30000 });
     const step2 = await tools();
-    for (const label of ["↗ 화살표", "펜", "✎ 메모", "↩ 되돌리기", "화면 맞춤", "초기화"])
+    for (const label of ["↗ 화살표", "펜", "✎ 메모", "↩", "초기화"])
       check(step2.some((t) => t === label), `step 2 keeps ${label}`);
     check(step2.some((t) => t === "제출"), "and offers 제출, which can be pressed more than once");
 
@@ -1208,6 +1208,32 @@ async function dragTileToBoard(page, title, fx = 0.45, fy = 0.4) {
       const layer = [...document.querySelectorAll("div")].find((d) => d.style.width === "5000px");
       return layer.querySelector("input").value === "고친 이름";
     }), "and keeps what was typed");
+
+    // 0 키와 빈 보드 더블클릭으로 화면이 돌아온다 / the view still comes back
+    check((await page.getByRole("button", { name: "화면 맞춤" }).count()) === 0, "화면 맞춤 is gone");
+    const canvas = await (await page.$('div[style*="radial-gradient"]')).boundingBox();
+    const pan = () => page.evaluate(() => {
+      const layer = [...document.querySelectorAll("div")].find((d) => d.style.width === "5000px");
+      return layer.style.transform;
+    });
+    const shove = async () => {
+      await page.keyboard.down("Alt");
+      await page.mouse.move(canvas.x + canvas.width * 0.6, canvas.y + canvas.height * 0.6);
+      await page.mouse.down();
+      await page.mouse.move(canvas.x + canvas.width * 0.6 + 220, canvas.y + canvas.height * 0.6 + 160, { steps: 8 });
+      await page.mouse.up();
+      await page.keyboard.up("Alt");
+      await page.waitForTimeout(250);
+    };
+    await shove();
+    check(!/translate\(0px, ?0px\)/.test(await pan()), "the board can be pushed off-centre", ` (${await pan()})`);
+    await page.mouse.dblclick(canvas.x + canvas.width * 0.85, canvas.y + canvas.height * 0.85);
+    await page.waitForTimeout(300);
+    check(/translate\(0px, ?0px\)/.test(await pan()), "double-clicking empty board brings it back", ` (${await pan()})`);
+    await shove();
+    await page.keyboard.press("0");
+    await page.waitForTimeout(300);
+    check(/translate\(0px, ?0px\)/.test(await pan()), "and so does the 0 key", ` (${await pan()})`);
 
     check(errors.length === 0, "no console errors", errors.length ? ` (${errors[0]})` : "");
     await page.close();
@@ -1273,7 +1299,7 @@ async function dragTileToBoard(page, title, fx = 0.45, fy = 0.4) {
     await toStep1(page, "UND");
     check((await page.getByRole("button", { name: "기록" }).count()) === 0,
       "a participant is not offered version browsing");
-    check((await page.getByRole("button", { name: /되돌리기/ }).count()) === 1, "but is offered undo");
+    check((await page.getByRole("button", { name: "↩", exact: true }).count()) === 1, "but is offered undo");
 
     const count = () => page.evaluate(() => {
       const layer = [...document.querySelectorAll("div")].find((d) => d.style.width === "5000px");
@@ -1297,7 +1323,7 @@ async function dragTileToBoard(page, title, fx = 0.45, fy = 0.4) {
     for (const [i, x, y] of spots) await dropNth(i, x, y);
     check((await count()) === 7, "seven tags laid down", ` (${await count()})`);
     for (let k = 0; k < 6; k++) {
-      await page.getByRole("button", { name: /되돌리기/ }).click();
+      await page.getByRole("button", { name: "↩", exact: true }).click();
       await page.waitForTimeout(250);
     }
     // 다섯 장만 들고 있으므로 여섯 번 눌러도 다섯 단계 / only five snapshots are kept, so a
