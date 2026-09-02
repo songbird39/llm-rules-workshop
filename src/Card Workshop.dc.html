@@ -217,9 +217,12 @@
       </div>
       <div style="display:flex;flex-direction:column;gap:8px;padding:8px 16px 18px">
         <sc-for list="{{ deckAct }}" as="d" hint-placeholder-count="6">
-          <div onPointerDown="{{ d.onDown }}" onDoubleClick="{{ d.onAdd }}" title="{{ t.dragTip }}" style="width:100%;flex:0 0 auto;display:flex;align-items:baseline;gap:8px;background:#f4f2ec;border:1px solid #d6d3ca;border-radius:8px;padding:9px 12px;cursor:grab" style-hover="border-color:#b6b3aa;background:#eeece5">
-            <span style="font-size:14.5px;font-weight:600;letter-spacing:-0.01em;color:{{ d.titleColor }}">{{ d.title }}</span>
-            <span style="font-size:11.5px;color:#8a877e;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ d.body }}</span>
+          <div onPointerDown="{{ d.onDown }}" onDoubleClick="{{ d.onAdd }}" title="{{ t.dragTip }}" style="position:relative;width:100%;height:50px;flex:0 0 auto;display:flex;align-items:center;gap:10px;padding:0 26px 0 34px;cursor:grab">
+            <span style="position:absolute;inset:0;background:#9c9789;clip-path:polygon(0 0, calc(100% - 17px) 0, 100% 50%, calc(100% - 17px) 100%, 0 100%, 17px 50%)"></span>
+            <span style="position:absolute;top:0;bottom:0;left:-1.6px;right:1.6px;background:#413e37;clip-path:polygon(0 0, calc(100% - 17px) 0, 100% 50%, calc(100% - 17px) 100%, 0 100%, 17px 50%)"></span>
+            <span style="position:relative;flex:none;width:8px;height:8px;border-radius:2px;background:#c9c3b2"></span>
+            <span style="position:relative;font-size:14.5px;font-weight:700;letter-spacing:-0.015em;white-space:nowrap;color:#f7f5ef">{{ d.title }}</span>
+            <span style="position:relative;font-size:11px;color:#a8a294;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ d.body }}</span>
           </div>
         </sc-for>
       </div>
@@ -230,9 +233,9 @@
       </div>
       <div style="display:flex;flex-wrap:wrap;gap:8px;padding:8px 16px 18px">
         <sc-for list="{{ deckMeans }}" as="d" hint-placeholder-count="5">
-          <div onPointerDown="{{ d.onDown }}" onDoubleClick="{{ d.onAdd }}" title="{{ t.dragTip }}" style="width:168px;flex:0 0 auto;display:flex;flex-direction:column;gap:2px;background:rgba(255,254,251,0.7);border:1px dashed #c2beb2;border-radius:7px;padding:8px 10px;cursor:grab" style-hover="border-color:#8a877e">
-            <span style="font-size:12.5px;font-weight:600;letter-spacing:-0.01em;color:{{ d.titleColor }}">{{ d.title }}</span>
-            <span style="font-size:11px;line-height:1.45;color:#7a776f">{{ d.body }}</span>
+          <div onPointerDown="{{ d.onDown }}" onDoubleClick="{{ d.onAdd }}" title="{{ d.tip }}" style="flex:0 0 auto;display:flex;align-items:center;gap:7px;padding:6px 13px;background:#fffefb;border:1px solid #ddd9cf;border-radius:15px;box-shadow:0 1px 4px rgba(0,0,0,0.07);cursor:grab" style-hover="border-color:#b6b3aa">
+            <span style="flex:none;width:6px;height:6px;border-radius:50%;background:#8f8b81"></span>
+            <span style="font-size:12px;font-weight:600;letter-spacing:-0.01em;white-space:nowrap;color:#3a382f">{{ d.title }}</span>
           </div>
         </sc-for>
       </div>
@@ -329,10 +332,32 @@
           </div>
         </sc-for>
         <sc-for list="{{ cards }}" as="c" hint-placeholder-count="0">
-          <div onPointerDown="{{ c.onDown }}" style="position:absolute;left:{{ c.x }}px;top:{{ c.y }}px;width:{{ c.w }}px;display:flex;flex-direction:column;gap:5px;background:{{ c.bg }};border:1px {{ c.bstyle }} {{ c.bd }};border-radius:10px;padding:7px;box-shadow:0 3px 12px rgba(0,0,0,0.08);outline:{{ c.outline }};outline-offset:2px;pointer-events:{{ c.pe }};cursor:{{ c.cursor }}">
-            <div style="display:flex;align-items:center;gap:5px;background:{{ c.tint }};border-radius:5px;padding:3px 5px">
-              <input value="{{ c.title }}" onChange="{{ c.onTitle }}" placeholder="{{ c.titlePlaceholder }}" style="flex:1;min-width:0;border:none;background:transparent;font-size:{{ c.tfs }};font-weight:600;letter-spacing:-0.01em;outline:none;padding:0;pointer-events:auto" />
-              <span style="font-size:9px;letter-spacing:0.02em;color:{{ c.accent }};border:1px solid {{ c.accent }};border-radius:3px;padding:0 3px">{{ c.mark }}</span>
+          <sc-if value="{{ c.isTag }}" hint-placeholder-val="{{ false }}">
+          <div onPointerDown="{{ c.onDown }}" style="position:absolute;left:{{ c.x }}px;top:{{ c.y }}px;width:{{ c.w }}px;height:50px;display:flex;align-items:center;gap:10px;padding:0 26px 0 34px;outline:{{ c.outline }};outline-offset:2px;pointer-events:{{ c.pe }};cursor:{{ c.cursor }}">
+            <!-- 코 끝 실선 / the nose keyline: two identically clipped layers, the upper one
+                 shifted 1.6px left, so only the nose edge shows pale. Without it two tags
+                 snapped nose-to-notch merge into one silhouette. -->
+            <span style="position:absolute;inset:0;background:#9c9789;clip-path:polygon(0 0, calc(100% - 17px) 0, 100% 50%, calc(100% - 17px) 100%, 0 100%, 17px 50%)"></span>
+            <span style="position:absolute;top:0;bottom:0;left:-1.6px;right:1.6px;background:#413e37;clip-path:polygon(0 0, calc(100% - 17px) 0, 100% 50%, calc(100% - 17px) 100%, 0 100%, 17px 50%)"></span>
+            <span style="position:relative;flex:none;width:8px;height:8px;border-radius:2px;background:#c9c3b2"></span>
+            <input value="{{ c.title }}" onChange="{{ c.onTitle }}" placeholder="{{ c.titlePlaceholder }}" style="position:relative;flex:1;min-width:0;border:none;background:transparent;font-size:14.5px;font-weight:700;letter-spacing:-0.015em;white-space:nowrap;color:#f7f5ef;outline:none;padding:0;pointer-events:auto" />
+            <button onClick="{{ c.onDup }}" title="{{ t.dupTip }}" style="position:relative;border:none;background:transparent;color:#8f8a7d;font-size:11px;line-height:13px;cursor:pointer;padding:0 2px" style-hover="color:#f7f5ef">⧉</button>
+            <button onClick="{{ c.onDel }}" title="{{ t.delTip }}" style="position:relative;border:none;background:transparent;color:#8f8a7d;font-size:11px;line-height:13px;cursor:pointer;padding:0 2px" style-hover="color:#e0a99f">✕</button>
+            <div onPointerDown="{{ c.onWidth }}" title="{{ t.widthTip }}" style="position:absolute;right:0;top:0;bottom:0;width:17px;cursor:ew-resize;opacity:0;display:flex;align-items:center;justify-content:center" style-hover="opacity:1">
+              <div style="width:3px;height:20px;border-radius:2px;background:#c9c3b2"></div>
+            </div>
+          </div>
+          </sc-if>
+          <sc-if value="{{ c.notTag }}" hint-placeholder-val="{{ true }}">
+          <div onPointerDown="{{ c.onDown }}" style="position:absolute;left:{{ c.x }}px;top:{{ c.y }}px;width:{{ c.w }}px;display:flex;flex-direction:column;gap:5px;background:{{ c.bg }};border:1px {{ c.bstyle }} {{ c.bd }};border-radius:{{ c.radius }}px;padding:7px;box-shadow:{{ c.shadow }};outline:{{ c.outline }};outline-offset:2px;pointer-events:{{ c.pe }};cursor:{{ c.cursor }}">
+            <div style="display:flex;align-items:center;gap:{{ c.headGap }};background:{{ c.tint }};border-radius:{{ c.headRadius }};padding:{{ c.headPad }}">
+              <sc-if value="{{ c.isMeans }}" hint-placeholder-val="{{ false }}">
+                <span style="flex:none;width:6px;height:6px;border-radius:50%;background:#8f8b81"></span>
+              </sc-if>
+              <input value="{{ c.title }}" onChange="{{ c.onTitle }}" placeholder="{{ c.titlePlaceholder }}" style="flex:1;min-width:0;border:none;background:transparent;font-size:{{ c.tfs }};font-weight:600;letter-spacing:-0.01em;color:{{ c.tcol }};outline:none;padding:0;pointer-events:auto" />
+              <sc-if value="{{ c.notMeans }}" hint-placeholder-val="{{ true }}">
+                <span style="font-size:9px;letter-spacing:0.02em;color:{{ c.accent }};border:1px solid {{ c.accent }};border-radius:3px;padding:0 3px">{{ c.mark }}</span>
+              </sc-if>
             </div>
             <sc-if value="{{ c.hasDiagram }}" hint-placeholder-val="{{ true }}">
               <div style="flex:none;height:50px;display:flex;align-items:center;justify-content:center;border:1px solid #eae7df;border-radius:5px;background:#f7f5f0;padding:1px 2px;overflow:hidden">{{ c.diagram }}</div>
@@ -342,17 +367,13 @@
               <textarea value="{{ c.desc }}" onChange="{{ c.onDesc }}" data-grow="1" placeholder="{{ t.descPh }}" style="width:100%;height:auto;min-height:{{ c.dmin }};overflow:hidden;resize:none;border:none;background:transparent;font-size:12px;line-height:1.45;color:#5b584f;outline:none;padding:0;pointer-events:auto"></textarea>
             </div>
             </sc-if>
-            <sc-if value="{{ c.isTag }}" hint-placeholder-val="{{ false }}">
-              <div onPointerDown="{{ c.onWidth }}" title="{{ t.widthTip }}" style="position:absolute;right:0;top:0;bottom:0;width:12px;cursor:ew-resize;opacity:0;display:flex;align-items:center;justify-content:center" style-hover="opacity:1">
-                <div style="width:3px;height:22px;border-radius:2px;background:#b6b3aa"></div>
-              </div>
-            </sc-if>
             <div style="display:flex;align-items:center;gap:5px;height:13px">
               <div style="flex:1"></div>
               <button onClick="{{ c.onDup }}" title="{{ t.dupTip }}" style="border:none;background:transparent;color:#bfbcb3;font-size:11px;line-height:13px;cursor:pointer;padding:0 2px" style-hover="color:#1b1a17">⧉</button>
               <button onClick="{{ c.onDel }}" title="{{ t.delTip }}" style="border:none;background:transparent;color:#bfbcb3;font-size:11px;line-height:13px;cursor:pointer;padding:0 2px" style-hover="color:#b03f34">✕</button>
             </div>
           </div>
+          </sc-if>
         </sc-for>
         {{ inkLayer }}
       </div>
@@ -2359,6 +2380,7 @@ class Component extends DCLogic {
     const mkDeck = (type, list) => list.map((tpl, i) => ({
       key: type + (tpl.id || i),
       mark: L.mark[type],
+      tip: (tpl.desc ? tpl.desc + ' — ' : '') + t.dragTip,
       title: tpl.title || tpl.blank || '',
       titleColor: tpl.blank ? '#7a776f' : '#1b1a17',
       body: tpl.blank ? '' : tpl.desc,
@@ -2585,8 +2607,17 @@ class Component extends DCLogic {
           // An activity tag is wider with a larger title, so the timeline layer reads as a
           // different level from the cards placed under it.
           isTag: c.type === 'act',
+          notTag: c.type !== 'act',
+          isMeans: c.type === 'means',
+          notMeans: c.type !== 'means',
+          radius: c.type === 'means' ? 15 : 10,
+          shadow: c.type === 'means' ? '0 1px 4px rgba(0,0,0,0.07)' : '0 3px 12px rgba(0,0,0,0.08)',
+          headGap: c.type === 'means' ? '7px' : '5px',
+          headRadius: c.type === 'means' ? '11px' : '5px',
+          headPad: c.type === 'means' ? '2px 6px' : '3px 5px',
+          tcol: c.type === 'means' ? '#3a382f' : '#1b1a17',
           w: c.w || CARD,
-          tfs: c.type === 'act' ? '15px' : '12.5px',
+          tfs: c.type === 'means' ? '12px' : '12.5px',
           // 태그는 한 줄짜리 막대에서 시작해 내용만큼만 자란다 / a tag starts as a one-line
           // bar and grows only with its content, so it never looks like a card
           dmin: '48px',
@@ -2601,11 +2632,11 @@ class Component extends DCLogic {
           pe: (PEN || (RO && !c.sm)) ? 'none' : 'auto',
           bg: c.sm ? '#fdfbf5' : '#fffefb',
           bstyle: c.sm ? 'dashed' : 'solid',
-          bd: c.sm ? 'oklch(0.62 0.11 62)' : '#e2dfd7',
+          bd: c.sm ? 'oklch(0.62 0.11 62)' : (c.type === 'means' ? '#ddd9cf' : '#e2dfd7'),
           outline: this.isSel(c.id) ? '2px solid oklch(0.51 0.08 253)' : 'none',
           h: c.h || 168,
           accent: ACC[c.type],
-          tint: TINT[c.type],
+          tint: c.type === 'means' ? 'transparent' : TINT[c.type],
           mark: L.mark[c.type],
           hasDiagram: !!c.dia,
           title: c.title,

@@ -184,7 +184,15 @@ console.log("\nrule card keeps its size on drop");
   // 워크플로 층과 가드레일 층이 실제로 다른 크기인지 / the two levels must differ
   check(/const CARD = 168, TAG_W = 352/.test(doc), "a tag is wider than a card");
   check(/w: \(type === 'act' \? TAG_W : CARD\)/.test(doc), "activity tags are created at tag width");
-  check(/tfs: c\.type === 'act' \? '15px' : '12\.5px'/.test(doc), "tags carry a larger title");
+  // 활동 태그는 이제 독자적인 마크업(잉크 셰브론)이라 카드 글자 크기와 무관하다
+  // an activity tag now has its own markup — the ink chevron — with its own type scale
+  check(/font-size:14\.5px;font-weight:700;letter-spacing:-0\.015em;white-space:nowrap;color:#f7f5ef/.test(doc),
+    "the chevron label is set in the tag's own scale");
+  check((doc.match(/clip-path:polygon\(0 0, calc\(100% - 17px\) 0, 100% 50%/g) || []).length === 4,
+    "both ends are pointed, on the panel tile and the board tag alike",
+    ` (${(doc.match(/clip-path:polygon\(0 0, calc\(100% - 17px\) 0, 100% 50%/g) || []).length} layers)`);
+  // 코 끝 실선 / the keyline: without the 1.6px offset layer two snapped tags merge
+  check(/left:-1\.6px;right:1\.6px;background:#413e37/.test(doc), "and the nose keeps a keyline");
   check(/dmin: '48px'/.test(doc), "a description box opens at a usable height");
   check(/hasDiagram: !!c\.dia/.test(doc), "only objects with an icon render a diagram box");
 
@@ -474,9 +482,9 @@ console.log("\nview mode cannot write");
 
   // 7d-ter. text inside a card must be reachable and scrollable while viewing
   check(/pointer-events:auto/.test(doc), "card text re-enabled under pointer-events:none");
-  // three now: the card description, the note, and the card title. The two rule-card
-  // text boxes went with the rule type.
-  check((doc.match(/;pointer-events:auto/g) || []).length === 3,
+  // four: the card description, the note, the card title, and the chevron's own title
+  // input, which lives in the tag markup rather than the shared card markup.
+  check((doc.match(/;pointer-events:auto/g) || []).length === 4,
     "every remaining text element is re-enabled",
     ` (${(doc.match(/;pointer-events:auto/g) || []).length})`);
   check(/descOverflow: RO \? 'auto' : 'hidden'/.test(doc),

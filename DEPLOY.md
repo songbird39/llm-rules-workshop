@@ -78,9 +78,18 @@ sensemaking layer when an admin draws it (dashed, like their other marks).
 **1단계 · 워크플로 만들기** — participants lay ① **활동** tags left to right in the order
 they study, and attach ② **수단** post-its saying what each is done with. Tags are wider
 than cards with a larger title, so the timeline reads as a different level from the cards
-placed under it. A tag is a **title bar only** — its deck description explains the activity
-while the participant is choosing it, but on the board a tag is a label, and giving it a
-body would make the timeline row as tall as the guardrail cards sitting beneath it. A tag's width can be dragged from its right edge; the handle is
+placed under it. A tag is an **ink chevron**, 50px tall, pointed at both
+ends: a 17px notch cut into the tail and a 17px point on the nose, so tags placed 335px
+apart (`TAG_W - 17`) interlock into a chain. The nose carries a hairline keyline — two
+identically clipped layers with the upper one shifted 1.6px — without which two snapped
+tags merge into a single silhouette. A tag holds a label only: its deck description
+explains the activity while the participant is choosing it, but on the board it is a
+label, and a body would make the timeline row as tall as the cards beneath it.
+
+② 수단 is a **paper tag** — a white pill with a hairline and a soft shadow, a 6px dot and a
+12px label. In the panel that is all it is; on the board the same pill grows to hold the
+editable description underneath, because a means with no room to say what it means was the
+one thing this redesign could not afford to cost. A tag's width can be dragged from its right edge; the handle is
 invisible until the pointer is over it, so nobody who isn't looking for it is bothered by
 it. 다음 unlocks once at least one activity is on the board.
 
