@@ -313,10 +313,21 @@ console.log("\ndecks are renamed, regrouped and colour-coded");
   // 시점과 조건은 한 색 계열의 두 명도 / 시점 and 조건 are two shades of ONE hue, not two hues
   const hue = (v) => Number(String(v).replace(/.*\s([\d.]+)\)$/, "$1"));
   const lig = (v) => Number(String(v).replace(/oklch\(([\d.]+).*/, "$1"));
-  check(Math.abs(hue(acc("when")) - hue(acc("trig"))) <= 20,
-    "시점 and 조건 share a hue family", ` (${hue(acc("when"))} vs ${hue(acc("trig"))})`);
-  check(Math.abs(lig(acc("when")) - lig(acc("trig"))) >= 0.15,
-    "but are far enough apart in shade to tell apart", ` (${lig(acc("when"))} vs ${lig(acc("trig"))})`);
+  // 같은 계열이되 확실히 달라야 한다 / same family, but unmistakably different: too close
+  // and the pair reads as a rendering fault rather than a distinction
+  const dh = Math.abs(hue(acc("when")) - hue(acc("trig")));
+  check(dh >= 35 && dh <= 70, "시점 and 조건 are apart in hue, but still one warm family", ` (${dh}°)`);
+  check(Math.abs(lig(acc("when")) - lig(acc("trig"))) >= 0.10,
+    "and differ in shade as well", ` (${lig(acc("when"))} vs ${lig(acc("trig"))})`);
+  // 눈에 보이는 건 띠 색이다 / the tint band is what is actually seen. The first attempt at
+  // this pair differed plenty in ACC — 9px badge text — while the tints stayed near-identical
+  // creams, and it read as a rendering fault rather than a distinction. So check the tints.
+  const tints = src.slice(src.indexOf("const TINT = {"), src.indexOf("};", src.indexOf("const TINT = {")));
+  const tint = (type) => (tints.match(new RegExp(type + ": '(oklch\\([^']+)'")) || [])[1];
+  const dth = Math.abs(hue(tint("when")) - hue(tint("trig")));
+  check(dth >= 35, "the tint bands differ in hue too, not just the badge text", ` (${dth}°)`);
+  check(hue(tint("when")) === hue(acc("when")) && hue(tint("trig")) === hue(acc("trig")),
+    "and each tint sits on its own deck's hue");
   check(Math.abs(hue(acc("con")) - hue(acc("when"))) > 60, "유도 stays a different hue entirely");
   // 파랑은 이제 선택을 뜻한다 / blue now means selection, and belongs to no deck
   check(/const SELECT_BLUE = 'oklch\(0\.51 0\.08 253\)'/.test(src) && /const SEL = SELECT_BLUE/.test(src),

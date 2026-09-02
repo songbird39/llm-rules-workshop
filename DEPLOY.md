@@ -51,8 +51,10 @@ python3 tools/build.py       # splice src into index.html
 ② 수단 are **규칙**, decks ③ 시점 · 조건 and ④ 유도 are **가드레일**. ③ is one deck holding
 two kinds of card: the timing cards and the condition cards stay distinguishable, because
 that distinction is the researcher's coding dimension, but the participant meets a single
-numbered deck and composes freely across it. They are two **shades of one hue** rather than
-two hues — siblings, not strangers — while ④ 유도 keeps its own green. Deck names in the
+numbered deck and composes freely across it. They are **gold and terracotta** — one warm
+family, 50° apart in hue and clearly apart in shade — while ④ 유도 keeps its own green.
+Shade alone was not enough: what the eye reads is the tint band across the card head, and
+two tints differing only in lightness looked like one colour rendered inconsistently. Deck names in the
 panel are tinted to match their cards, and blue is left to mean selection (a picked arrow,
 a marquee) rather than belonging to any deck.
 
