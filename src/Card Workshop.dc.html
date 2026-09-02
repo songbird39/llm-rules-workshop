@@ -239,12 +239,12 @@
       </sc-if>
       <sc-if value="{{ showGuard }}" hint-placeholder-val="{{ false }}">
       <div style="padding:8px 16px 4px;display:flex;align-items:baseline;gap:8px;border-top:1px solid #ece9e1">
-        <span style="width:9px;height:9px;border-radius:2px;background:oklch(0.51 0.08 62);align-self:center"></span>
+        <span style="width:9px;height:9px;border-radius:2px;background:oklch(0.60 0.082 70);align-self:center"></span>
         <span style="font-size:14px;font-weight:600;color:#6f6b62">③</span>
-        <span style="font-size:14px;font-weight:600;color:oklch(0.51 0.08 62)">{{ t.whenCards }}</span>
+        <span style="font-size:14px;font-weight:600;color:oklch(0.60 0.082 70)">{{ t.whenCards }}</span>
         <span style="font-size:14px;font-weight:600;color:#c9c6bd">·</span>
-        <span style="width:9px;height:9px;border-radius:2px;background:oklch(0.51 0.08 253);align-self:center"></span>
-        <span style="font-size:14px;font-weight:600;color:oklch(0.51 0.08 253)">{{ t.trigCards }}</span>
+        <span style="width:9px;height:9px;border-radius:2px;background:oklch(0.40 0.090 55);align-self:center"></span>
+        <span style="font-size:14px;font-weight:600;color:oklch(0.40 0.090 55)">{{ t.trigCards }}</span>
         <span style="font-size:11.5px;color:#a7a49b">{{ t.guardHeadSub }}</span>
       </div>
       <div style="display:flex;flex-wrap:wrap;gap:10px;padding:8px 16px 4px">
@@ -431,18 +431,24 @@
 // 규칙(활동·수단)은 중립 톤, 가드레일(시점·조건·유도)만 색으로 구분한다
 // The workflow decks stay neutral; only the guardrail decks carry colour, so the two
 // layers read apart at a glance even before you read any text.
+// 시점과 조건은 한 덱(③)이므로 한 색 계열의 두 명도로 / 시점 and 조건 are ONE deck, so they
+// take two shades of a single hue rather than two hues: siblings, not strangers. The icon
+// vocabulary already accents both with ORG, so the family is the amber one. 유도 (④) keeps
+// green, and blue is left to mean selection — an arrow you picked, a marquee — rather than
+// belonging to any deck.
 const ACC = {
   act: '#6f6b62', means: '#6f6b62',
   con: 'oklch(0.51 0.08 160)',
-  when: 'oklch(0.51 0.08 62)',
-  trig: 'oklch(0.51 0.08 253)'
+  when: 'oklch(0.60 0.082 70)',   // 시점 — 옅은 쪽 / the lighter shade
+  trig: 'oklch(0.40 0.090 55)'    // 조건 — 짙은 쪽 / the deeper shade
 };
 const TINT = {
   act: '#e8e5dd', means: '#eeece5',
   con: 'oklch(0.93 0.026 160)',
-  when: 'oklch(0.93 0.026 62)',
-  trig: 'oklch(0.93 0.026 253)'
+  when: 'oklch(0.95 0.022 70)',
+  trig: 'oklch(0.89 0.045 55)'
 };
+const SELECT_BLUE = 'oklch(0.51 0.08 253)';
 // 활동 태그는 카드 두 장(168*2 + 16 간격) 폭 — 태그 아래 카드가 가지런히 들어간다
 // A tag is two cards wide plus the 16px gap, so cards line up underneath it.
 const CARD = 168, TAG_W = 352, TAG_MIN = 200, TAG_MAX = 900;
@@ -1878,7 +1884,7 @@ class Component extends DCLogic {
   // 화살표 레이어는 SVG라 템플릿 대신 직접 그린다
   arrowsLayer() {
     const h = React.createElement;
-    const SEL = ACC.trig, INK = '#8a877e';
+    const SEL = SELECT_BLUE, INK = '#8a877e';
     const kids = [h('defs', { key: 'defs' },
       h('marker', { id: 'om-ah', viewBox: '0 0 10 10', refX: 8.5, refY: 5, markerWidth: 6.5, markerHeight: 6.5, orient: 'auto-start-reverse' }, h('path', { d: 'M0 0 L10 5 L0 10 z', fill: INK })),
       h('marker', { id: 'om-ah-sel', viewBox: '0 0 10 10', refX: 8.5, refY: 5, markerWidth: 6.5, markerHeight: 6.5, orient: 'auto-start-reverse' }, h('path', { d: 'M0 0 L10 5 L0 10 z', fill: SEL }))

@@ -306,9 +306,21 @@ console.log("\ndecks are renamed, regrouped and colour-coded");
     "유도 comes after both, as deck ④");
   check((panel.match(/border-top:1px solid #ece9e1/g) || []).length === 2,
     "and there are two section headers, not three");
-  for (const [name, col] of [["whenCards", "62"], ["trigCards", "253"], ["conCards", "160"]])
-    check(new RegExp("color:oklch\\(0\\.51 0\\.08 " + col + "\\)\">\\{\\{ t\\." + name).test(panel),
-      `${name} is tinted like its cards`);
+  const acc = (type) => (src.match(new RegExp("\\n  " + type + ": '([^']+)'")) || [])[1];
+  for (const [name, type] of [["whenCards", "when"], ["trigCards", "trig"], ["conCards", "con"]])
+    check(!!acc(type) && panel.includes("color:" + acc(type) + "\">{{ t." + name),
+      `${name} is tinted with its own ACC colour`, ` (${acc(type)})`);
+  // 시점과 조건은 한 색 계열의 두 명도 / 시점 and 조건 are two shades of ONE hue, not two hues
+  const hue = (v) => Number(String(v).replace(/.*\s([\d.]+)\)$/, "$1"));
+  const lig = (v) => Number(String(v).replace(/oklch\(([\d.]+).*/, "$1"));
+  check(Math.abs(hue(acc("when")) - hue(acc("trig"))) <= 20,
+    "시점 and 조건 share a hue family", ` (${hue(acc("when"))} vs ${hue(acc("trig"))})`);
+  check(Math.abs(lig(acc("when")) - lig(acc("trig"))) >= 0.15,
+    "but are far enough apart in shade to tell apart", ` (${lig(acc("when"))} vs ${lig(acc("trig"))})`);
+  check(Math.abs(hue(acc("con")) - hue(acc("when"))) > 60, "유도 stays a different hue entirely");
+  // 파랑은 이제 선택을 뜻한다 / blue now means selection, and belongs to no deck
+  check(/const SELECT_BLUE = 'oklch\(0\.51 0\.08 253\)'/.test(src) && /const SEL = SELECT_BLUE/.test(src),
+    "a selected arrow uses the selection blue, not a deck colour");
 }
 
 console.log("\nthe pen draws, erases and is saved like anything else on the board");
