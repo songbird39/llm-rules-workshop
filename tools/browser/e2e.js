@@ -72,13 +72,13 @@ async function boot(browser, { width = 2560, height = 1440, query = "" } = {}) {
   page.on("pageerror", (e) => errors.push(e.message));
   page.on("console", (m) => m.type() === "error" && errors.push(m.text().slice(0, 200)));
   await page.goto(APP + query, { waitUntil: "load", timeout: 120000 });
-  await page.waitForSelector('input[placeholder="P00"]', { timeout: 120000 });
+  await page.waitForSelector('input[placeholder="P0000"]', { timeout: 120000 });
   return { page, errors };
 }
 
 // Log in and stop on step 1: the workflow board (활동 / 수단 in the panel).
 async function toStep1(page, code = "T01") {
-  await page.fill('input[placeholder="P00"]', code);
+  await page.fill('input[placeholder="P0000"]', code);
   await page.getByText("시작하기", { exact: false }).click();
   await page.waitForSelector("text=무엇을 하나요?", { timeout: 30000 });
 }
@@ -362,8 +362,8 @@ async function dragTileToBoard(page, title, fx = 0.45, fy = 0.4) {
     // reload the SAME page — browser.newPage() would give an isolated context with
     // empty localStorage, which would not be a reload at all
     await page.reload({ waitUntil: "load", timeout: 120000 });
-    await page.waitForSelector('input[placeholder="P00"]', { timeout: 60000 });
-    await page.fill('input[placeholder="P00"]', "T06");
+    await page.waitForSelector('input[placeholder="P0000"]', { timeout: 60000 });
+    await page.fill('input[placeholder="P0000"]', "T06");
     await page.getByText("시작하기", { exact: false }).click();
     await page.waitForTimeout(1200);
     const h2 = await heights();
@@ -557,8 +557,8 @@ async function dragTileToBoard(page, title, fx = 0.45, fy = 0.4) {
       localStorage.setItem(k, JSON.stringify(d));
     });
     await page.reload({ waitUntil: "load", timeout: 120000 });
-    await page.waitForSelector('input[placeholder="P00"]', { timeout: 60000 });
-    await page.fill('input[placeholder="P00"]', "A1");
+    await page.waitForSelector('input[placeholder="P0000"]', { timeout: 60000 });
+    await page.fill('input[placeholder="P0000"]', "A1");
     await page.getByText("시작하기", { exact: false }).click();
     await page.waitForTimeout(1200);
     const L2 = await arrowLines();
@@ -583,7 +583,7 @@ async function dragTileToBoard(page, title, fx = 0.45, fy = 0.4) {
       const pg = await browser.newPage({ viewport: { width: 1440, height: 900 }, acceptDownloads: true });
       await pg.route("**/macros/s/**", (r) => (fail ? r.abort() : r.fulfill({ status: 200, body: "{}" })));
       await pg.goto(APP + "?sync=" + encodeURIComponent(EP), { waitUntil: "load", timeout: 120000 });
-      await pg.waitForSelector('input[placeholder="P00"]', { timeout: 120000 });
+      await pg.waitForSelector('input[placeholder="P0000"]', { timeout: 120000 });
       await toBoard(pg, "F1");     // login, lay one activity, advance to step 2
       return pg;
     };
@@ -656,8 +656,8 @@ async function dragTileToBoard(page, title, fx = 0.45, fy = 0.4) {
       return reply({ ok: true, rows: 0 });
     });
     await page.goto(APP + "?sync=" + encodeURIComponent(EP), { waitUntil: "load", timeout: 120000 });
-    await page.waitForSelector('input[placeholder="P00"]', { timeout: 120000 });
-    await page.fill('input[placeholder="P00"]', "admin");
+    await page.waitForSelector('input[placeholder="P0000"]', { timeout: 120000 });
+    await page.fill('input[placeholder="P0000"]', "admin");
     await page.getByText("시작하기", { exact: false }).click();
     await page.waitForTimeout(1000);
     await page.evaluate(() => {
@@ -745,8 +745,8 @@ async function dragTileToBoard(page, title, fx = 0.45, fy = 0.4) {
       return reply({ ok: true, rows: 0 });
     });
     await page.goto(APP + "?sync=" + encodeURIComponent(EP), { waitUntil: "load", timeout: 120000 });
-    await page.waitForSelector('input[placeholder="P00"]', { timeout: 120000 });
-    await page.fill('input[placeholder="P00"]', "admin");
+    await page.waitForSelector('input[placeholder="P0000"]', { timeout: 120000 });
+    await page.fill('input[placeholder="P0000"]', "admin");
     await page.getByText("시작하기", { exact: false }).click();
     await page.waitForTimeout(900);
     await page.getByText("P9", { exact: true }).first().click();
@@ -809,7 +809,7 @@ async function dragTileToBoard(page, title, fx = 0.45, fy = 0.4) {
   console.log("\ntag width: hidden until hovered, then draggable");
   {
     const { page, errors } = await boot(browser, { width: 1500, height: 950 });
-    await page.fill('input[placeholder="P00"]', "TW");
+    await page.fill('input[placeholder="P0000"]', "TW");
     await page.getByText("시작하기", { exact: false }).click();
     await page.waitForTimeout(700);
     const tile = await page.evaluate(() => {
@@ -880,8 +880,8 @@ async function dragTileToBoard(page, title, fx = 0.45, fy = 0.4) {
       return reply({ ok: true, rows: 0 });
     });
     await page.goto(APP + "?sync=" + encodeURIComponent(EP), { waitUntil: "load", timeout: 120000 });
-    await page.waitForSelector('input[placeholder="P00"]', { timeout: 120000 });
-    await page.fill('input[placeholder="P00"]', "admin");
+    await page.waitForSelector('input[placeholder="P0000"]', { timeout: 120000 });
+    await page.fill('input[placeholder="P0000"]', "admin");
     await page.getByText("시작하기", { exact: false }).click();
     await page.waitForTimeout(900);
     await page.getByText("IMG", { exact: true }).first().click();
@@ -944,8 +944,8 @@ async function dragTileToBoard(page, title, fx = 0.45, fy = 0.4) {
       return reply({ ok: true, state: null });
     });
     await page.goto(APP + "?sync=" + encodeURIComponent(EP), { waitUntil: "load", timeout: 120000 });
-    await page.waitForSelector('input[placeholder="P00"]', { timeout: 120000 });
-    await page.fill('input[placeholder="P00"]', "admin");
+    await page.waitForSelector('input[placeholder="P0000"]', { timeout: 120000 });
+    await page.fill('input[placeholder="P0000"]', "admin");
     await page.getByText("시작하기", { exact: false }).click();
     await page.waitForTimeout(1000);
     const rows = () => page.evaluate(() =>
@@ -1083,7 +1083,7 @@ async function dragTileToBoard(page, title, fx = 0.45, fy = 0.4) {
     // 저장되고 다시 돌아온다 / it is board content, so it comes back
     await page.waitForTimeout(3000);
     await page.reload({ waitUntil: "load" });
-    await page.waitForSelector('input[placeholder="P00"]', { timeout: 120000 });
+    await page.waitForSelector('input[placeholder="P0000"]', { timeout: 120000 });
     await toStep1(page, "INK");
     await page.waitForTimeout(800);
     check((await strokes()) === 2, "ink survives a reload", ` (${await strokes()})`);
@@ -1366,9 +1366,9 @@ async function dragTileToBoard(page, title, fx = 0.45, fy = 0.4) {
       await route.fulfill({ status: 200, body: "{}" });
     });
     await page.goto(APP, { waitUntil: "load", timeout: 120000 });
-    await page.waitForSelector('input[placeholder="P00"]', { timeout: 120000 });
+    await page.waitForSelector('input[placeholder="P0000"]', { timeout: 120000 });
 
-    await page.fill('input[placeholder="P00"]', "demo0");
+    await page.fill('input[placeholder="P0000"]', "demo0");
     await page.getByText("시작하기", { exact: false }).click();
     await page.waitForSelector("text=무엇을 하나요?", { timeout: 30000 });
     await dragTileToBoard(page, "학습 계획", 0.15, 0.12);
@@ -1398,13 +1398,13 @@ async function dragTileToBoard(page, title, fx = 0.45, fy = 0.4) {
 
     // 다음 참여자에게 흔적이 남지 않는다 / the next participant finds no trace of it
     await page.reload({ waitUntil: "load" });
-    await page.waitForSelector('input[placeholder="P00"]', { timeout: 120000 });
+    await page.waitForSelector('input[placeholder="P0000"]', { timeout: 120000 });
     check((await page.evaluate(() => Object.keys(localStorage)
       .some((k) => k.indexOf("llm-guardrail-workshop-v4:demo") === 0))) === false,
       "and leaves nothing behind for the next session to find");
 
     // 진짜 참여자는 평소대로 저장된다 / a real participant is unaffected
-    await page.fill('input[placeholder="P00"]', "R01");
+    await page.fill('input[placeholder="P0000"]', "R01");
     await page.getByText("시작하기", { exact: false }).click();
     await page.waitForSelector("text=무엇을 하나요?", { timeout: 30000 });
     await dragTileToBoard(page, "학습 계획", 0.15, 0.12);
@@ -1472,8 +1472,8 @@ async function dragTileToBoard(page, title, fx = 0.45, fy = 0.4) {
       notes: [], arrows: [], seq: 2, panelW: 566
     })));
     await old.reload({ waitUntil: "load" });
-    await old.waitForSelector('input[placeholder="P00"]', { timeout: 120000 });
-    await old.fill('input[placeholder="P00"]', "OLD");
+    await old.waitForSelector('input[placeholder="P0000"]', { timeout: 120000 });
+    await old.fill('input[placeholder="P0000"]', "OLD");
     await old.getByText("시작하기", { exact: false }).click();
     await old.waitForTimeout(900);
     await old.selectOption("select", "en");
@@ -1497,7 +1497,7 @@ async function dragTileToBoard(page, title, fx = 0.45, fy = 0.4) {
     // as a request for the literal "{{ … }}" — the whole reason for the stylesheet.
     page.on("requestfailed", (r) => failed.push(r.url().slice(0, 90)));
     await page.goto(APP, { waitUntil: "load", timeout: 120000 });
-    await page.waitForSelector('input[placeholder="P00"]', { timeout: 120000 });
+    await page.waitForSelector('input[placeholder="P0000"]', { timeout: 120000 });
     await page.waitForTimeout(800);
 
     const pages = await page.evaluate(() => [...document.querySelectorAll('[role="img"]')]
@@ -1511,7 +1511,7 @@ async function dragTileToBoard(page, title, fx = 0.45, fy = 0.4) {
       const first = document.querySelector('[role="img"]');
       const scroller = first.parentElement.parentElement;
       const panel = scroller.parentElement;
-      let card = document.querySelector('input[placeholder="P00"]');
+      let card = document.querySelector('input[placeholder="P0000"]');
       while (card && getComputedStyle(card).boxShadow === "none") card = card.parentElement;
       const p = panel.getBoundingClientRect(), c = card.getBoundingClientRect();
       return { scrolls: scroller.scrollHeight > scroller.clientHeight + 2,
@@ -1533,7 +1533,7 @@ async function dragTileToBoard(page, title, fx = 0.45, fy = 0.4) {
         `${label} is a real ${ext.toUpperCase()}`, ` (${bytes.length} bytes)`);
     }
 
-    await page.fill('input[placeholder="P00"]', "CN1");
+    await page.fill('input[placeholder="P0000"]', "CN1");
     await page.getByText("시작하기", { exact: false }).click();
     await page.waitForSelector("text=무엇을 하나요?", { timeout: 30000 });
     check(true, "signing in still works with the document beside it");
