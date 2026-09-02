@@ -217,12 +217,11 @@
       </div>
       <div style="display:flex;flex-direction:column;gap:8px;padding:8px 16px 18px">
         <sc-for list="{{ deckAct }}" as="d" hint-placeholder-count="6">
-          <div onPointerDown="{{ d.onDown }}" onDoubleClick="{{ d.onAdd }}" title="{{ t.dragTip }}" style="position:relative;width:100%;height:50px;flex:0 0 auto;display:flex;align-items:center;gap:10px;padding:0 26px 0 34px;cursor:grab">
+          <div onPointerDown="{{ d.onDown }}" onDoubleClick="{{ d.onAdd }}" title="{{ d.tip }}" style="position:relative;width:100%;height:50px;flex:0 0 auto;display:flex;align-items:center;gap:10px;padding:0 26px 0 34px;cursor:grab">
             <span style="position:absolute;inset:0;background:#9c9789;clip-path:polygon(0 0, calc(100% - 17px) 0, 100% 50%, calc(100% - 17px) 100%, 0 100%, 17px 50%)"></span>
             <span style="position:absolute;top:0;bottom:0;left:-1.6px;right:1.6px;background:#413e37;clip-path:polygon(0 0, calc(100% - 17px) 0, 100% 50%, calc(100% - 17px) 100%, 0 100%, 17px 50%)"></span>
             <span style="position:relative;flex:none;width:8px;height:8px;border-radius:2px;background:#c9c3b2"></span>
             <span style="position:relative;font-size:14.5px;font-weight:700;letter-spacing:-0.015em;white-space:nowrap;color:#f7f5ef">{{ d.title }}</span>
-            <span style="position:relative;font-size:11px;color:#a8a294;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ d.body }}</span>
           </div>
         </sc-for>
       </div>
@@ -568,15 +567,15 @@ const I18N = {
     mark: { act: '활동', means: '수단', con: '유도', when: '시점', trig: '조건' },
     deck: {
       act: [
-        { title: '계획 세우기', desc: '무엇을 · 어떤 순서로 할지 정하기' },
-        { title: '브레인스토밍 · 아이디어 발산', desc: '쓸 내용 · 소재 떠올리기' },
-        { title: '초안 작성', desc: '처음부터 끝까지 한 번 써보기' },
-        { title: '첫 학습', desc: '처음 배우는 개념 도입' },
+        { title: '학습 계획', desc: '' },
+        { title: '아이디에이션', desc: '글쓰기 소재 등' },
+        { title: '초안 작성', desc: '' },
+        { title: '개념 학습', desc: '처음 배우는 개념 도입' },
         { title: '보충 설명', desc: '첫 학습에서 다루지 않은 부분' },
         { title: '연습', desc: '반복 수행' },
-        { title: '복습 · 인출', desc: '배운 내용 다시 떠올리기' },
-        { title: '학습 자료 만들기 · 변형하기', desc: '퀴즈, 예문 등' },
-        { title: '퀴즈 풀기 · 채점받기', desc: '문제를 풀고 맞았는지 확인' },
+        { title: '복습 · 떠올리기', desc: '배운 내용 다시 떠올리기' },
+        { title: '자료 제작 · 편집', desc: '퀴즈, 예문 등' },
+        { title: '퀴즈 풀기 · 채점', desc: '문제를 풀고 맞았는지 확인' },
         { title: '피드백 받기', desc: '내 산출물에 대해' },
         { title: '자기평가 · 성찰', desc: '얼마나 늘었는지 돌아보기' },
         { title: '', desc: '', blank: '＋ 기타 (직접 작성)' }
@@ -585,18 +584,18 @@ const I18N = {
         { title: 'AI 사용', desc: 'ChatGPT/Gemini/Claude 등 사용' },
         { title: 'AI 사용 안 함', desc: '이 활동은 AI로 하지 않는다' },
         { title: '외부 설명 자료', desc: '교재 · 사전 · 강의' },
-        { title: '외부 읽기 · 듣기 자료', desc: '텍스트 · 영상 · 음성' },
-        { title: '외부 보조 도구', desc: '암기 카드 · 앱' },
-        { title: '직접하기', desc: '타자 · 손글씨 · 말하며 쓰기' },
+        { title: '외부 예문 자료', desc: '텍스트 · 영상 · 음성' },
+        { title: '외부 보조 도구 · 앱', desc: '암기 카드 · 앱' },
+        { title: '타자 · 손글씨 · 말하기', desc: '타자 · 손글씨 · 말하며 쓰기' },
         { title: '', desc: '', blank: '＋ 기타 (직접 작성)' }
       ],
       con: [
         { title: '개입 없음', desc: '시스템은 아무것도 하지 않는다', dia: 'h_self' },
         { title: '규칙 상기', desc: '규칙을 시스템에 표출시켜서 상기시킨다', dia: 'h_remind' },
-        { title: '프롬프트 프리셋', desc: '원하는 행동을 쉽게 쓸 수 있도록 프롬프트 프리셋으로 제공한다', dia: 'h_preset' },
-        { title: '먼저 스스로 해보도록 유도', desc: '답을 주기 전에 먼저 시도해 보도록 이끈다', dia: 'h_try' },
+        { title: '프롬프트 프리셋', desc: '특정 방식을 프롬프트 프리셋으로 제공하여 유도한다', dia: 'h_preset' },
+        { title: '스스로 시도 유도', desc: '답을 주기 전에 먼저 시도해 보도록 이끈다', dia: 'h_try' },
         { title: '질문 제안', desc: '도움이 될 만한 질문을 제안하거나 던진다', dia: 'h_ask' },
-        { title: '단계별 힌트', desc: '직접적으로 제공하는 대신 단계별 힌트를 제공한다', dia: 'h_hint' },
+        { title: '단계별 힌트', desc: '답을 직접적으로 제공하는 대신 단계별 힌트를 제공한다', dia: 'h_hint' },
         { title: '외부 도구 열기', desc: '자동으로 외부 도구를 띄운다 (사전/유튜브/단어카드/문서파일 등)', dia: 'h_tool' },
         { title: '한 번 더 확인', desc: '채팅 혹은 시스템에서 요청을 실행할 것인지 다시 한 번 확인한다', dia: 'h_confirm' },
         { title: '경고 후 거부', desc: '채팅 혹은 시스템에서 경고창을 띄우고 요청을 거부한다', dia: 'h_refuse' },
@@ -604,9 +603,9 @@ const I18N = {
         { title: '', desc: '', dia: null, blank: '＋ 기타 (직접 작성)' }
       ],
       when: [
-        { title: '활동 전', desc: '사전숙고', dia: 'w_before' },
-        { title: '활동 중', desc: '수행', dia: 'w_during' },
-        { title: '활동 후', desc: '성찰', dia: 'w_after' }
+        { title: '활동 전', desc: '해당 활동을 시작하기 전', dia: 'w_before' },
+        { title: '활동 중', desc: '해당 활동을 수행하는 중', dia: 'w_during' },
+        { title: '활동 후', desc: '해당 활동을 완료한 뒤', dia: 'w_after' }
       ],
       trig: [
         { title: '규칙 대상 활동 시작 시', desc: '규칙이 걸린 활동을 시작하면', dia: 'w_auto' },
@@ -614,8 +613,8 @@ const I18N = {
         { title: '거듭 요청 시', desc: '사용자가 같은 요청을 거듭하면', dia: 'w_retry' },
         { title: '어려움 감지 시', desc: '사용자가 어려움을 느끼고 있음이 감지되면', dia: 'w_struggle' },
         { title: '목표 도달 시', desc: '정해 둔 목표에 도달하면', dia: 'w_goal' },
-        { title: '시간 제한 시', desc: '정해 둔 시간에 이르면', dia: 'w_time' },
-        { title: '횟수 · 턴 제한 시', desc: '정해 둔 횟수 · 대화 턴에 이르면', dia: 'w_count' },
+        { title: '시간 제한 도달 시', desc: '정해 둔 시간에 이르면', dia: 'w_time' },
+        { title: '횟수 제한 도달 시', desc: '정해 둔 횟수 · 대화 턴에 이르면', dia: 'w_count' },
         { title: '', desc: '', dia: null, blank: '＋ 기타 (직접 작성)' }
       ]
     },
@@ -671,15 +670,15 @@ const I18N = {
     mark: { act: 'Activity', means: 'Means', con: 'Nudge', when: 'Timing', trig: 'Condition' },
     deck: {
       act: [
-        { title: 'Plan', desc: 'deciding what to study and in what order' },
-        { title: 'Brainstorm · generate ideas', desc: 'coming up with material to work from' },
-        { title: 'Draft', desc: 'a first pass, end to end' },
-        { title: 'First learning', desc: 'meeting a concept for the first time' },
+        { title: 'Study plan', desc: '' },
+        { title: 'Ideation', desc: 'material to write from, etc.' },
+        { title: 'Draft', desc: '' },
+        { title: 'Learning a concept', desc: 'meeting a concept for the first time' },
         { title: 'Extra explanation', desc: 'what first learning did not cover' },
         { title: 'Practice', desc: 'repeated performance' },
-        { title: 'Review · retrieval', desc: 'recalling what was learnt' },
-        { title: 'Make · adapt materials', desc: 'quizzes, example sentences' },
-        { title: 'Take a quiz · get marked', desc: 'answering, then checking' },
+        { title: 'Review · recall', desc: 'bringing back what was learnt' },
+        { title: 'Make · edit materials', desc: 'quizzes, example sentences' },
+        { title: 'Take a quiz · mark it', desc: 'answering, then checking' },
         { title: 'Get feedback', desc: 'on my own work' },
         { title: 'Self-assess · reflect', desc: 'looking back at your own progress' },
         { title: '', desc: '', blank: '＋ Other (write your own)' }
@@ -688,18 +687,18 @@ const I18N = {
         { title: 'Using AI', desc: 'ChatGPT, Gemini, Claude and the like' },
         { title: 'No AI', desc: 'do not use AI for this activity' },
         { title: 'Reference materials', desc: 'textbook · dictionary · lecture' },
-        { title: 'Reading · listening material', desc: 'text · video · audio' },
-        { title: 'Study aids', desc: 'flashcards · apps' },
-        { title: 'By hand', desc: 'typing · handwriting · saying it aloud' },
+        { title: 'Example material', desc: 'text · video · audio' },
+        { title: 'Study aids · apps', desc: 'flashcards · apps' },
+        { title: 'Typing · writing · speaking', desc: 'typing · handwriting · saying it aloud' },
         { title: '', desc: '', blank: '＋ Other (write your own)' }
       ],
       con: [
         { title: 'No intervention', desc: 'the system does nothing', dia: 'h_self' },
         { title: 'Show the rule', desc: 'surface the rule in the system as a reminder', dia: 'h_remind' },
-        { title: 'Prompt presets', desc: 'offer presets that make the desired behaviour easy to use', dia: 'h_preset' },
+        { title: 'Prompt presets', desc: 'nudge a particular way of asking by offering it as a preset', dia: 'h_preset' },
         { title: 'Prompt a first attempt', desc: 'lead the user to try before giving an answer', dia: 'h_try' },
         { title: 'Suggest questions', desc: 'offer or pose questions that would help', dia: 'h_ask' },
-        { title: 'Step-by-step hints', desc: 'give staged hints instead of the direct answer', dia: 'h_hint' },
+        { title: 'Step-by-step hints', desc: 'give staged hints rather than handing over the answer', dia: 'h_hint' },
         { title: 'Open an external tool', desc: 'open a dictionary/YouTube/flashcards/document automatically', dia: 'h_tool' },
         { title: 'Confirm once more', desc: 'ask again whether to run the request', dia: 'h_confirm' },
         { title: 'Warn and refuse', desc: 'show a warning and refuse the request', dia: 'h_refuse' },
@@ -707,9 +706,9 @@ const I18N = {
         { title: '', desc: '', dia: null, blank: '＋ Other (write your own)' }
       ],
       when: [
-        { title: 'Before the activity', desc: 'forethought', dia: 'w_before' },
-        { title: 'During the activity', desc: 'performance', dia: 'w_during' },
-        { title: 'After the activity', desc: 'reflection', dia: 'w_after' }
+        { title: 'Before the activity', desc: 'before this activity starts', dia: 'w_before' },
+        { title: 'During the activity', desc: 'while this activity is under way', dia: 'w_during' },
+        { title: 'After the activity', desc: 'once this activity is done', dia: 'w_after' }
       ],
       trig: [
         { title: 'When the activity starts', desc: 'an activity the rule covers begins', dia: 'w_auto' },
@@ -717,8 +716,8 @@ const I18N = {
         { title: 'When the user asks repeatedly', desc: 'the same request is made again and again', dia: 'w_retry' },
         { title: 'When the user seems to struggle', desc: 'the user appears to be stuck', dia: 'w_struggle' },
         { title: 'When the goal is reached', desc: 'a goal you set is reached', dia: 'w_goal' },
-        { title: 'On a time limit', desc: 'a time you set is reached', dia: 'w_time' },
-        { title: 'On a count · turn limit', desc: 'a number of turns you set is reached', dia: 'w_count' },
+        { title: 'When a time limit is reached', desc: 'a time you set is reached', dia: 'w_time' },
+        { title: 'When a count limit is reached', desc: 'a number of turns you set is reached', dia: 'w_count' },
         { title: '', desc: '', dia: null, blank: '＋ Other (write your own)' }
       ]
     },
@@ -1357,7 +1356,7 @@ class Component extends DCLogic {
       h('rect', { key: 'p1', x: 48, y: 25, width: 7, height: 13, rx: 2, fill: GRN }),
       h('rect', { key: 'p2', x: 63, y: 25, width: 7, height: 13, rx: 2, fill: GRN })
     ]);
-    // 먼저 스스로 해보도록 유도 — 사람이 먼저 입력칸으로 / the person goes to the input first
+    // 스스로 시도 유도 — 사람이 먼저 입력칸으로 / the person goes to the input first
     if (key === 'h_try') return wrap([
       h('circle', { key: 'hd', cx: 24, cy: 15, r: 7, stroke: INK, strokeWidth: 2.2 }),
       h('path', { key: 'bd', d: 'M11 42 a13 13 0 0 1 26 0', stroke: INK, strokeWidth: 2.2 }),
@@ -1428,7 +1427,7 @@ class Component extends DCLogic {
       // 활동 태그는 보드에서 설명을 보여주지 않으므로 들고 오지도 않는다 / a tag never
       // shows a description, so it does not carry one either — otherwise the export
       // and the saved record would hold text nobody can see or edit
-      desc: type === 'act' ? '' : (tpl.desc || ''), dia: tpl.dia || null, collapsed: false, w: (type === 'act' ? TAG_W : CARD), x: this.fix(x), y: this.fix(y) };
+      desc: (type === 'act' || type === 'means') ? '' : (tpl.desc || ''), dia: tpl.dia || null, collapsed: false, w: (type === 'act' ? TAG_W : CARD), x: this.fix(x), y: this.fix(y) };
     this.setState((s) => ({ cards: s.cards.concat([card]), seq: s.seq + 1 }));
   }
   quickAdd(type, tpl) {
@@ -2284,7 +2283,7 @@ class Component extends DCLogic {
       g.fillText(mk, r.x + r.w - 13 - g.measureText(mk).width, r.y + (tag ? 23 : 21));
       // 설명 / description
       g.fillStyle = '#5b584f'; g.font = font(12);
-      if (!tag) wrap(c.desc, r.x + 12, r.y + 42 + (c.dia ? 52 : 0), r.w - 24, 17,
+      if (!tag && c.type !== 'means') wrap(c.desc, r.x + 12, r.y + 42 + (c.dia ? 52 : 0), r.w - 24, 17,
         Math.max(1, Math.floor((r.h - 49 - (c.dia ? 52 : 0)) / 17)));
       if (c.dia) {           // 아이콘 / the card's own icon, lifted off the page
         g.strokeStyle = '#eae7df'; g.lineWidth = 1; g.fillStyle = '#f7f5f0';
@@ -2380,7 +2379,7 @@ class Component extends DCLogic {
     const mkDeck = (type, list) => list.map((tpl, i) => ({
       key: type + (tpl.id || i),
       mark: L.mark[type],
-      tip: (tpl.desc ? tpl.desc + ' — ' : '') + t.dragTip,
+      tip: (tpl.desc ? tpl.desc + '\n' : '') + t.dragTip,
       title: tpl.title || tpl.blank || '',
       titleColor: tpl.blank ? '#7a776f' : '#1b1a17',
       body: tpl.blank ? '' : tpl.desc,
@@ -2624,7 +2623,10 @@ class Component extends DCLogic {
           // 아이콘이 있을 때만 구분선 / the separator only makes sense under an icon
           dsep: c.dia ? '1px solid #eae7df' : 'none',
           // 활동 태그는 제목 줄만 / an activity tag is a label, not a card
-          hasDesc: c.type !== 'act',
+          // 규칙 카드(활동·수단)는 보드에서 이름만 남는다 / the 규칙 cards carry a label only
+          // once placed: their description is what you read while choosing, and on the
+          // board it is the arrangement that carries the meaning. 가드레일 카드는 설명을 유지.
+          hasDesc: c.type !== 'act' && c.type !== 'means',
           // 해석 레이어 카드만 조작 가능 / only sensemaking objects are interactive in admin
           // 카드가 포인터를 먹으면 카드 위에서 획을 시작할 수 없다 / if the card takes the
           // pointerdown, a stroke can never START on top of one — striking a card

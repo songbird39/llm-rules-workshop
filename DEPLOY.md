@@ -82,9 +82,11 @@ placed under it. A tag is an **ink chevron**, 50px tall, pointed at both
 ends: a 17px notch cut into the tail and a 17px point on the nose, so tags placed 335px
 apart (`TAG_W - 17`) interlock into a chain. The nose carries a hairline keyline — two
 identically clipped layers with the upper one shifted 1.6px — without which two snapped
-tags merge into a single silhouette. A tag holds a label only: its deck description
-explains the activity while the participant is choosing it, but on the board it is a
-label, and a body would make the timeline row as tall as the cards beneath it.
+tags merge into a single silhouette. Both 규칙 decks (① 활동, ② 수단) hold a **label only** once
+placed. Their descriptions exist to help you choose, so they live in the library as a
+hover tooltip and never reach the board — on the board it is the arrangement that carries
+the meaning. The 가드레일 decks (③④) keep their descriptions on the card, because there the
+description *is* the content: it says what the system does.
 
 ② 수단 is a **paper tag** — a white pill with a hairline and a soft shadow, a 6px dot and a
 12px label. In the panel that is all it is; on the board the same pill grows to hold the

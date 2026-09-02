@@ -87,7 +87,7 @@ async function toStep1(page, code = "T01") {
 // where the guardrail decks live. The board therefore starts with ONE tag on it.
 async function toBoard(page, code = "T01") {
   await toStep1(page, code);
-  await dragTileToBoard(page, "계획 세우기", 0.12, 0.10);
+  await dragTileToBoard(page, "학습 계획", 0.12, 0.10);
   await page.getByRole("button", { name: /다음/ }).click();
   await page.waitForSelector("text=시스템이 어떻게 개입하나요?", { timeout: 30000 });
 }
@@ -815,7 +815,7 @@ async function dragTileToBoard(page, title, fx = 0.45, fy = 0.4) {
     await page.waitForTimeout(700);
     const tile = await page.evaluate(() => {
       const d = [...document.querySelectorAll("div")].filter((x) => getComputedStyle(x).cursor === "grab")
-        .find((x) => x.innerText.trim().startsWith("계획"));
+        .find((x) => x.innerText.trim().startsWith("학습 계획"));
       const r = d.getBoundingClientRect();
       return { x: r.x, y: r.y, h: r.height };
     });
@@ -859,7 +859,7 @@ async function dragTileToBoard(page, title, fx = 0.45, fy = 0.4) {
     const board = {
       savedAt: Date.now(), pid: "IMG", step: 2, lang: "ko", rules: [],
       cards: [
-        { id: "c1", type: "act", title: "첫 학습", desc: "처음 배우는 개념", dia: null, collapsed: false, w: 352, x: 120, y: 120 },
+        { id: "c1", type: "act", title: "개념 학습", desc: "처음 배우는 개념", dia: null, collapsed: false, w: 352, x: 120, y: 120 },
         { id: "c2", type: "con", title: "단계별 힌트", desc: "직접적으로 제공하는 대신 단계별 힌트를 제공한다", dia: "h_hint", collapsed: false, x: 120, y: 260 },
         { id: "c3", type: "trig", title: "시간 제한 시", desc: "", dia: "w_time", collapsed: false, x: 320, y: 260 }],
       notes: [{ id: "n1", x: 520, y: 130, text: "참여자 메모입니다" }],
@@ -1015,7 +1015,7 @@ async function dragTileToBoard(page, title, fx = 0.45, fy = 0.4) {
       await page.waitForTimeout(250);
     };
 
-    await dragTileToBoard(page, "계획 세우기", 0.14, 0.14);
+    await dragTileToBoard(page, "학습 계획", 0.14, 0.14);
     await page.getByRole("button", { name: "펜" }).click();
     await page.waitForTimeout(250);
     const count = await page.evaluate(() => [...document.querySelectorAll("button")]
@@ -1113,6 +1113,36 @@ async function dragTileToBoard(page, title, fx = 0.45, fy = 0.4) {
     await page.close();
   }
 
+  // ------------------------------------------------- library shows descriptions on hover
+  console.log("\n규칙 cards: label on the board, description on hover in the library");
+  {
+    const { page, errors } = await boot(browser, { width: 1500, height: 950 });
+    await toStep1(page, "LIB");
+    const tiles = await page.evaluate(() => [...document.querySelectorAll("div")]
+      .filter((x) => getComputedStyle(x).cursor === "grab")
+      .map((t) => ({ text: t.innerText.replace(/\s+/g, " ").trim(), tip: t.title })));
+    const ideation = tiles.find((t) => t.text === "아이디에이션");
+    check(!!ideation, "the tile shows its name and nothing else");
+    check(ideation && ideation.tip.startsWith("글쓰기 소재 등"),
+      "and carries its description in the hover tooltip", ideation ? ` ("${ideation.tip.split("\n")[0]}")` : "");
+    const plan = tiles.find((t) => t.text === "학습 계획");
+    check(plan && !plan.tip.includes("\n") === false || (plan && plan.tip.length > 0),
+      "a card with no description still explains how to use it");
+    // 가드레일 카드는 설명을 그대로 보여준다 / a guardrail tile still shows its description inline
+    await dragTileToBoard(page, "학습 계획", 0.15, 0.12);
+    await page.getByRole("button", { name: /다음/ }).click();
+    await page.waitForSelector("text=시스템이 어떻게 개입하나요?", { timeout: 30000 });
+    const guardTile = await page.evaluate(() => {
+      const d = [...document.querySelectorAll("div")].filter((x) => getComputedStyle(x).cursor === "grab")
+        .find((x) => x.innerText.includes("규칙 상기"));
+      return d ? d.innerText.replace(/\s+/g, " ").trim() : null;
+    });
+    check(guardTile && guardTile.includes("표출"), "a guardrail tile still reads its description inline",
+      ` ("${String(guardTile).slice(0, 40)}")`);
+    check(errors.length === 0, "no console errors", errors.length ? ` (${errors[0]})` : "");
+    await page.close();
+  }
+
   // ------------------------------------------------- demo sessions
   // 데모는 리허설이지 데이터가 아니다 / a demo is a rehearsal, not data: nothing may reach
   // the sheet and nothing may be left in this browser for the next participant to find.
@@ -1133,7 +1163,7 @@ async function dragTileToBoard(page, title, fx = 0.45, fy = 0.4) {
     await page.fill('input[placeholder="P00"]', "demo0");
     await page.getByText("시작하기", { exact: false }).click();
     await page.waitForSelector("text=무엇을 하나요?", { timeout: 30000 });
-    await dragTileToBoard(page, "계획 세우기", 0.15, 0.12);
+    await dragTileToBoard(page, "학습 계획", 0.15, 0.12);
     await page.getByRole("button", { name: /다음/ }).click();
     await page.waitForSelector("text=시스템이 어떻게 개입하나요?", { timeout: 30000 });
     await dragTileToBoard(page, "규칙 상기", 0.5, 0.45);
@@ -1168,7 +1198,7 @@ async function dragTileToBoard(page, title, fx = 0.45, fy = 0.4) {
     await page.fill('input[placeholder="P00"]', "R01");
     await page.getByText("시작하기", { exact: false }).click();
     await page.waitForSelector("text=무엇을 하나요?", { timeout: 30000 });
-    await dragTileToBoard(page, "계획 세우기", 0.15, 0.12);
+    await dragTileToBoard(page, "학습 계획", 0.15, 0.12);
     await page.waitForTimeout(4000);
     check(posts.some((x) => x.includes("R01")), "a real participant still saves",
       ` (${posts.length} request${posts.length === 1 ? "" : "s"})`);
@@ -1182,7 +1212,7 @@ async function dragTileToBoard(page, title, fx = 0.45, fy = 0.4) {
   {
     const { page, errors } = await boot(browser, { width: 1600, height: 1000 });
     await toStep1(page, "LNG");
-    await dragTileToBoard(page, "첫 학습", 0.16, 0.12);        // tag: no icon
+    await dragTileToBoard(page, "개념 학습", 0.16, 0.12);        // tag: no icon
     await dragTileToBoard(page, "AI 사용", 0.16, 0.42);        // post-it: no icon
     await page.getByRole("button", { name: /다음/ }).click();
     await page.waitForSelector("text=시스템이 어떻게 개입하나요?", { timeout: 30000 });
@@ -1197,19 +1227,19 @@ async function dragTileToBoard(page, title, fx = 0.45, fy = 0.4) {
     const en = await titles();
     // 아이콘 없는 카드도 번역되어야 한다 / the icon-less types were once skipped, so half
     // the board stayed in Korean after a switch
-    check(en.includes("First learning"), "an activity tag is translated", ` (${JSON.stringify(en)})`);
+    check(en.includes("Learning a concept"), "an activity tag is translated", ` (${JSON.stringify(en)})`);
     check(en.includes("Using AI"), "a 수단 post-it is translated");
     check(en.includes("Show the rule"), "an icon-bearing card is translated");
     await page.selectOption("select", "ko");
     await page.waitForTimeout(600);
     const ko = await titles();
-    check(ko.includes("첫 학습") && ko.includes("AI 사용") && ko.includes("규칙 상기"),
+    check(ko.includes("개념 학습") && ko.includes("AI 사용") && ko.includes("규칙 상기"),
       "and everything comes back", ` (${JSON.stringify(ko)})`);
 
     // 편집한 문구는 그대로 / text the participant edited must survive a switch
     await page.evaluate(() => {
       const layer = [...document.querySelectorAll("div")].find((d) => d.style.width === "5000px");
-      const el = [...layer.children].find((c) => c.querySelector("input") && c.querySelector("input").value === "첫 학습");
+      const el = [...layer.children].find((c) => c.querySelector("input") && c.querySelector("input").value === "개념 학습");
       const input = el.querySelector("input");
       input.focus(); input.select();
     });
@@ -1309,7 +1339,7 @@ async function dragTileToBoard(page, title, fx = 0.45, fy = 0.4) {
   {
     const { page, errors } = await boot(browser);
     await toStep1(page, "ED1");
-    await dragTileToBoard(page, "첫 학습", 0.14, 0.12);          // tag, no icon
+    await dragTileToBoard(page, "개념 학습", 0.14, 0.12);          // tag, no icon
     await dragTileToBoard(page, "AI 사용 안 함", 0.14, 0.42);     // post-it, no icon
     await page.getByRole("button", { name: /다음/ }).click();
     await page.waitForSelector("text=시스템이 어떻게 개입하나요?", { timeout: 30000 });
@@ -1322,14 +1352,15 @@ async function dragTileToBoard(page, title, fx = 0.45, fy = 0.4) {
         .map((c) => ({ title: c.querySelector("input").value, body: !!c.querySelector("textarea") }));
     });
     const laid = await objects();
-    // 활동 태그는 제목 줄만 / the activity tag is a title bar; the other two keep a body
-    const tag = laid.find((o) => o.title === "첫 학습");
+    // 규칙 카드(활동·수단)는 보드에서 이름만, 가드레일 카드만 설명을 갖는다
+    // 규칙 cards are labels once placed; only guardrail cards keep a description
     check(laid.length === 3, "three objects on the board", ` (${laid.length})`);
-    check(tag && !tag.body, "the activity tag is a title bar only", ` (${JSON.stringify(laid)})`);
-    check(laid.filter((o) => o.title !== "첫 학습").every((o) => o.body),
-      "the post-it and the card still have a description");
+    check(laid.filter((o) => o.title === "개념 학습" || o.title === "AI 사용 안 함").every((o) => !o.body),
+      "규칙 cards are labels only on the board", ` (${JSON.stringify(laid)})`);
+    check(laid.filter((o) => o.title === "규칙 상기").every((o) => o.body),
+      "a guardrail card still carries its description");
 
-    for (const name of ["AI 사용 안 함", "규칙 상기"]) {
+    for (const name of ["규칙 상기"]) {
       const focused = await page.evaluate((n) => {
         const layer = [...document.querySelectorAll("div")].find((d) => d.style.width === "5000px");
         const el = [...layer.children].find((c) => c.tagName === "DIV"

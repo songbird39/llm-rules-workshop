@@ -214,9 +214,12 @@ console.log("\nrule card keeps its size on drop");
     check(/hasDesc: c\.type !== 'act'/.test(doc), "only activity tags drop the description");
     check(board.indexOf('sc-if value="{{ c.hasDesc }}"') < desc,
       "and they drop it by a guard around the description, not by hiding it");
-    check(/desc: type === 'act' \? '' : \(tpl\.desc \|\| ''\)/.test(doc),
-      "a tag does not carry a description it can never show");
-    check(/if \(!tag\) wrap\(c\.desc/.test(doc), "and the exported image matches the screen");
+    check(/desc: \(type === 'act' \|\| type === 'means'\) \? '' : \(tpl\.desc \|\| ''\)/.test(doc),
+      "규칙 cards do not carry a description they can never show");
+    check(/if \(!tag && c\.type !== 'means'\) wrap\(c\.desc/.test(doc),
+      "and the exported image matches the screen");
+    check(/hasDesc: c\.type !== 'act' && c\.type !== 'means'/.test(doc),
+      "only 가드레일 cards keep a description on the board");
     check(/dsep: c\.dia \? '1px solid #eae7df' : 'none'/.test(doc), "the separator line appears only under an icon");
   }
   check(/act: '#6f6b62', means: '#6f6b62'/.test(doc), "workflow decks are neutral");
@@ -224,8 +227,20 @@ console.log("\nrule card keeps its size on drop");
   // 모든 카드에 설명이 있어야 한다 / every deck entry needs a description: it is what a
   // participant reads while choosing, and for 활동 it is the ONLY place one appears.
   const decks = doc.slice(doc.indexOf("deck: {"), doc.indexOf("rules: ["));
-  const empty = (decks.match(/desc: '' \}/g) || []).length;
-  check(empty === 0, "no deck card is left without a description", ` (${empty} empty)`);
+  // 가드레일 카드의 설명은 내용 그 자체 / a guardrail card's description IS its content — it
+  // says what the system does — so a blank one is a mistake. A 규칙 card's description is only
+  // a hint shown while choosing, so leaving one blank is a decision, not a bug.
+  let emptyGuard = 0, guardSeen = 0;
+  for (const name of ["con", "when", "trig"]) {
+    let at = -1;
+    while ((at = decks.indexOf(name + ": [", at + 1)) >= 0) {
+      const block = decks.slice(at, decks.indexOf("],", at));
+      guardSeen++;
+      emptyGuard += (block.match(/desc: '',(?![^\n]*blank:)/g) || []).length;
+    }
+  }
+  check(guardSeen === 6, "all three guardrail decks found, in both locales", ` (${guardSeen})`);
+  check(emptyGuard === 0, "no guardrail card is left without a description", ` (${emptyGuard} empty)`);
   check(/title: 'AI 사용', desc: 'ChatGPT\/Gemini\/Claude 등 사용'/.test(doc),
     "the AI card names the tools it means");
   // 발동 사건은 조건이지 동작이 아니다 / a trigger states a CONDITION, never an action:
