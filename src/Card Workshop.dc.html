@@ -239,12 +239,12 @@
       </sc-if>
       <sc-if value="{{ showGuard }}" hint-placeholder-val="{{ false }}">
       <div style="padding:8px 16px 4px;display:flex;align-items:baseline;gap:8px;border-top:1px solid #ece9e1">
-        <span style="width:9px;height:9px;border-radius:2px;background:oklch(0.60 0.095 85);align-self:center"></span>
+        <span style="width:9px;height:9px;border-radius:2px;background:oklch(0.62 0.105 68);align-self:center"></span>
         <span style="font-size:14px;font-weight:600;color:#6f6b62">③</span>
-        <span style="font-size:14px;font-weight:600;color:oklch(0.60 0.095 85)">{{ t.whenCards }}</span>
+        <span style="font-size:14px;font-weight:600;color:oklch(0.62 0.105 68)">{{ t.whenCards }}</span>
         <span style="font-size:14px;font-weight:600;color:#c9c6bd">·</span>
-        <span style="width:9px;height:9px;border-radius:2px;background:oklch(0.45 0.105 35);align-self:center"></span>
-        <span style="font-size:14px;font-weight:600;color:oklch(0.45 0.105 35)">{{ t.trigCards }}</span>
+        <span style="width:9px;height:9px;border-radius:2px;background:oklch(0.45 0.105 32);align-self:center"></span>
+        <span style="font-size:14px;font-weight:600;color:oklch(0.45 0.105 32)">{{ t.trigCards }}</span>
         <span style="font-size:11.5px;color:#a7a49b">{{ t.guardHeadSub }}</span>
       </div>
       <div style="display:flex;flex-wrap:wrap;gap:10px;padding:8px 16px 4px">
@@ -439,14 +439,14 @@
 const ACC = {
   act: '#6f6b62', means: '#6f6b62',
   con: 'oklch(0.51 0.08 160)',
-  when: 'oklch(0.60 0.095 85)',   // 시점 — 밝은 금빛 / gold
-  trig: 'oklch(0.45 0.105 35)'    // 조건 — 짙은 테라코타 / terracotta
+  when: 'oklch(0.62 0.105 68)',   // 시점 — 밝은 주황 / orange
+  trig: 'oklch(0.45 0.105 32)'    // 조건 — 짙은 테라코타 / deep terracotta
 };
 const TINT = {
   act: '#e8e5dd', means: '#eeece5',
   con: 'oklch(0.93 0.026 160)',
-  when: 'oklch(0.94 0.045 85)',
-  trig: 'oklch(0.89 0.055 35)'
+  when: 'oklch(0.94 0.050 68)',
+  trig: 'oklch(0.89 0.055 32)'
 };
 const SELECT_BLUE = 'oklch(0.51 0.08 253)';
 // 활동 태그는 카드 두 장(168*2 + 16 간격) 폭 — 태그 아래 카드가 가지런히 들어간다
