@@ -1166,16 +1166,30 @@ async function dragTileToBoard(page, title, fx = 0.45, fy = 0.4) {
 
     // 태그의 ✎ 는 이름 칸에 커서를 넣는다 / the ✎ puts the caret in the label. autoFocus cannot
     // do this: the input is already mounted, so the flag re-renders and focuses nothing.
-    const clicked = await page.evaluate(() => {
+    const editBox = await page.evaluate(() => {
       const layer = [...document.querySelectorAll("div")].find((d) => d.style.width === "5000px");
       const card = [...layer.children].find((c) => c.querySelector && c.querySelector("input"));
       const b = [...card.querySelectorAll("button")].find((x) => x.textContent.trim() === "✎");
-      if (!b) return false;
-      b.click();
-      return true;
+      if (!b) return null;
+      const r = b.getBoundingClientRect();
+      return { x: r.x + r.width / 2, y: r.y + r.height / 2, w: Math.round(r.width), h: Math.round(r.height) };
     });
-    check(clicked, "the tag carries an edit button");
-    await page.waitForTimeout(250);
+    check(!!editBox, "the tag carries an edit button");
+    check(editBox && editBox.w >= 24 && editBox.h >= 24, "big enough to hit",
+      editBox ? ` (${editBox.w}x${editBox.h})` : "");
+    const wasAt = await page.evaluate(() => {
+      const layer = [...document.querySelectorAll("div")].find((d) => d.style.width === "5000px");
+      return [...layer.children].find((c) => c.querySelector && c.querySelector("input")).style.left;
+    });
+    await page.mouse.move(editBox.x, editBox.y);
+    await page.mouse.down();
+    await page.mouse.move(editBox.x + 3, editBox.y + 2);   // 손떨림 / hand-shake
+    await page.mouse.up();
+    await page.waitForTimeout(300);
+    check(await page.evaluate(() => {
+      const layer = [...document.querySelectorAll("div")].find((d) => d.style.width === "5000px");
+      return [...layer.children].find((c) => c.querySelector && c.querySelector("input")).style.left;
+    }) === wasAt, "and pressing it does not drag the tag instead");
     check(await page.evaluate(() => document.activeElement && document.activeElement.tagName === "INPUT"),
       "and clicking it focuses the label");
     await page.keyboard.type("고친 이름");
@@ -1184,6 +1198,18 @@ async function dragTileToBoard(page, title, fx = 0.45, fy = 0.4) {
       const layer = [...document.querySelectorAll("div")].find((d) => d.style.width === "5000px");
       return layer.querySelector("input").value === "고친 이름";
     }), "so typing replaces the name");
+    // 다른 곳을 누르면 편집이 끝난다 / a press elsewhere ends the edit, or the caret sits
+    // blinking in a tag you left minutes ago and the next keystroke lands in it
+    const boardBox = await (await page.$('div[style*="radial-gradient"]')).boundingBox();
+    await page.mouse.click(boardBox.x + boardBox.width * 0.7, boardBox.y + boardBox.height * 0.7);
+    await page.waitForTimeout(250);
+    check(await page.evaluate(() => document.activeElement.tagName) !== "INPUT",
+      "pressing the board ends the edit");
+    check(await page.evaluate(() => {
+      const layer = [...document.querySelectorAll("div")].find((d) => d.style.width === "5000px");
+      return layer.querySelector("input").value === "고친 이름";
+    }), "and keeps what was typed");
+
     check(errors.length === 0, "no console errors", errors.length ? ` (${errors[0]})` : "");
     await page.close();
   }

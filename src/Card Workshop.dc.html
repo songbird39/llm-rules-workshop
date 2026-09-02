@@ -323,9 +323,9 @@
             <span style="position:absolute;top:0;bottom:0;left:-1.6px;right:1.6px;background:#413e37;clip-path:polygon(0 0, calc(100% - 17px) 0, 100% 50%, calc(100% - 17px) 100%, 0 100%, 17px 50%)"></span>
             <span style="position:relative;flex:none;width:8px;height:8px;border-radius:2px;background:#c9c3b2"></span>
             <input value="{{ c.title }}" onChange="{{ c.onTitle }}" placeholder="{{ c.titlePlaceholder }}" style="position:relative;flex:1;min-width:0;border:none;background:transparent;font-size:14.5px;font-weight:700;letter-spacing:-0.015em;white-space:nowrap;color:#f7f5ef;outline:none;padding:0;pointer-events:auto" />
-            <button onClick="{{ c.onEdit }}" title="{{ t.editTip }}" style="position:relative;border:none;background:transparent;color:#8f8a7d;font-size:11px;line-height:13px;cursor:pointer;padding:0 2px" style-hover="color:#f7f5ef">{{ t.edit }}</button>
-            <button onClick="{{ c.onDup }}" title="{{ t.dupTip }}" style="position:relative;border:none;background:transparent;color:#8f8a7d;font-size:11px;line-height:13px;cursor:pointer;padding:0 2px" style-hover="color:#f7f5ef">⧉</button>
-            <button onClick="{{ c.onDel }}" title="{{ t.delTip }}" style="position:relative;border:none;background:transparent;color:#8f8a7d;font-size:11px;line-height:13px;cursor:pointer;padding:0 2px" style-hover="color:#e0a99f">✕</button>
+            <button onPointerDown="{{ c.onEditDown }}" title="{{ t.editTip }}" style="position:relative;flex:none;width:24px;height:24px;border:none;border-radius:6px;background:rgba(255,255,255,0.08);color:#cdc7b8;font-size:12.5px;line-height:1;cursor:pointer;padding:0" style-hover="background:rgba(255,255,255,0.2);color:#f7f5ef">{{ t.edit }}</button>
+            <button onPointerDown="{{ c.onDupDown }}" title="{{ t.dupTip }}" style="position:relative;flex:none;width:24px;height:24px;border:none;border-radius:6px;background:transparent;color:#9c9689;font-size:12px;line-height:1;cursor:pointer;padding:0" style-hover="background:rgba(255,255,255,0.14);color:#f7f5ef">⧉</button>
+            <button onPointerDown="{{ c.onDelDown }}" title="{{ t.delTip }}" style="position:relative;flex:none;width:24px;height:24px;border:none;border-radius:6px;background:transparent;color:#9c9689;font-size:12px;line-height:1;cursor:pointer;padding:0" style-hover="background:rgba(255,255,255,0.14);color:#e0a99f">✕</button>
             <div onPointerDown="{{ c.onWidth }}" title="{{ t.widthTip }}" style="position:absolute;right:0;top:0;bottom:0;width:17px;cursor:ew-resize;opacity:0;display:flex;align-items:center;justify-content:center" style-hover="opacity:1">
               <div style="width:3px;height:20px;border-radius:2px;background:#c9c3b2"></div>
             </div>
@@ -1473,6 +1473,7 @@ class Component extends DCLogic {
   }
 
   onCanvasDown(e) {
+    this.blurUnlessTarget(e);
     if (this.state.pen) {
       e.preventDefault();
       const q = this.toCanvas(e.clientX, e.clientY);
@@ -1713,6 +1714,17 @@ class Component extends DCLogic {
      already mounted, so setting a flag re-renders and focuses nothing. Reach for the
      element instead. The DOM children are in state.cards order, which is what measureCards
      relies on too. */
+  /* 다른 곳을 누르면 편집이 끝나야 한다 / a press elsewhere ends the edit.
+     Focus otherwise survives every drag and click on the board, so the caret sits blinking
+     in a tag you stopped editing minutes ago and the next keystroke lands in it. Only blur
+     when the press is on something ELSE — pressing inside the field you are editing must
+     not end it. */
+  blurUnlessTarget(e) {
+    const ae = document.activeElement;
+    if (!ae || ae === e.target) return;
+    if (ae.tagName === 'INPUT' || ae.tagName === 'TEXTAREA') ae.blur();
+  }
+
   focusTitle(id) {
     const layer = this.cardsLayer();
     if (!layer) return;
@@ -1737,6 +1749,7 @@ class Component extends DCLogic {
     return null;
   }
   startMove(id, e) {
+    this.blurUnlessTarget(e);
     if (this.state.arrowMode) {
       e.stopPropagation(); e.preventDefault();
       const p = this.toCanvas(e.clientX, e.clientY);
@@ -2638,7 +2651,11 @@ class Component extends DCLogic {
           isTag: c.type === 'act',
           // 태그 전체가 드래그 손잡이라 글자를 눌러 고칠 수 있다는 걸 알 길이 없었다
           // the whole tag is a drag handle, so nothing said the label could be typed into
-          onEdit: (!RO || c.sm) ? () => this.focusTitle(c.id) : NOOP,
+          // 포인터가 눌리는 순간 처리하고 전파를 끊는다 / act on pointerdown and stop it there:
+          // the parent's own pointerdown is what would otherwise start a drag
+          onEditDown: (!RO || c.sm) ? (e) => { e.stopPropagation(); e.preventDefault(); this.focusTitle(c.id); } : NOOP,
+          onDupDown: (!RO || c.sm) ? (e) => { e.stopPropagation(); e.preventDefault(); this.dup(c.id); } : NOOP,
+          onDelDown: (!RO || c.sm) ? (e) => { e.stopPropagation(); e.preventDefault(); this.del(c.id); } : NOOP,
           notTag: c.type !== 'act',
           isMeans: c.type === 'means',
           notMeans: c.type !== 'means',
