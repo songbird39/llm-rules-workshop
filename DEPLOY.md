@@ -127,6 +127,20 @@ and a horizontal phase axis would stop meaning anything the moment they did.
 
 ### Interface size
 
+Every size in the app is a px value, so the whole UI is scaled with CSS `zoom` from the
+viewport width: **≥2200 → 1.35, ≥1700 → 1.2, ≥1400 → 1, ≥1200 → 0.92, below → 0.85**. The
+ladder runs down as well as up because a laptop is the likeliest machine in the room: at
+1024 the toolbar used to wrap onto a second row and the panel took more than half the
+width. `?ui=1` restores unscaled rendering and `?ui=<n>` forces a scale (clamped 0.8–2).
+
+The card panel is capped at **40% of the window** (never more than 566px, never less than
+300). A fixed 566px slab is 37% of a 1512 window but 49% of an 1152 one, so the narrower
+the screen the less board was left. It stays freely resizable by dragging its edge.
+
+Pointer maths divides by the scale in four places (`toCanvas`, pan, panel resize, drag
+ghost). The browser check at 2560/1920/1440/1280/1024 drags a card and asserts it tracks
+the cursor at each, which is what catches a missed division.
+
 Every size in the app is a hardcoded px value (fonts run 9–17px), which is unreadably
 small on a 1440p or 4K monitor. The app root now scales with CSS `zoom`, picked from the
 viewport width at load:

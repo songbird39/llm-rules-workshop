@@ -509,13 +509,20 @@ const PEN_W = 6, PEN_A = 0.55;
    back to 1 so those divisions stay correct rather than silently
    throwing the board out of alignment.
    ───────────────────────────────────────────────────────────────── */
+function panelCap() {
+  try {
+    const w = (window.innerWidth || 1400) / UI;
+    return Math.max(300, Math.min(566, Math.round(w * 0.40)));
+  } catch (e) { return 566; }
+}
+
 const UI = (function () {
   try {
     if (typeof CSS === 'undefined' || !CSS.supports || !CSS.supports('zoom', '1.5')) return 1;
     const q = parseFloat(new URLSearchParams(location.search).get('ui'));
     if (q > 0) return Math.min(2, Math.max(0.8, q));
     const w = window.innerWidth || 0;
-    return w >= 2200 ? 1.35 : w >= 1700 ? 1.2 : 1;
+    return w >= 2200 ? 1.35 : w >= 1700 ? 1.2 : w >= 1400 ? 1 : w >= 1200 ? 0.92 : 0.85;
   } catch (e) { return 1; }
 })();
 
@@ -789,7 +796,7 @@ const I18N = {
 class Component extends DCLogic {
   constructor(props) {
     super(props);
-    this.state = { sync: '', step: 0, lang: 'ko', rules: [], pid: '', loginPid: '', cards: [], notes: [], arrows: [], arrowMode: false, pendingArrow: null, pen: null, strokes: [], selArrow: null, noteMode: false, undoDepth: 0, focusNote: null, pan: { x: 0, y: 0 }, zoom: 1, ghost: null, seq: 1, panelW: 566, sel: [], marquee: null, finish: null, tab: 'flow', hist: null, histList: [], travel: null, senseOn: true, del: null, delTyped: '', delBusy: false, admin: false, viewPid: '', roster: [], rosterMsg: '' };
+    this.state = { sync: '', step: 0, lang: 'ko', rules: [], pid: '', loginPid: '', cards: [], notes: [], arrows: [], arrowMode: false, pendingArrow: null, pen: null, strokes: [], selArrow: null, noteMode: false, undoDepth: 0, focusNote: null, pan: { x: 0, y: 0 }, zoom: 1, ghost: null, seq: 1, panelW: panelCap(), sel: [], marquee: null, finish: null, tab: 'flow', hist: null, histList: [], travel: null, senseOn: true, del: null, delTyped: '', delBusy: false, admin: false, viewPid: '', roster: [], rosterMsg: '' };
     this.canvasRef = React.createRef();
     this.drag = null;
   }
@@ -1256,7 +1263,7 @@ class Component extends DCLogic {
     const lang = this.state.lang;
     this.setState({ pid: pid, loginPid: '' });
     if (d) this.applyState(d, lang);
-    else this.setState({ step: 1, rules: [], cards: [], notes: [], arrows: [], strokes: [], seq: 1, panelW: 566, pan: { x: 0, y: 0 }, zoom: 1, noteMode: false }, () => this.seedSig());
+    else this.setState({ step: 1, rules: [], cards: [], notes: [], arrows: [], strokes: [], seq: 1, panelW: panelCap(), pan: { x: 0, y: 0 }, zoom: 1, noteMode: false }, () => this.seedSig());
     // 데모는 서버에서 읽지도 않는다 / a demo does not read from the server either: it has
     // nothing of its own there, and a row left by an older build would resurrect itself
     if (!this.isDemo(pid)) this.syncDown(pid, d ? d.savedAt || 0 : 0);
@@ -2206,7 +2213,7 @@ class Component extends DCLogic {
       lang: lang,
       rules: d.rules || [],
       cards: d.cards || [], notes: d.notes || [], arrows: d.arrows || [], strokes: d.strokes || [],
-      seq: d.seq || 1, panelW: d.panelW || 566,
+      seq: d.seq || 1, panelW: d.panelW || panelCap(),
       pan: { x: 0, y: 0 }, zoom: 1, noteMode: false
     }, () => this.seedSig());
   }

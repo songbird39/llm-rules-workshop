@@ -127,7 +127,8 @@ async function dragTileToBoard(page, title, fx = 0.45, fy = 0.4) {
 
   // ------------------------------------------------- 1. drag fidelity under CSS zoom
   console.log("card follows the cursor (the CSS-zoom pointer maths)");
-  for (const [w, h, want] of [[2560, 1440, 1.35], [1920, 1080, 1.2], [1440, 900, 1]]) {
+  for (const [w, h, want] of [[2560, 1440, 1.35], [1920, 1080, 1.2], [1440, 900, 1],
+                              [1280, 800, 0.92], [1024, 768, 0.85]]) {
     const { page, errors } = await boot(browser, { width: w, height: h });
     const scale = await uiScale(page);
     check(near(scale, want, 0.001), `${w}px viewport resolves UI ${want}`, ` (got ${scale})`);
@@ -1237,6 +1238,34 @@ async function dragTileToBoard(page, title, fx = 0.45, fy = 0.4) {
 
     check(errors.length === 0, "no console errors", errors.length ? ` (${errors[0]})` : "");
     await page.close();
+  }
+
+  // ------------------------------------------------- small screens
+  console.log("\nthe layout holds together on a small screen");
+  {
+    for (const [w, h, maxBar] of [[1440, 900, 60], [1280, 800, 60], [1024, 768, 60]]) {
+      const { page, errors } = await boot(browser, { width: w, height: h });
+      await toStep1(page, "SM" + w);
+      const m = await page.evaluate(() => {
+        const bar = [...document.querySelectorAll("div")]
+          .find((d) => d.style.flexWrap === "wrap" && d.textContent.includes("초기화"));
+        const canvas = document.querySelector('div[style*="radial-gradient"]');
+        const panel = [...document.querySelectorAll("div")]
+          .find((d) => /^0 0 \d{3}px$/.test(d.style.flex || ""));
+        return {
+          bar: bar ? Math.round(bar.getBoundingClientRect().height) : -1,
+          panel: panel ? Math.round(panel.getBoundingClientRect().width) : -1,
+          board: canvas ? Math.round(canvas.getBoundingClientRect().width) : -1
+        };
+      });
+      // 툴바가 두 줄로 접히면 보드가 그만큼 줄어든다 / a wrapped toolbar eats board height
+      check(m.bar > 0 && m.bar <= maxBar, `${w}px: the toolbar stays one row`, ` (${m.bar}px)`);
+      // 좁을수록 패널이 보드를 잡아먹던 문제 / the fixed panel used to take half a small screen
+      check(m.board > m.panel, `${w}px: the board is wider than the panel`,
+        ` (board ${m.board} vs panel ${m.panel})`);
+      check(errors.length === 0, `${w}px: no console errors`, errors.length ? ` (${errors[0]})` : "");
+      await page.close();
+    }
   }
 
   // ------------------------------------------------- sizing
