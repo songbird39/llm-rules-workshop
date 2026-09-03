@@ -1273,6 +1273,67 @@ async function dragTileToBoard(page, title, fx = 0.45, fy = 0.4) {
     }
   }
 
+  // ------------------------------------------------- marquee picks the right notes
+  // 마퀴 사각형 자체가 메모로 세어졌다 / the marquee rectangle was itself counted as a note.
+  // The layer's DIV children were split by "has an <input> → card, otherwise note", but the
+  // layer also holds the sensemaking region box and the marquee — and the marquee exists
+  // ONLY while dragging, so notes shifted by one exactly during a marquee drag and note i
+  // was tested against note i-1's rectangle. Seeded rather than clicked, because creating
+  // notes by synthetic click is flaky and this is about geometry, not the note tool.
+  console.log("\nthe marquee selects the notes it actually covers");
+  {
+    const { page, errors } = await boot(browser, { width: 1600, height: 1000 });
+    await page.evaluate(() => localStorage.setItem("llm-guardrail-workshop-v4:MQ", JSON.stringify({
+      savedAt: Date.now(), pid: "MQ", step: 2, lang: "ko", rules: [],
+      cards: [], strokes: [], arrows: [], seq: 9, panelW: 378,
+      notes: [{ id: "n1", x: 60, y: 60, text: "IN-A" }, { id: "n2", x: 60, y: 200, text: "IN-B" },
+              { id: "n3", x: 1500, y: 1200, text: "FAR" }]
+    })));
+    await page.reload({ waitUntil: "load" });
+    await page.waitForSelector('input[placeholder="P0000"]', { timeout: 120000 });
+    await page.fill('input[placeholder="P0000"]', "MQ");
+    await page.getByText("시작하기", { exact: false }).click();
+    await page.waitForTimeout(1200);
+    const read = () => page.evaluate(() => [...document.querySelectorAll('[data-obj="note"]')]
+      .map((n) => ({ t: n.querySelector("textarea").value, sel: !!(n.style.outline && n.style.outline !== "none") })));
+    check((await read()).length === 3, "three notes restored");
+    const box = await (await page.$('div[style*="radial-gradient"]')).boundingBox();
+    await page.mouse.move(box.x + 20, box.y + 20);
+    await page.mouse.down();
+    for (let i = 1; i <= 6; i++) { await page.mouse.move(box.x + 20 + 70 * i, box.y + 20 + 62 * i); await page.waitForTimeout(45); }
+    await page.mouse.up();
+    await page.waitForTimeout(350);
+    const sel = (await read()).filter((n) => n.sel).map((n) => n.t);
+    check(sel.includes("IN-A") && sel.includes("IN-B"), "both notes under the marquee are selected", ` (${JSON.stringify(sel)})`);
+    check(!sel.includes("FAR"), "and a note far outside it is not");
+    check(errors.length === 0, "no console errors", errors.length ? ` (${errors[0]})` : "");
+    await page.close();
+  }
+
+  // ------------------------------------------------- the tab row is pinned
+  console.log("\nthe 규칙 / 가드레일 tabs stay put while the decks scroll");
+  {
+    const { page, errors } = await boot(browser, { width: 1600, height: 1000 });
+    await toBoard(page, "TAB");
+    const top = () => page.evaluate(() => {
+      const b = [...document.querySelectorAll("button")].find((x) => x.textContent.trim() === "가드레일");
+      return b ? Math.round(b.getBoundingClientRect().top) : -1;
+    });
+    const before = await top();
+    const scrolled = await page.evaluate(() => {
+      const sc = [...document.querySelectorAll("div")]
+        .find((d) => getComputedStyle(d).overflowY === "auto" && d.scrollHeight > d.clientHeight + 50);
+      if (!sc) return -1;
+      sc.scrollTop = 1200;
+      return sc.scrollTop;
+    });
+    await page.waitForTimeout(300);
+    check(scrolled > 0, "the deck list scrolls", ` (scrollTop ${scrolled})`);
+    check(before > 0 && before === (await top()), "and the tab row does not move", ` (${before} → ${await top()})`);
+    check(errors.length === 0, "no console errors", errors.length ? ` (${errors[0]})` : "");
+    await page.close();
+  }
+
   // ------------------------------------------------- sizing
   console.log("\ntags run longer rather than wrapping; the board reads bigger than the library");
   {

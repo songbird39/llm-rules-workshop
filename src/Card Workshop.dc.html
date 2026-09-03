@@ -188,13 +188,14 @@
   <div style="display:flex;flex:1;min-height:0">
 
     <sc-if value="{{ showPanel }}" hint-placeholder-val="{{ true }}">
-    <div style="flex:0 0 {{ panelW }}px;display:flex;flex-direction:column;background:#faf8f3;overflow-y:auto">
+    <div style="flex:0 0 {{ panelW }}px;display:flex;flex-direction:column;background:#faf8f3;overflow:hidden">
       <sc-if value="{{ isStep2 }}" hint-placeholder-val="{{ false }}">
         <div style="display:flex;gap:0;border-bottom:1px solid #ece9e1">
           <button onClick="{{ onTabFlow }}" style="flex:1;padding:10px 8px;border:none;border-bottom:2px solid {{ tabFlowBd }};background:{{ tabFlowBg }};color:{{ tabFlowFg }};font-size:12.5px;font-weight:600;cursor:pointer">{{ t.tabFlow }}</button>
           <button onClick="{{ onTabGuard }}" style="flex:1;padding:10px 8px;border:none;border-bottom:2px solid {{ tabGuardBd }};background:{{ tabGuardBg }};color:{{ tabGuardFg }};font-size:12.5px;font-weight:600;cursor:pointer">{{ t.tabGuard }}</button>
         </div>
       </sc-if>
+      <div style="flex:1;min-height:0;overflow-y:auto">
       <div style="padding:14px 16px 12px;font-size:13px;line-height:1.65;color:#7a776f;border-bottom:1px solid #ece9e1">{{ panelHint }}</div>
 
       <sc-if value="{{ showFlow }}" hint-placeholder-val="{{ true }}">
@@ -286,6 +287,7 @@
         </sc-for>
       </div>
       </sc-if>
+      </div>
     </div>
 
     </sc-if>
@@ -310,7 +312,7 @@
           <button onPointerDown="{{ delSelArrow }}" title="{{ t.arrowDelTip }}" style="position:absolute;left:{{ selArrowX }}px;top:{{ selArrowY }}px;transform:translate(-50%,-50%);width:22px;height:22px;border:1px solid #d6d3ca;border-radius:50%;background:#fffefb;color:#b03f34;font-size:11px;line-height:1;cursor:pointer;box-shadow:0 2px 8px rgba(0,0,0,0.12);z-index:5">✕</button>
         </sc-if>
         <sc-for list="{{ notes }}" as="n" hint-placeholder-count="0">
-          <div onPointerDown="{{ n.onDown }}" style="position:absolute;left:{{ n.x }}px;top:{{ n.y }}px;width:168px;padding:0 8px 8px;display:flex;flex-direction:column;gap:2px;border-radius:10px;background:{{ n.bg }};box-shadow:{{ n.ring }};outline:{{ n.outline }};outline-offset:2px;pointer-events:{{ n.pe }};cursor:grab">
+          <div data-obj="note" onPointerDown="{{ n.onDown }}" style="position:absolute;left:{{ n.x }}px;top:{{ n.y }}px;width:168px;padding:0 8px 8px;display:flex;flex-direction:column;gap:2px;border-radius:10px;background:{{ n.bg }};box-shadow:{{ n.ring }};outline:{{ n.outline }};outline-offset:2px;pointer-events:{{ n.pe }};cursor:grab">
             <textarea value="{{ n.text }}" onChange="{{ n.onText }}" autoFocus="{{ n.autoFocus }}" data-grow="1" placeholder="{{ t.notePh }}" rows="3" style="width:100%;height:auto;min-height:62px;overflow:hidden;resize:none;border:1px dashed #c2beb2;border-radius:7px;background:rgba(255,254,251,0.7);font-size:12px;line-height:1.55;color:#44423b;outline:none;padding:8px 10px;font-family:inherit;pointer-events:{{ n.tpe }}" style-focus="border-color:oklch(0.51 0.08 253);background:#fffefb"></textarea>
             <div style="display:flex;align-items:center;gap:5px;height:13px">
               <div style="flex:1"></div>
@@ -320,7 +322,7 @@
         </sc-for>
         <sc-for list="{{ cards }}" as="c" hint-placeholder-count="0">
           <sc-if value="{{ c.isTag }}" hint-placeholder-val="{{ false }}">
-          <div onPointerDown="{{ c.onDown }}" style="position:absolute;left:{{ c.x }}px;top:{{ c.y }}px;width:{{ c.w }}px;height:62px;display:flex;align-items:center;gap:12px;padding:0 28px 0 38px;outline:{{ c.outline }};outline-offset:2px;pointer-events:{{ c.pe }};cursor:{{ c.cursor }}">
+          <div data-obj="card" onPointerDown="{{ c.onDown }}" style="position:absolute;left:{{ c.x }}px;top:{{ c.y }}px;width:{{ c.w }}px;height:62px;display:flex;align-items:center;gap:12px;padding:0 28px 0 38px;outline:{{ c.outline }};outline-offset:2px;pointer-events:{{ c.pe }};cursor:{{ c.cursor }}">
             <!-- 코 끝 실선 / the nose keyline: two identically clipped layers, the upper one
                  shifted 1.6px left, so only the nose edge shows pale. Without it two tags
                  snapped nose-to-notch merge into one silhouette. -->
@@ -339,7 +341,7 @@
           </div>
           </sc-if>
           <sc-if value="{{ c.notTag }}" hint-placeholder-val="{{ true }}">
-          <div onPointerDown="{{ c.onDown }}" style="position:absolute;left:{{ c.x }}px;top:{{ c.y }}px;width:{{ c.cw }};display:flex;flex-direction:column;gap:5px;background:{{ c.bg }};border:1px {{ c.bstyle }} {{ c.bd }};border-radius:{{ c.radius }}px;padding:7px;box-shadow:{{ c.shadow }};outline:{{ c.outline }};outline-offset:2px;pointer-events:{{ c.pe }};cursor:{{ c.cursor }}">
+          <div data-obj="card" onPointerDown="{{ c.onDown }}" style="position:absolute;left:{{ c.x }}px;top:{{ c.y }}px;width:{{ c.cw }};display:flex;flex-direction:column;gap:5px;background:{{ c.bg }};border:1px {{ c.bstyle }} {{ c.bd }};border-radius:{{ c.radius }}px;padding:7px;box-shadow:{{ c.shadow }};outline:{{ c.outline }};outline-offset:2px;pointer-events:{{ c.pe }};cursor:{{ c.cursor }}">
             <div style="display:flex;align-items:center;gap:{{ c.headGap }};background:{{ c.tint }};border-radius:{{ c.headRadius }};padding:{{ c.headPad }}">
               <sc-if value="{{ c.isMeans }}" hint-placeholder-val="{{ false }}">
                 <span style="flex:none;width:6px;height:6px;border-radius:50%;background:#8f8b81"></span>
@@ -1631,12 +1633,8 @@ class Component extends DCLogic {
   boardRects() {
     const layer = this.cardsLayer();
     if (!layer) return [];
-    const noteEls = [], cardEls = [];
-    for (let i = 0; i < layer.children.length; i++) {
-      const el = layer.children[i];
-      if (el.tagName !== 'DIV') continue;
-      (el.querySelector('input') ? cardEls : noteEls).push(el);
-    }
+    const noteEls = [...layer.querySelectorAll(':scope > [data-obj="note"]')];
+    const cardEls = [...layer.querySelectorAll(':scope > [data-obj="card"]')];
     const out = [];
     const add = (el, item) => {
       if (el) out.push({ id: item.id, x: el.offsetLeft, y: el.offsetTop, w: el.offsetWidth, h: el.offsetHeight });
@@ -1760,12 +1758,8 @@ class Component extends DCLogic {
     // Card elements render in state.cards order. The template engine drops interpolated
     // data-* attributes, so match by position rather than id. Notes are excluded because
     // only cards carry a title <input>.
-    const els = [], noteEls = [];
-    for (let i = 0; i < layer.children.length; i++) {
-      const el = layer.children[i];
-      if (el.tagName !== 'DIV') continue;
-      (el.querySelector('input') ? els : noteEls).push(el);
-    }
+    const els = [...layer.querySelectorAll(':scope > [data-obj="card"]')];
+    const noteEls = [...layer.querySelectorAll(':scope > [data-obj="note"]')];
     if (els.length !== this.state.cards.length) return;   // mid-render, try again next pass
     const hs = [];
     for (let i = 0; i < els.length; i++) hs.push(els[i].offsetHeight);
@@ -1842,11 +1836,7 @@ class Component extends DCLogic {
   focusTitle(id) {
     const layer = this.cardsLayer();
     if (!layer) return;
-    const cardEls = [];
-    for (let k = 0; k < layer.children.length; k++) {
-      const child = layer.children[k];
-      if (child.tagName === 'DIV' && child.querySelector('input')) cardEls.push(child);
-    }
+    const cardEls = [...layer.querySelectorAll(':scope > [data-obj="card"]')];
     const i = this.state.cards.findIndex((c) => c.id === id);
     const el = i >= 0 ? cardEls[i] : null;
     const input = el ? el.querySelector('input') : null;

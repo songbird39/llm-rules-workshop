@@ -430,6 +430,23 @@ console.log("\nthe pen draws, erases and is saved like anything else on the boar
   check(/return \{ x: a - PEN_W, y: b - PEN_W/.test(src), "which is sized to include it");
 }
 
+// ---- 6f. board objects are found by marker, not by guesswork ----
+console.log("\nboard objects are identified explicitly");
+{
+  // "input 이 있으면 카드" 규칙은 마퀴 사각형까지 메모로 셌다 / the old rule — a DIV with an
+  // <input> is a card, otherwise a note — also swept up the sensemaking region box and the
+  // marquee rectangle. The marquee only exists while dragging, so notes shifted by one
+  // exactly during a marquee drag and the wrong note was hit.
+  check(!/querySelector\('input'\) \? cardEls : noteEls/.test(doc), "no card/note guessing left");
+  check(!/querySelector\('input'\) \? els : noteEls/.test(doc), "not in measureCards either");
+  const markers = (doc.match(/<div data-obj="(card|note)"/g) || []).length;
+  check(markers === 3, "every board object carries a static marker", ` (${markers}: note, tag, card)`);
+  const walkers = (doc.match(/querySelectorAll\(':scope > \[data-obj=/g) || []).length;
+  check(walkers === 5, "and all three walkers select by it", ` (${walkers} selectors)`);
+  // 정적이어야 한다 / it must be static: the engine drops interpolated data-* attributes
+  check(!/data-obj="\{\{/.test(doc), "the marker is literal, since interpolated data-* is dropped");
+}
+
 // ---- 7. view mode must not be able to write ----
 // The whole point: viewing P01 must never produce a localStorage write or a sheet
 // POST, because latestState_() takes the newest row and would adopt the accident.
