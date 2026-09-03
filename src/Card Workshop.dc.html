@@ -222,9 +222,9 @@
       </div>
       <div style="display:flex;flex-wrap:wrap;gap:8px;padding:8px 16px 18px">
         <sc-for list="{{ deckMeans }}" as="d" hint-placeholder-count="5">
-          <div onPointerDown="{{ d.onDown }}" onDoubleClick="{{ d.onAdd }}" title="{{ d.tip }}" style="flex:0 0 auto;display:flex;align-items:center;gap:7px;padding:6px 13px;background:#fffefb;border:1px solid #ddd9cf;border-radius:15px;box-shadow:0 1px 4px rgba(0,0,0,0.07);cursor:grab" style-hover="border-color:#b6b3aa">
-            <span style="flex:none;width:6px;height:6px;border-radius:50%;background:#8f8b81"></span>
-            <span style="font-size:12px;font-weight:600;letter-spacing:-0.01em;white-space:nowrap;color:#3a382f">{{ d.title }}</span>
+          <div onPointerDown="{{ d.onDown }}" onDoubleClick="{{ d.onAdd }}" title="{{ d.tip }}" style="flex:0 0 auto;display:inline-flex;align-items:stretch;height:38px;background:#fffefb;border:2px solid #413e37;border-radius:3px;box-sizing:border-box;overflow:hidden;cursor:grab" style-hover="background:#f7f5ef">
+            <span style="width:9px;background:#413e37;flex:none"></span>
+            <span style="display:inline-flex;align-items:center;padding:0 13px 0 12px;font-size:13px;font-weight:700;color:#3a382f;letter-spacing:-0.01em;white-space:nowrap">{{ d.title }}</span>
           </div>
         </sc-for>
       </div>
@@ -341,7 +341,20 @@
             </div>
           </div>
           </sc-if>
-          <sc-if value="{{ c.notTag }}" hint-placeholder-val="{{ true }}">
+          <sc-if value="{{ c.isMeans }}" hint-placeholder-val="{{ false }}">
+          <div data-obj="card" onPointerDown="{{ c.onDown }}" style="position:absolute;left:{{ c.x }}px;top:{{ c.y }}px;height:38px;display:inline-flex;align-items:stretch;background:#fffefb;border:2px solid {{ c.chipInk }};border-radius:3px;box-sizing:border-box;overflow:hidden;outline:{{ c.outline }};outline-offset:2px;pointer-events:{{ c.pe }};cursor:{{ c.cursor }}">
+            <span style="width:9px;background:{{ c.chipInk }};flex:none"></span>
+            <span style="display:inline-flex;align-items:center;gap:6px;padding:0 8px 0 12px">
+              <input value="{{ c.title }}" onChange="{{ c.onTitle }}" placeholder="{{ c.titlePlaceholder }}" size="{{ c.tsize }}" style="min-width:0;border:none;background:transparent;font-size:13px;font-weight:700;color:#3a382f;letter-spacing:-0.01em;white-space:nowrap;outline:none;padding:0;pointer-events:{{ c.tpe }}" />
+              <span style="display:inline-flex;align-items:center;gap:0">
+                <button onPointerDown="{{ c.onEditDown }}" title="{{ t.editTip }}" style="flex:none;width:22px;height:22px;border:none;border-radius:5px;background:transparent;color:#9c9689;font-size:12px;line-height:1;cursor:pointer;padding:0" style-hover="color:#1b1a17">{{ t.edit }}</button>
+                <button onPointerDown="{{ c.onDupDown }}" title="{{ t.dupTip }}" style="flex:none;width:22px;height:22px;border:none;border-radius:5px;background:transparent;color:#9c9689;font-size:12px;line-height:1;cursor:pointer;padding:0" style-hover="color:#1b1a17">⧉</button>
+                <button onPointerDown="{{ c.onDelDown }}" title="{{ t.delTip }}" style="flex:none;width:22px;height:22px;border:none;border-radius:5px;background:transparent;color:#9c9689;font-size:12px;line-height:1;cursor:pointer;padding:0" style-hover="color:#b03f34">✕</button>
+              </span>
+            </span>
+          </div>
+          </sc-if>
+          <sc-if value="{{ c.isPlainCard }}" hint-placeholder-val="{{ true }}">
           <div data-obj="card" onPointerDown="{{ c.onDown }}" style="position:absolute;left:{{ c.x }}px;top:{{ c.y }}px;width:{{ c.cw }};display:flex;flex-direction:column;gap:5px;background:{{ c.bg }};border:1px {{ c.bstyle }} {{ c.bd }};border-radius:{{ c.radius }}px;padding:7px;box-shadow:{{ c.shadow }};outline:{{ c.outline }};outline-offset:2px;pointer-events:{{ c.pe }};cursor:{{ c.cursor }}">
             <div style="display:flex;align-items:center;gap:{{ c.headGap }};background:{{ c.tint }};border-radius:{{ c.headRadius }};padding:{{ c.headPad }}">
               <sc-if value="{{ c.isMeans }}" hint-placeholder-val="{{ false }}">
@@ -388,12 +401,9 @@
         </div>
       </sc-if>
       <sc-if value="{{ ghostMeans }}" hint-placeholder-val="{{ false }}">
-        <div style="position:fixed;left:{{ ghostX }}px;top:{{ ghostY }}px;transform:scale({{ ghostScale }});transform-origin:0 0;pointer-events:none;z-index:50;opacity:0.92;display:flex;flex-direction:column;gap:5px;padding:7px;background:#fffefb;border:1px solid #ddd9cf;border-radius:15px;box-shadow:0 10px 22px rgba(0,0,0,0.16)">
-          <div style="display:flex;align-items:center;gap:7px;padding:2px 6px">
-            <span style="flex:none;width:6px;height:6px;border-radius:50%;background:#8f8b81"></span>
-            <span style="font-size:12px;font-weight:600;letter-spacing:-0.01em;white-space:nowrap;color:#3a382f">{{ ghostText }}</span>
-          </div>
-          <div style="height:13px"></div>
+        <div style="position:fixed;left:{{ ghostX }}px;top:{{ ghostY }}px;transform:scale({{ ghostScale }});transform-origin:0 0;pointer-events:none;z-index:50;opacity:0.92;display:inline-flex;align-items:stretch;height:38px;background:#fffefb;border:2px solid #413e37;border-radius:3px;box-sizing:border-box;overflow:hidden;box-shadow:0 10px 22px rgba(0,0,0,0.16)">
+          <span style="width:9px;background:#413e37;flex:none"></span>
+          <span style="display:inline-flex;align-items:center;padding:0 13px 0 12px;font-size:13px;font-weight:700;color:#3a382f;letter-spacing:-0.01em;white-space:nowrap">{{ ghostText }}</span>
         </div>
       </sc-if>
       <sc-if value="{{ ghostCard }}" hint-placeholder-val="{{ false }}">
@@ -2814,6 +2824,9 @@ class Component extends DCLogic {
           onDupDown: (!RO || c.sm) ? (e) => { e.stopPropagation(); e.preventDefault(); this.dup(c.id); } : NOOP,
           onDelDown: (!RO || c.sm) ? (e) => { e.stopPropagation(); e.preventDefault(); this.del(c.id); } : NOOP,
           notTag: c.type !== 'act',
+          isPlainCard: c.type !== 'act' && c.type !== 'means',
+          // 해석 레이어 표시는 테두리 색으로 / the sensemaking layer shows in the ink
+          chipInk: c.sm ? 'oklch(0.62 0.11 62)' : '#413e37',
           isMeans: c.type === 'means',
           notMeans: c.type !== 'means',
           radius: c.type === 'means' ? 15 : 10,

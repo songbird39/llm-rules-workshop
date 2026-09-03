@@ -110,10 +110,12 @@ overflow, up to the width cap, and a pill has no fixed width at all. One slot on
 has to stay one line to read as one slot. Tags never auto-shrink — the width handle is how
 you do that, and shrinking on its own would fight a width someone set by hand.
 
-② 수단 is a **paper tag** — a white pill with a hairline and a soft shadow, a 6px dot and a
-12px label. In the panel that is all it is; on the board the same pill grows to hold the
-editable description underneath, because a means with no room to say what it means was the
-one thing this redesign could not afford to cost. A tag's width can be dragged from its right edge; the handle is
+② 수단 is a **chip**: 38px tall, a 2px ink border, a 9px solid ink bar down the left edge
+and a bold 13px label. Identical in the library, on the board and as the drag preview. It
+hugs its own text — Hangul is measured as double-width, since `input.size` counts
+`"0"`-width units and measuring by `.length` clipped Korean labels in half. On the board it
+carries ✎ ⧉ ✕, and an admin's own chip is inked amber so it reads apart from a
+participant's. A tag's width can be dragged from its right edge; the handle is
 invisible until the pointer is over it, so nobody who isn't looking for it is bothered by
 it. 다음 unlocks once at least one activity is on the board.
 

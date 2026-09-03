@@ -440,7 +440,8 @@ console.log("\nboard objects are identified explicitly");
   check(!/querySelector\('input'\) \? cardEls : noteEls/.test(doc), "no card/note guessing left");
   check(!/querySelector\('input'\) \? els : noteEls/.test(doc), "not in measureCards either");
   const markers = (doc.match(/<div data-obj="(card|note)"/g) || []).length;
-  check(markers === 3, "every board object carries a static marker", ` (${markers}: note, tag, card)`);
+  check(markers === 4, "every board object carries a static marker",
+    ` (${markers}: note, chevron, chip, card)`);
   const walkers = (doc.match(/querySelectorAll\(':scope > \[data-obj=/g) || []).length;
   check(walkers === 5, "and all three walkers select by it", ` (${walkers} selectors)`);
   // 정적이어야 한다 / it must be static: the engine drops interpolated data-* attributes
@@ -477,6 +478,23 @@ console.log("\nwide characters are measured as wide");
     "and the 수단 pill sizes its input with it");
   check(!/String\(c\.title \|\| ''\)\.length \+ 1/.test(src),
     "not by .length, which under-measures Hangul by half");
+}
+
+// ---- 6h. the 수단 chip ----
+console.log("\n수단 is a chip with an ink bar, in the library and on the board");
+{
+  const bar = (doc.match(/width:9px;background:(#413e37|\{\{ c\.chipInk \}\})/g) || []).length;
+  check(bar === 3, "the ink bar appears on the tile, the board object and the ghost", ` (${bar})`);
+  check((doc.match(/border:2px solid (#413e37|\{\{ c\.chipInk \}\})/g) || []).length === 3,
+    "and all three carry the 2px ink border");
+  check((doc.match(/height:38px/g) || []).length >= 3, "all three are 38px tall");
+  // 해석 레이어는 잉크 색으로 / an admin's own chip is told apart by its ink
+  check(/chipInk: c\.sm \? 'oklch\(0\.62 0\.11 62\)' : '#413e37'/.test(doc),
+    "a sensemaking chip is inked differently");
+  // 칩도 자기 조작을 갖는다 / the chip keeps its own controls
+  const chip = doc.slice(doc.indexOf("{{ c.isMeans }}"), doc.indexOf("{{ c.isPlainCard }}"));
+  for (const h of ["onEditDown", "onDupDown", "onDelDown"])
+    check(chip.includes(h), `the chip keeps ${h}`);
 }
 
 // ---- 7. view mode must not be able to write ----
@@ -581,7 +599,9 @@ console.log("\nview mode cannot write");
   check(/const TPE = PEN \? 'none' : 'auto';/.test(doc), "but not while the pen is up");
   // 이제 값으로 넘긴다 / the value is passed in now, because text must also go inert while
   // the pen is up: an input that hard-codes auto keeps taking presses whatever its card says
-  check((doc.match(/;pointer-events:\{\{ [cn]\.tpe \}\}/g) || []).length === 4,
+  // 다섯 / five now: the card description, the note, the card title, the chevron's label and
+  // the 수단 chip's — the last two live in their own branches, not the shared card markup
+  check((doc.match(/;pointer-events:\{\{ [cn]\.tpe \}\}/g) || []).length === 5,
     "every remaining text element is re-enabled",
     ` (${(doc.match(/;pointer-events:\{\{ [cn]\.tpe \}\}/g) || []).length})`);
   check(/descOverflow: RO \? 'auto' : 'hidden'/.test(doc),
