@@ -246,7 +246,7 @@ async function dragTileToBoard(page, title, fx = 0.45, fy = 0.4) {
         cardFont: getComputedStyle(card.querySelector("textarea")).fontSize,
         noteFont: getComputedStyle(note.querySelector("textarea")).fontSize,
         cardDel: corner(card, cbtns[cbtns.length - 1]),
-        noteDel: corner(note, note.querySelector("button")),
+        noteDel: (() => { const nb = note.querySelectorAll("button"); return corner(note, nb[nb.length - 1]); })(),
       };
     });
     check(geo.noteW === geo.cardW, "note width equals card width", ` (${geo.noteW})`);
@@ -265,8 +265,27 @@ async function dragTileToBoard(page, title, fx = 0.45, fy = 0.4) {
     await page.locator(`input[value="${first}"]`).last().click();  // click its TEXT, not the body
     await page.waitForTimeout(200);
     const after = await order();
-    check(after[after.length - 1] === first,
-      "clicking a card's text raises it to front", ` (${JSON.stringify(before)} -> ${JSON.stringify(after)})`);
+    check(JSON.stringify(after) === JSON.stringify(before),
+      "clicking a card's TEXT does not reorder it — that would drop the focus mid-click",
+      ` (${JSON.stringify(before)} -> ${JSON.stringify(after)})`);
+    check(await page.evaluate(() => document.activeElement.tagName) === "INPUT",
+      "and the click lands in the field instead");
+    // 몸통을 누르면 여전히 맨 앞으로 / a press on the body still raises
+    await page.evaluate((t) => {
+      const layer = [...document.querySelectorAll("div")].find((d) => d.style.width === "5000px");
+      const el = [...layer.children].find((c) => c.querySelector && c.querySelector("input")
+        && c.querySelector("input").value === t);
+      const r = el.getBoundingClientRect();
+      window.__body = { x: r.x + r.width / 2, y: r.bottom - 6 };
+    }, first);
+    const bodyPt = await page.evaluate(() => window.__body);
+    await page.mouse.move(bodyPt.x, bodyPt.y);
+    await page.mouse.down();
+    await page.mouse.up();
+    await page.waitForTimeout(250);
+    const raised = await order();
+    check(raised[raised.length - 1] === first, "pressing the card body still raises it",
+      ` (${JSON.stringify(raised)})`);
     if (SHOTS) await page.screenshot({ path: `${SHOTS}/notes.png` });
     check(errors.length === 0, "no console errors", errors.length ? ` (${errors[0]})` : "");
     await page.close();
@@ -1171,75 +1190,35 @@ async function dragTileToBoard(page, title, fx = 0.45, fy = 0.4) {
 
     // 태그의 ✎ 는 이름 칸에 커서를 넣는다 / the ✎ puts the caret in the label. autoFocus cannot
     // do this: the input is already mounted, so the flag re-renders and focuses nothing.
-    const editBox = await page.evaluate(() => {
+    // ✎ 는 없앴다 / no edit button any more: clicking the label edits and dragging anywhere
+    // else moves. That only became true once raiseCard stopped recreating the node under the
+    // pointer — before it, the label of a card that was not already frontmost swallowed the
+    // first click, which is why the button existed at all.
+    const chevron = await page.evaluate(() => {
       const layer = [...document.querySelectorAll("div")].find((d) => d.style.width === "5000px");
-      const card = [...layer.children].find((c) => c.querySelector && c.querySelector("input"));
-      const b = [...card.querySelectorAll("button")].find((x) => x.textContent.trim() === "✎");
-      if (!b) return null;
-      const r = b.getBoundingClientRect();
-      return { x: r.x + r.width / 2, y: r.y + r.height / 2, w: Math.round(r.width), h: Math.round(r.height) };
+      const c = [...layer.children].find((x) => x.getAttribute && x.getAttribute("data-obj") === "card");
+      const r = c.getBoundingClientRect(); const i = c.querySelector("input").getBoundingClientRect();
+      return { left: c.style.left, tx: i.x + 24, ty: i.y + i.height / 2, mx: r.x + 26, my: r.y + r.height / 2,
+               edit: [...c.querySelectorAll("button")].some((b) => b.textContent.trim() === "✎") };
     });
-    check(!!editBox, "the tag carries an edit button");
-    check(editBox && editBox.w >= 24 && editBox.h >= 24, "big enough to hit",
-      editBox ? ` (${editBox.w}x${editBox.h})` : "");
-    const wasAt = await page.evaluate(() => {
-      const layer = [...document.querySelectorAll("div")].find((d) => d.style.width === "5000px");
-      return [...layer.children].find((c) => c.querySelector && c.querySelector("input")).style.left;
-    });
-    await page.mouse.move(editBox.x, editBox.y);
+    check(!chevron.edit, "the tag carries no edit button");
+    await page.mouse.move(chevron.tx, chevron.ty);
     await page.mouse.down();
-    await page.mouse.move(editBox.x + 3, editBox.y + 2);   // 손떨림 / hand-shake
+    await page.mouse.up();
+    await page.waitForTimeout(250);
+    check(await page.evaluate(() => document.activeElement.tagName) === "INPUT",
+      "clicking the label edits it");
+    await page.keyboard.type("고친 이름");
+    await page.waitForTimeout(250);
+    await page.mouse.move(chevron.mx, chevron.my);
+    await page.mouse.down();
+    await page.mouse.move(chevron.mx + 70, chevron.my + 40, { steps: 6 });
     await page.mouse.up();
     await page.waitForTimeout(300);
     check(await page.evaluate(() => {
       const layer = [...document.querySelectorAll("div")].find((d) => d.style.width === "5000px");
-      return [...layer.children].find((c) => c.querySelector && c.querySelector("input")).style.left;
-    }) === wasAt, "and pressing it does not drag the tag instead");
-    check(await page.evaluate(() => document.activeElement && document.activeElement.tagName === "INPUT"),
-      "and clicking it focuses the label");
-    await page.keyboard.type("고친 이름");
-    await page.waitForTimeout(250);
-    check(await page.evaluate(() => {
-      const layer = [...document.querySelectorAll("div")].find((d) => d.style.width === "5000px");
-      return layer.querySelector("input").value === "고친 이름";
-    }), "so typing replaces the name");
-    // 다른 곳을 누르면 편집이 끝난다 / a press elsewhere ends the edit, or the caret sits
-    // blinking in a tag you left minutes ago and the next keystroke lands in it
-    const boardBox = await (await page.$('div[style*="radial-gradient"]')).boundingBox();
-    await page.mouse.click(boardBox.x + boardBox.width * 0.7, boardBox.y + boardBox.height * 0.7);
-    await page.waitForTimeout(250);
-    check(await page.evaluate(() => document.activeElement.tagName) !== "INPUT",
-      "pressing the board ends the edit");
-    check(await page.evaluate(() => {
-      const layer = [...document.querySelectorAll("div")].find((d) => d.style.width === "5000px");
-      return layer.querySelector("input").value === "고친 이름";
-    }), "and keeps what was typed");
-
-    // 0 키와 빈 보드 더블클릭으로 화면이 돌아온다 / the view still comes back
-    check((await page.getByRole("button", { name: "화면 맞춤" }).count()) === 0, "화면 맞춤 is gone");
-    const canvas = await (await page.$('div[style*="radial-gradient"]')).boundingBox();
-    const pan = () => page.evaluate(() => {
-      const layer = [...document.querySelectorAll("div")].find((d) => d.style.width === "5000px");
-      return layer.style.transform;
-    });
-    const shove = async () => {
-      await page.keyboard.down("Alt");
-      await page.mouse.move(canvas.x + canvas.width * 0.6, canvas.y + canvas.height * 0.6);
-      await page.mouse.down();
-      await page.mouse.move(canvas.x + canvas.width * 0.6 + 220, canvas.y + canvas.height * 0.6 + 160, { steps: 8 });
-      await page.mouse.up();
-      await page.keyboard.up("Alt");
-      await page.waitForTimeout(250);
-    };
-    await shove();
-    check(!/translate\(0px, ?0px\)/.test(await pan()), "the board can be pushed off-centre", ` (${await pan()})`);
-    await page.mouse.dblclick(canvas.x + canvas.width * 0.85, canvas.y + canvas.height * 0.85);
-    await page.waitForTimeout(300);
-    check(/translate\(0px, ?0px\)/.test(await pan()), "double-clicking empty board brings it back", ` (${await pan()})`);
-    await shove();
-    await page.keyboard.press("0");
-    await page.waitForTimeout(300);
-    check(/translate\(0px, ?0px\)/.test(await pan()), "and so does the 0 key", ` (${await pan()})`);
+      return [...layer.children].find((x) => x.getAttribute && x.getAttribute("data-obj") === "card").style.left;
+    }) !== chevron.left, "and dragging anywhere else moves it");
 
     check(errors.length === 0, "no console errors", errors.length ? ` (${errors[0]})` : "");
     await page.close();

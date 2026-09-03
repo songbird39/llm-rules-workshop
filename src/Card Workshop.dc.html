@@ -317,6 +317,7 @@
             <textarea value="{{ n.text }}" onChange="{{ n.onText }}" autoFocus="{{ n.autoFocus }}" data-grow="1" placeholder="{{ t.notePh }}" rows="3" style="width:100%;height:auto;min-height:62px;overflow:hidden;resize:none;border:1px dashed #c2beb2;border-radius:7px;background:rgba(255,254,251,0.7);font-size:12px;line-height:1.55;color:#44423b;outline:none;padding:8px 10px;font-family:inherit;pointer-events:{{ n.tpe }}" style-focus="border-color:oklch(0.51 0.08 253);background:#fffefb"></textarea>
             <div style="display:flex;align-items:center;gap:5px;height:13px">
               <div style="flex:1"></div>
+              <button onPointerDown="{{ n.onDupDown }}" title="{{ t.dupTip }}" style="display:inline-flex;align-items:center;justify-content:center;border:none;background:transparent;color:#bfbcb3;width:18px;height:14px;line-height:1;cursor:pointer;padding:0" style-hover="color:#1b1a17"><svg width="11" height="11" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.25" stroke-linejoin="round" aria-hidden="true"><rect x="3.4" y="0.9" width="7.7" height="7.7" rx="1.5"></rect><rect x="0.9" y="3.4" width="7.7" height="7.7" rx="1.5"></rect></svg></button>
               <button onClick="{{ n.onDel }}" title="{{ t.noteDelTip }}" style="border:none;background:transparent;color:#bfbcb3;font-size:11px;line-height:13px;cursor:pointer;padding:0 2px" style-hover="color:#b03f34">✕</button>
             </div>
           </div>
@@ -332,8 +333,7 @@
             <span style="position:relative;flex:none;width:9px;height:9px;border-radius:2px;background:#c9c3b2"></span>
             <input value="{{ c.title }}" onChange="{{ c.onTitle }}" placeholder="{{ c.titlePlaceholder }}" style="position:relative;flex:1;min-width:0;border:none;background:transparent;font-size:16.5px;font-weight:700;letter-spacing:-0.015em;white-space:nowrap;color:#f7f5ef;outline:none;padding:0;pointer-events:{{ c.tpe }}" />
             <span style="position:relative;flex:none;display:flex;align-items:center;gap:0">
-              <button onPointerDown="{{ c.onEditDown }}" title="{{ t.editTip }}" style="position:relative;flex:none;width:24px;height:24px;border:none;border-radius:6px;background:transparent;color:#b3ad9e;font-size:12.5px;line-height:1;cursor:pointer;padding:0" style-hover="color:#f7f5ef">{{ t.edit }}</button>
-              <button onPointerDown="{{ c.onDupDown }}" title="{{ t.dupTip }}" style="position:relative;flex:none;width:24px;height:24px;border:none;border-radius:6px;background:transparent;color:#9c9689;font-size:12px;line-height:1;cursor:pointer;padding:0" style-hover="color:#f7f5ef">⧉</button>
+              <button onPointerDown="{{ c.onDupDown }}" title="{{ t.dupTip }}" style="position:relative;flex:none;width:24px;height:24px;border:none;border-radius:6px;background:transparent;color:#9c9689;font-size:12px;line-height:1;cursor:pointer;padding:0" style-hover="color:#f7f5ef"><svg width="11" height="11" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.25" stroke-linejoin="round" aria-hidden="true"><rect x="3.4" y="0.9" width="7.7" height="7.7" rx="1.5"></rect><rect x="0.9" y="3.4" width="7.7" height="7.7" rx="1.5"></rect></svg></button>
               <button onPointerDown="{{ c.onDelDown }}" title="{{ t.delTip }}" style="position:relative;flex:none;width:24px;height:24px;border:none;border-radius:6px;background:transparent;color:#9c9689;font-size:12px;line-height:1;cursor:pointer;padding:0" style-hover="color:#e0a99f">✕</button>
             </span>
             <div onPointerDown="{{ c.onWidth }}" title="{{ t.widthTip }}" style="position:absolute;right:0;top:0;bottom:0;width:17px;cursor:ew-resize;opacity:0;display:flex;align-items:center;justify-content:center" style-hover="opacity:1">
@@ -347,8 +347,7 @@
             <span style="display:inline-flex;align-items:center;gap:6px;padding:0 8px 0 12px">
               <input value="{{ c.title }}" onChange="{{ c.onTitle }}" placeholder="{{ c.titlePlaceholder }}" size="{{ c.tsize }}" style="min-width:0;border:none;background:transparent;font-size:13px;font-weight:700;color:#3a382f;letter-spacing:-0.01em;white-space:nowrap;outline:none;padding:0;pointer-events:{{ c.tpe }}" />
               <span style="display:inline-flex;align-items:center;gap:0">
-                <button onPointerDown="{{ c.onEditDown }}" title="{{ t.editTip }}" style="flex:none;width:22px;height:22px;border:none;border-radius:5px;background:transparent;color:#9c9689;font-size:12px;line-height:1;cursor:pointer;padding:0" style-hover="color:#1b1a17">{{ t.edit }}</button>
-                <button onPointerDown="{{ c.onDupDown }}" title="{{ t.dupTip }}" style="flex:none;width:22px;height:22px;border:none;border-radius:5px;background:transparent;color:#9c9689;font-size:12px;line-height:1;cursor:pointer;padding:0" style-hover="color:#1b1a17">⧉</button>
+                <button onPointerDown="{{ c.onDupDown }}" title="{{ t.dupTip }}" style="flex:none;width:22px;height:22px;border:none;border-radius:5px;background:transparent;color:#9c9689;font-size:12px;line-height:1;cursor:pointer;padding:0" style-hover="color:#1b1a17"><svg width="11" height="11" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.25" stroke-linejoin="round" aria-hidden="true"><rect x="3.4" y="0.9" width="7.7" height="7.7" rx="1.5"></rect><rect x="0.9" y="3.4" width="7.7" height="7.7" rx="1.5"></rect></svg></button>
                 <button onPointerDown="{{ c.onDelDown }}" title="{{ t.delTip }}" style="flex:none;width:22px;height:22px;border:none;border-radius:5px;background:transparent;color:#9c9689;font-size:12px;line-height:1;cursor:pointer;padding:0" style-hover="color:#b03f34">✕</button>
               </span>
             </span>
@@ -375,7 +374,7 @@
             </sc-if>
             <div style="display:flex;align-items:center;gap:5px;height:13px">
               <div style="flex:1"></div>
-              <button onClick="{{ c.onDup }}" title="{{ t.dupTip }}" style="border:none;background:transparent;color:#bfbcb3;font-size:11px;line-height:13px;cursor:pointer;padding:0 2px" style-hover="color:#1b1a17">⧉</button>
+              <button onClick="{{ c.onDup }}" title="{{ t.dupTip }}" style="border:none;background:transparent;color:#bfbcb3;font-size:11px;line-height:13px;cursor:pointer;padding:0 2px" style-hover="color:#1b1a17"><svg width="11" height="11" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.25" stroke-linejoin="round" aria-hidden="true"><rect x="3.4" y="0.9" width="7.7" height="7.7" rx="1.5"></rect><rect x="0.9" y="3.4" width="7.7" height="7.7" rx="1.5"></rect></svg></button>
               <button onClick="{{ c.onDel }}" title="{{ t.delTip }}" style="border:none;background:transparent;color:#bfbcb3;font-size:11px;line-height:13px;cursor:pointer;padding:0 2px" style-hover="color:#b03f34">✕</button>
             </div>
           </div>
@@ -500,6 +499,8 @@ const STORE = 'llm-guardrail-workshop-v4';
 // Ghost/drop offset, in screen px, down-and-right of the cursor. Used by BOTH the
 // drag preview and addCard on release so they cannot disagree.
 const GHOST_DX = 14, GHOST_DY = 12;
+// 복제 아이콘은 글자가 아니라 그림 / the duplicate icon is drawn, not typed: U+29C9
+// is missing from the font stack and each browser substituted its own glyph.
 
 /* 펜 / MARKER PEN
    보드에 직접 그리는 자유 필기 — 카드로는 못 하는 말을 하기 위한 도구입니다.
@@ -1911,11 +1912,10 @@ class Component extends DCLogic {
     }
     // Ctrl/Cmd 클릭 = 선택 토글 (이동하지 않음) / ctrl-click toggles selection
     if (e.ctrlKey || e.metaKey) { e.stopPropagation(); this.toggleSel(id); return; }
-    // 클릭하면 맨 앞으로 / clicking raises, even when the pointer landed on text or a
-    // button and the drag below is skipped
-    this.raiseCard(id);
     const t = e.target.tagName;
     if (t === 'INPUT' || t === 'TEXTAREA' || t === 'BUTTON') return;
+    // 글자·버튼이 아닐 때만 맨 앞으로 / raise only when the press was not on text or a button
+    this.raiseCard(id);
     e.stopPropagation();
     e.preventDefault();          // 네이티브 텍스트 드래그 방지 / no native text drag
     this.clearTextSel();
@@ -2071,6 +2071,15 @@ class Component extends DCLogic {
   }
 
   patch(id, k, v) { this.setState((s) => ({ cards: s.cards.map((c) => c.id === id ? Object.assign({}, c, { [k]: v }) : c) })); }
+  dupNote(id) {
+    const n = (this.state.notes || []).find((k) => k.id === id);
+    if (!n) return;
+    this.setState((s) => ({
+      notes: (s.notes || []).concat([Object.assign({}, n, { id: 'n' + s.seq, x: n.x + 20, y: n.y + 16 })]),
+      seq: s.seq + 1
+    }));
+  }
+
   dup(id) {
     const c = this.state.cards.find((k) => k.id === id);
     this.setState((s) => ({ cards: s.cards.concat([Object.assign({}, c, { id: 'c' + s.seq, x: c.x + 20, y: c.y + 16 })]), seq: s.seq + 1 }));
@@ -2801,6 +2810,8 @@ class Component extends DCLogic {
         autoFocus: this.state.focusNote === n.id,
         onDown: (!RO || n.sm) ? (e) => this.startNoteMove(n.id, e) : NOOP,
         onText: (!RO || n.sm) ? (e) => this.setState((s) => ({ notes: s.notes.map((k) => k.id === n.id ? Object.assign({}, k, { text: e.target.value }) : k) })) : NOOP,
+        // 메모도 복제 / a note can be copied too, on pointerdown so a shaky press does not drag
+        onDupDown: (!RO || n.sm) ? (e) => { e.stopPropagation(); e.preventDefault(); this.dupNote(n.id); } : NOOP,
         onDel: (!RO || n.sm) ? () => this.setState((s) => ({ notes: s.notes.filter((k) => k.id !== n.id) })) : NOOP
       })),
       clearAll: () => { if (confirm(t.confirmClear)) this.setState({ cards: [], notes: [], arrows: [], strokes: [], selArrow: null }); },

@@ -493,8 +493,23 @@ console.log("\n수단 is a chip with an ink bar, in the library and on the board
     "a sensemaking chip is inked differently");
   // 칩도 자기 조작을 갖는다 / the chip keeps its own controls
   const chip = doc.slice(doc.indexOf("{{ c.isMeans }}"), doc.indexOf("{{ c.isPlainCard }}"));
-  for (const h of ["onEditDown", "onDupDown", "onDelDown"])
+  for (const h of ["onDupDown", "onDelDown"])
     check(chip.includes(h), `the chip keeps ${h}`);
+  // ✎ 는 없앴다 / no edit button: clicking the label edits and dragging anywhere else moves,
+  // which is only true since raiseCard stopped recreating the node under the pointer
+  check(!chip.includes("onEditDown"), "and needs no edit button");
+}
+
+// ---- 6i. icons that are not in the font ----
+console.log("\nthe duplicate icon is drawn, not typed");
+{
+  // U+29C9 는 글꼴에 없다 / U+29C9 is absent from the font stack — measured against a
+  // guaranteed-missing codepoint it came out exactly as wide, so every browser substituted
+  // a glyph of its own and it read as lines rather than two sheets.
+  check(!doc.includes("\u29C9"), "U+29C9 is gone");
+  const dup = (doc.match(/<svg width="11" height="11" viewBox="0 0 12 12"/g) || []).length;
+  check(dup === 4, "every duplicate button draws it instead", ` (${dup}: chevron, chip, card, note)`);
+  check(/stroke="currentColor"/.test(doc), "and it inherits the button's colour");
 }
 
 // ---- 7. view mode must not be able to write ----
@@ -559,6 +574,11 @@ console.log("\nview mode cannot write");
   check(/const PEN = !!this\.state\.pen;/.test(doc), "and both go inert while the pen is up");
   check(/onDown: \(!RO \|\| c\.sm\) \? \(e\) => this\.startMove\(c\.id, e\) : NOOP/.test(doc),
     "card drag handler gated per object");
+  // 글자를 누르면 올리지 않는다 / a press on text must not raise: raiseCard reorders
+  // state.cards, the node under the pointer is recreated, and the focus goes with it — so
+  // the label of any card that was not already frontmost could not be clicked into.
+  check(/if \(t === 'INPUT' \|\| t === 'TEXTAREA' \|\| t === 'BUTTON'\) return;\s*\n\s*\/\/ 글자·버튼이 아닐 때만/.test(doc),
+    "raising happens only when the press missed the text");
   check(/showPanel: !RO/.test(doc), "card panel hidden while viewing");
   check(/canEdit: !RO/.test(doc), "editing toolbar hidden while viewing");
   // Deck tiles use "RO ? NOOP :"; board objects use the per-object form so that admin
