@@ -109,8 +109,8 @@ console.log("\npatch sites");
   ["toCanvas divides by UI", "((cx - r.left) / UI - this.state.pan.x) / z"],
   ["panel resize divides by UI", "d.pw + (e.clientX - d.sx) / UI"],
   ["pan divides by UI", "d.px + (e.clientX - d.sx) / UI"],
-  ["ghost divides by UI", "(this.state.ghost.x + GHOST_DX) / UI"],
-  ["drop reuses the ghost offset", "this.addCard(d.type, d.tpl, p.x + GHOST_DX / k, p.y + GHOST_DY / k)"],
+  ["ghost converts from the snapped board coordinate", "(r.left / UI) + bx * z + this.state.pan.x"],
+  ["drop reuses the ghost's own coordinate", "d.bx !== undefined ? d.bx :"],
   ["root applies zoom", "zoom:{{ ui }}"],
   ["root compensates height", "height:calc(100vh / {{ ui }})"],
 ].forEach(([label, needle]) =>
@@ -445,6 +445,38 @@ console.log("\nboard objects are identified explicitly");
   check(walkers === 5, "and all three walkers select by it", ` (${walkers} selectors)`);
   // 정적이어야 한다 / it must be static: the engine drops interpolated data-* attributes
   check(!/data-obj="\{\{/.test(doc), "the marker is literal, since interpolated data-* is dropped");
+}
+
+// ---- 6g. the ghost lands where it is shown ----
+console.log("\nthe drag preview is the drop, not an approximation of it");
+{
+  // 스냅을 두 번 계산하면 배율 큰 화면에서 한 칸씩 어긋난다 / snapping twice — once to draw the
+  // preview, once on release — let the two round to different 24px cells on a scaled
+  // display, so the ghost sat a whole grid cell from where the card landed.
+  check(/d\.bx = bx; d\.by = by;/.test(src), "the drop coordinate is fixed once, on the move");
+  check(/d\.bx !== undefined \? d\.bx :/.test(src), "and the drop reuses it rather than recomputing");
+  check(/const bx = g\.bx, by = g\.by;/.test(src), "the ghost draws at that same coordinate");
+}
+
+console.log("\nzoom and page scroll");
+{
+  // 핀치는 이벤트를 잔뜩 쏟아낸다 / a pinch delivers a stream of wheel events, so a fixed step
+  // per event ran through several zoom levels in one gesture
+  check(/Math\.max\(-0\.04, Math\.min\(0\.04, -e\.deltaY \* 0\.0035\)\)/.test(src),
+    "pinch zoom is proportional to the gesture and capped per event");
+  check(!/zoomBy\(e\.deltaY > 0 \? -0\.08 : 0\.08\)/.test(src), "not a fixed step any more");
+  // 문서 자체가 스크롤되면 툴바가 화면 밖으로 밀려난다 / if the document scrolls, the toolbar
+  // slides off; every screen already scrolls inside itself
+  check(/html,body\{overflow:hidden\}/.test(doc), "the page itself never scrolls");
+}
+
+console.log("\nwide characters are measured as wide");
+{
+  check(/function textUnits\(str\)/.test(src), "there is a width unit that knows about CJK");
+  check(/tsize: c\.type === 'means' \? Math\.max\(4, textUnits\(c\.title\) \+ 1\)/.test(src),
+    "and the 수단 pill sizes its input with it");
+  check(!/String\(c\.title \|\| ''\)\.length \+ 1/.test(src),
+    "not by .length, which under-measures Hangul by half");
 }
 
 // ---- 7. view mode must not be able to write ----

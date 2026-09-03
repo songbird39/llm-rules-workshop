@@ -21,6 +21,7 @@
 </style>
 </helmet>
 <style>
+  html,body{overflow:hidden}
   x-dc{visibility:hidden;animation:dc-ready 0s linear 10s forwards}
   @keyframes dc-ready{to{visibility:visible}}
   html[data-dc-ready] x-dc{visibility:visible;animation:none}
@@ -387,9 +388,12 @@
         </div>
       </sc-if>
       <sc-if value="{{ ghostMeans }}" hint-placeholder-val="{{ false }}">
-        <div style="position:fixed;left:{{ ghostX }}px;top:{{ ghostY }}px;transform:scale({{ ghostScale }});transform-origin:0 0;pointer-events:none;z-index:50;opacity:0.92;display:flex;align-items:center;gap:7px;padding:6px 13px;background:#fffefb;border:1px solid #ddd9cf;border-radius:15px;box-shadow:0 10px 22px rgba(0,0,0,0.16)">
-          <span style="flex:none;width:6px;height:6px;border-radius:50%;background:#8f8b81"></span>
-          <span style="font-size:12px;font-weight:600;letter-spacing:-0.01em;white-space:nowrap;color:#3a382f">{{ ghostText }}</span>
+        <div style="position:fixed;left:{{ ghostX }}px;top:{{ ghostY }}px;transform:scale({{ ghostScale }});transform-origin:0 0;pointer-events:none;z-index:50;opacity:0.92;display:flex;flex-direction:column;gap:5px;padding:7px;background:#fffefb;border:1px solid #ddd9cf;border-radius:15px;box-shadow:0 10px 22px rgba(0,0,0,0.16)">
+          <div style="display:flex;align-items:center;gap:7px;padding:2px 6px">
+            <span style="flex:none;width:6px;height:6px;border-radius:50%;background:#8f8b81"></span>
+            <span style="font-size:12px;font-weight:600;letter-spacing:-0.01em;white-space:nowrap;color:#3a382f">{{ ghostText }}</span>
+          </div>
+          <div style="height:13px"></div>
         </div>
       </sc-if>
       <sc-if value="{{ ghostCard }}" hint-placeholder-val="{{ false }}">
@@ -496,6 +500,15 @@ const GHOST_DX = 14, GHOST_DY = 12;
    what makes them survive pan, zoom, saving and the image export unchanged. */
 const INKS = ['oklch(0.76 0.130 70)', 'oklch(0.66 0.140 15)', 'oklch(0.64 0.110 155)', 'oklch(0.62 0.100 248)'];
 const PEN_W = 6, PEN_A = 0.55;
+
+/* 글자 폭 단위 / input.size counts "0"-width units. CJK glyphs are about twice as wide, so a
+   Korean label measured by .length comes out far too narrow and its tail is clipped. */
+function textUnits(str) {
+  const t = String(str || '');
+  let n = 0;
+  for (let i = 0; i < t.length; i++) n += /[\u1100-\u11FF\u2E80-\uA4CF\uAC00-\uD7FF\uF900-\uFAFF\uFE30-\uFE4F\uFF00-\uFF60\uFFE0-\uFFE6]/.test(t[i]) ? 2 : 1;
+  return n;
+}
 
 /* ─────────────────────────────────────────────────────────────────
    UI 배율 / UI SCALE
@@ -620,9 +633,9 @@ const I18N = {
       con: [
         { title: '개입 없음', desc: '시스템은 아무것도 하지 않는다', dia: 'h_self' },
         { title: '규칙 상기', desc: '규칙을 시스템에 표출시켜서 상기시킨다', dia: 'h_remind' },
-        { title: '프롬프트 프리셋', desc: '특정 방식을 프롬프트 프리셋으로 제공하여 유도한다', dia: 'h_preset' },
+        { title: '프롬프트 프리셋', desc: '자주 쓰고 싶은 특정 프롬프트를 템플릿으로 제공하여 유도한다', dia: 'h_preset' },
         { title: '스스로 시도 유도', desc: '답을 주기 전에 먼저 시도해 보도록 이끈다', dia: 'h_try' },
-        { title: '질문 제안', desc: '도움이 될 만한 질문을 제안하거나 던진다', dia: 'h_ask' },
+        { title: '질문 제안', desc: '다음으로 나아가는 데에 도움이 될 만한 질문을 던진다', dia: 'h_ask' },
         { title: '단계별 힌트', desc: '답을 직접적으로 제공하는 대신 단계별 힌트를 제공한다', dia: 'h_hint' },
         { title: '외부 도구 열기', desc: '자동으로 외부 도구를 띄운다 (사전/유튜브/단어카드/문서파일 등)', dia: 'h_tool' },
         { title: '한 번 더 확인', desc: '채팅 혹은 시스템에서 요청을 실행할 것인지 다시 한 번 확인한다', dia: 'h_confirm' },
@@ -639,7 +652,7 @@ const I18N = {
         { title: '규칙 대상 활동 시작 시', desc: '규칙이 걸린 활동을 시작하면', dia: 'w_auto' },
         { title: '규칙 위반 요청 감지 시', desc: '규칙을 어기는 요청이 감지되면', dia: 'w_violate' },
         { title: '거듭 요청 시', desc: '사용자가 같은 요청을 거듭하면', dia: 'w_retry' },
-        { title: '어려움 감지 시', desc: '사용자가 어려움을 느끼고 있음이 감지되면', dia: 'w_struggle' },
+        { title: '어려움 감지 시', desc: '(답변 내용, 사용 패턴 등에서) 어려움을 느끼고 있음이 감지되면', dia: 'w_struggle' },
         { title: '목표 도달 시', desc: '정해 둔 목표에 도달하면', dia: 'w_goal' },
         { title: '시간 제한 도달 시', desc: '정해 둔 시간에 이르면', dia: 'w_time' },
         { title: '횟수 제한 도달 시', desc: '정해 둔 횟수 · 대화 턴에 이르면', dia: 'w_count' },
@@ -723,9 +736,9 @@ const I18N = {
       con: [
         { title: 'No intervention', desc: 'the system does nothing', dia: 'h_self' },
         { title: 'Show the rule', desc: 'surface the rule in the system as a reminder', dia: 'h_remind' },
-        { title: 'Prompt presets', desc: 'nudge a particular way of asking by offering it as a preset', dia: 'h_preset' },
+        { title: 'Prompt presets', desc: 'offer a prompt you reach for often as a reusable template', dia: 'h_preset' },
         { title: 'Prompt a first attempt', desc: 'lead the user to try before giving an answer', dia: 'h_try' },
-        { title: 'Suggest questions', desc: 'offer or pose questions that would help', dia: 'h_ask' },
+        { title: 'Suggest questions', desc: 'pose a question that helps you get to the next step', dia: 'h_ask' },
         { title: 'Step-by-step hints', desc: 'give staged hints rather than handing over the answer', dia: 'h_hint' },
         { title: 'Open an external tool', desc: 'open a dictionary/YouTube/flashcards/document automatically', dia: 'h_tool' },
         { title: 'Confirm once more', desc: 'ask again whether to run the request', dia: 'h_confirm' },
@@ -742,7 +755,7 @@ const I18N = {
         { title: 'When the activity starts', desc: 'an activity the rule covers begins', dia: 'w_auto' },
         { title: 'When a rule-breaking request is detected', desc: 'a request that breaks the rule is detected', dia: 'w_violate' },
         { title: 'When the user asks repeatedly', desc: 'the same request is made again and again', dia: 'w_retry' },
-        { title: 'When the user seems to struggle', desc: 'the user appears to be stuck', dia: 'w_struggle' },
+        { title: 'When the user seems to struggle', desc: 'the user appears to be stuck, judging by their answers or usage', dia: 'w_struggle' },
         { title: 'When the goal is reached', desc: 'a goal you set is reached', dia: 'w_goal' },
         { title: 'When a time limit is reached', desc: 'a time you set is reached', dia: 'w_time' },
         { title: 'When a count limit is reached', desc: 'a number of turns you set is reached', dia: 'w_count' },
@@ -882,7 +895,13 @@ class Component extends DCLogic {
         }
       }
       e.preventDefault();
-      if (e.ctrlKey || e.metaKey) this.zoomBy(e.deltaY > 0 ? -0.08 : 0.08);
+      if (e.ctrlKey || e.metaKey) {
+        // 델타에 비례하되 한 번에 조금씩 / proportional to the gesture, capped per event:
+        // a trackpad pinch delivers many small events and a fixed step per event made the
+        // board jump several zoom levels from one gesture
+        const step = Math.max(-0.04, Math.min(0.04, -e.deltaY * 0.0035));
+        this.zoomBy(step);
+      }
       else this.setState((s) => ({ pan: { x: s.pan.x - e.deltaX, y: s.pan.y - e.deltaY } }));
     };
     el.addEventListener('wheel', this._wheel, { passive: false });
@@ -1275,6 +1294,24 @@ class Component extends DCLogic {
     if (!this.isDemo(pid)) this.syncDown(pid, d ? d.savedAt || 0 : 0);
   }
   logout() { this.setState({ pid: '', loginPid: '', step: 0, noteMode: false, admin: false, viewPid: '', roster: [], rosterMsg: '' }); }
+
+  /* 유령이 놓일 자리 / where the ghost belongs: the same board coordinate addCard will use,
+     snapped the same way, converted back to CSS px inside the zoomed root. Returning the
+     raw pointer plus a constant is what let the two drift apart. */
+  ghostAt() {
+    const g = this.state.ghost;
+    const el = this.canvasRef.current;
+    if (!g || !el) return { x: 0, y: 0 };
+    const r = el.getBoundingClientRect();
+    const z = this.state.zoom;
+    // 스냅은 onMove 에서 이미 끝났다 / the snap already happened on the move; only convert
+    const bx = g.bx, by = g.by;
+    if (bx === undefined) return { x: g.x / UI, y: g.y / UI };
+    return {
+      x: (r.left / UI) + bx * z + this.state.pan.x,
+      y: (r.top / UI) + by * z + this.state.pan.y
+    };
+  }
 
   toCanvas(cx, cy) {
     const r = this.canvasRef.current.getBoundingClientRect();
@@ -1906,7 +1943,11 @@ class Component extends DCLogic {
     const d = this.drag;
     if (!d) return;
     if (d.kind === 'new') {
-      this.setState((s) => ({ ghost: Object.assign({}, s.ghost, { x: e.clientX, y: e.clientY }) }));
+      const q = this.toCanvas(e.clientX, e.clientY);
+      const bx = this.fix(q.x + GHOST_DX / this.state.zoom);
+      const by = this.fix(q.y + GHOST_DY / this.state.zoom);
+      d.bx = bx; d.by = by;
+      this.setState((s) => ({ ghost: Object.assign({}, s.ghost, { x: e.clientX, y: e.clientY, bx: bx, by: by }) }));
     } else if (d.kind === 'move') {
       const p = this.toCanvas(e.clientX, e.clientY);
       let nx = this.fix(p.x - d.ox), ny = this.fix(p.y - d.oy);
@@ -2011,7 +2052,9 @@ class Component extends DCLogic {
         // 미리보기와 같은 자리에 놓는다 / land where the ghost was.
         // screen px -> canvas px: divide by board zoom and UI zoom.
         const k = (this.state.zoom || 1) * UI;
-        this.addCard(d.type, d.tpl, p.x + GHOST_DX / k, p.y + GHOST_DY / k);
+        // 이동 중에 정해진 좌표를 그대로 쓴다 / use the coordinate the ghost was drawn at
+        this.addCard(d.type, d.tpl, d.bx !== undefined ? d.bx : p.x + GHOST_DX / k,
+                                    d.by !== undefined ? d.by : p.y + GHOST_DY / k);
       }
       this.setState({ ghost: null });
     }
@@ -2781,7 +2824,7 @@ class Component extends DCLogic {
           tcol: c.type === 'means' ? '#3a382f' : '#1b1a17',
           // size 는 글자 수에 맞춰 입력칸이 스스로 늘어나게 한다 / the input sizes itself to
           // its own content, which is what lets an auto-width pill grow with the text
-          tsize: c.type === 'means' ? Math.max(4, String(c.title || '').length + 1) : 8,
+          tsize: c.type === 'means' ? Math.max(4, textUnits(c.title) + 1) : 8,
           tmin: c.type === 'means' ? 'auto' : '0',
           w: c.w || CARD,
           // 수단은 글자에 맞춰 늘어난다 / a 수단 pill sizes to its text, never wraps
@@ -2831,8 +2874,8 @@ class Component extends DCLogic {
       // 보드 확대율만큼 미리보기도 같이 확대 / preview scales with the board, so it is
       // the size of the card that will land
       ghostScale: this.state.zoom || 1,
-      ghostX: this.state.ghost ? (this.state.ghost.x + GHOST_DX) / UI : 0,
-      ghostY: this.state.ghost ? (this.state.ghost.y + GHOST_DY) / UI : 0,
+      ghostX: this.ghostAt().x,
+      ghostY: this.ghostAt().y,
       ui: UI,
       ghostTint: this.state.ghost ? TINT[this.state.ghost.type] : '#eee',
       ghostText: this.state.ghost ? this.state.ghost.text : ''
