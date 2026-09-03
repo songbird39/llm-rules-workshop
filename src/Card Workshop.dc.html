@@ -509,11 +509,15 @@ const PEN_W = 6, PEN_A = 0.55;
    back to 1 so those divisions stay correct rather than silently
    throwing the board out of alignment.
    ───────────────────────────────────────────────────────────────── */
+const PANEL_PAD = 16, PANEL_GAP = 10;
+function panelCols(n) { return PANEL_PAD * 2 + n * CARD + (n - 1) * PANEL_GAP; }
 function panelCap() {
   try {
-    const w = (window.innerWidth || 1400) / UI;
-    return Math.max(300, Math.min(566, Math.round(w * 0.40)));
-  } catch (e) { return 566; }
+    const budget = (window.innerWidth || 1400) / UI * 0.42;
+    // 들어가는 만큼, 2~3열 / as many whole columns as fit, held to 2 or 3
+    const cols = Math.max(2, Math.min(3, Math.floor((budget - PANEL_PAD * 2 + PANEL_GAP) / (CARD + PANEL_GAP))));
+    return panelCols(cols);
+  } catch (e) { return panelCols(3); }
 }
 
 const UI = (function () {
@@ -929,7 +933,7 @@ class Component extends DCLogic {
 
   componentDidUpdate() {
     this.trackUndo();
-    if (this.state.step === 2) this.bindWheel();
+    if (this.state.step >= 1) this.bindWheel();
     // 드래그 중에는 높이를 재지 않는다. 이동은 높이를 바꾸지 않는데, 매 이동마다
     // autoGrow + 강제 레이아웃을 돌리면 렌더 루프가 되어 포인터 이벤트가 굶는다.
     // Skip while dragging: moving cannot change a height, and running autoGrow plus a

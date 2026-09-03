@@ -523,8 +523,8 @@ console.log("\nview mode cannot write");
     );
     // panning does not depend on the card layer, which is pointer-events:none
     check(/window\.addEventListener\('pointermove'/.test(doc), "pan listener is global");
-    check(/if \(this\.state\.step === 2\) this\.bindWheel\(\)/.test(doc),
-      "wheel pan binds on the board step");
+    check(/if \(this\.state\.step >= 1\) this\.bindWheel\(\)/.test(doc),
+      "wheel pan binds on both board steps");
   }
 
   // 7d-ter. text inside a card must be reachable and scrollable while viewing

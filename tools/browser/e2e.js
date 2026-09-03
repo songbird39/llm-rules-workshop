@@ -20,7 +20,12 @@
  *  - Step-1 rule titles are <input value="…">, not text nodes, so getByText misses them.
  *  - Attribute selectors like [style*="width:168px"] do NOT match: the browser
  *    re-serialises the style attribute with spaces. Query the live layer instead.
- */
+  *
+ * SANDBOX LIMIT: this suite now opens ~25 browser contexts against a 23MB page. On a small
+ * machine it can exhaust memory near the end and stall rather than fail — the log simply
+ * stops advancing. If that happens, the fix is to split the run, not to hunt a hang: every
+ * section verified here passes when run on its own.
+*/
 const path = require("path");
 const { chromium } = require(process.env.PW || "/tmp/node_modules/playwright");
 

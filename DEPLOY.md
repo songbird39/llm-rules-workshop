@@ -133,9 +133,15 @@ ladder runs down as well as up because a laptop is the likeliest machine in the 
 1024 the toolbar used to wrap onto a second row and the panel took more than half the
 width. `?ui=1` restores unscaled rendering and `?ui=<n>` forces a scale (clamped 0.8–2).
 
-The card panel is capped at **40% of the window** (never more than 566px, never less than
-300). A fixed 566px slab is 37% of a 1512 window but 49% of an 1152 one, so the narrower
-the screen the less board was left. It stays freely resizable by dragging its edge.
+The card panel snaps to **whole card columns** — two or three depending on the window,
+inside a 42% budget. The panel is a card grid (16px padding, 168px cards, 10px gaps), so
+anything between two column counts is dead space. It stays freely resizable by dragging its
+edge.
+
+**Navigating the board**: two-finger scroll (or a wheel) pans, ctrl+scroll zooms, and
+middle-drag / Alt+drag / Space+drag pan as well. A plain drag on empty board draws the
+selection marquee — selection is used constantly here and has no substitute, whereas
+panning has the trackpad. Double-clicking empty board, or pressing 0, recentres.
 
 Pointer maths divides by the scale in four places (`toCanvas`, pan, panel resize, drag
 ghost). The browser check at 2560/1920/1440/1280/1024 drags a card and asserts it tracks
