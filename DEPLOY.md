@@ -228,6 +228,24 @@ Three checks before a session:
    fire-and-forget (`no-cors`), so the badge means "sent", not "stored" — the sheet is
    the only real confirmation.
 
+## Old records and design changes
+
+A saved record holds **data, never styling** — card types, titles, positions — so reopening
+one draws it with whatever the app looks like today. A board saved as rounded pills comes
+back as chips; a tag saved at the old 50px height comes back at 62. Nothing needs migrating,
+and there is no version stamp to keep in step.
+
+Two consequences worth knowing:
+
+- Geometry in the record (`w`, `h`) is treated as a hint, not a truth: it is re-measured on
+  load, so stale sizes correct themselves.
+- Text that a newer design no longer displays stays in the record but stops being shown —
+  a 수단 description saved before 규칙 cards became label-only, for instance. It is not lost,
+  just not drawn.
+
+A card whose deck has been retired entirely (`rule`, from before the five-deck model) still
+renders, in the neutral tone rather than colourless.
+
 ## Demo sessions
 
 Sign in with any code starting with **`demo`** (case-insensitive: `demo`, `demo0`,

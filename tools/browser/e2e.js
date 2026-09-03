@@ -1334,6 +1334,50 @@ async function dragTileToBoard(page, title, fx = 0.45, fy = 0.4) {
     await page.close();
   }
 
+  // ------------------------------------------------- old records get the new design
+  // 기록에는 데이터만 들어 있고 모양은 앱이 준다 / a record holds data, never styling, so an
+  // old board is redrawn by whatever the app looks like today. This pins that down, and
+  // covers the awkward parts: geometry saved under the old sizes, and a card whose deck
+  // no longer exists.
+  console.log("\nan old record is redrawn in the current design");
+  {
+    const { page, errors } = await boot(browser, { width: 1500, height: 900 });
+    await page.evaluate(() => localStorage.setItem("llm-guardrail-workshop-v4:OLDREC", JSON.stringify({
+      savedAt: Date.now(), pid: "OLDREC", step: 2, lang: "ko", seq: 20, panelW: 566,
+      rules: [{ id: "r0", cat: "a", title: "옛 규칙", desc: "…", sel: true }],
+      cards: [
+        { id: "c1", type: "act", title: "첫 학습", desc: "옛 설명", dia: null, x: 120, y: 120, w: 352, h: 50 },
+        { id: "c2", type: "means", title: "AI 사용", desc: "옛 설명", dia: null, x: 120, y: 260, w: 168, h: 96 },
+        { id: "c3", type: "rule", title: "번역은 직접", desc: "은퇴한 덱", dia: null, x: 120, y: 420, w: 168, h: 168 },
+        { id: "c4", type: "con", title: "규칙 상기", desc: "규칙을 시스템에 표출시켜서 상기시킨다",
+          dia: "h_remind", x: 520, y: 260, w: 168, h: 168 }
+      ],
+      notes: [{ id: "n1", x: 520, y: 120, text: "옛 메모" }], arrows: [], strokes: []
+    })));
+    await page.reload({ waitUntil: "load" });
+    await page.waitForSelector('input[placeholder="P0000"]', { timeout: 120000 });
+    await page.fill('input[placeholder="P0000"]', "OLDREC");
+    await page.getByText("시작하기", { exact: false }).click();
+    await page.waitForTimeout(1500);
+    const objs = await page.evaluate(() => [...document.querySelectorAll('[data-obj="card"]')].map((c) => {
+      const r = c.getBoundingClientRect(); const i = c.querySelector("input"); const bar = c.firstElementChild;
+      return { t: i ? i.value : "?", h: Math.round(r.height),
+               chip: !!(bar && getComputedStyle(bar).width === "9px"),
+               badge: getComputedStyle(c).borderTopColor };
+    }));
+    const by = (t) => objs.find((o) => o.t === t);
+    check(objs.length === 4, "every card in the old record is drawn", ` (${objs.length})`);
+    // 저장된 높이는 50 이었다 / it was saved at the old 50px height and is redrawn at 62
+    check(by("첫 학습") && by("첫 학습").h === 62, "the tag is redrawn at the current height",
+      ` (${by("첫 학습") && by("첫 학습").h})`);
+    check(by("AI 사용") && by("AI 사용").chip && by("AI 사용").h === 38,
+      "the 수단 is redrawn as the chip, not the pill it was saved as");
+    // 은퇴한 덱의 카드도 카드처럼 보여야 한다 / a card from a retired deck still looks like one
+    check(!!by("번역은 직접"), "a card whose deck no longer exists still renders");
+    check(errors.length === 0, "and nothing throws", errors.length ? ` (${errors[0]})` : "");
+    await page.close();
+  }
+
   // ------------------------------------------------- sizing
   console.log("\ntags run longer rather than wrapping; the board reads bigger than the library");
   {
