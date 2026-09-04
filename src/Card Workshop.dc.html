@@ -856,6 +856,23 @@ class Component extends DCLogic {
     } catch (e) {}
     this._move = (e) => this.onMove(e);
     this._up = (e) => this.onUp(e);
+    /* JSONP 스크립트가 던지는 오류는 이미 처리된 것이다 / an error thrown by a JSONP script is
+       already handled. s.onerror covers a script that fails to LOAD, but not one that loads
+       and then fails to parse — which is what happens when the Apps Script returns an HTML
+       error page. Same origin that shows as "Unexpected token '<'"; cross-origin the browser
+       masks it as a bare "Script error." with no file and no line, and it surfaced as a
+       banner on the board even though the 9s timeout had already resolved the request to
+       null and the session carried on. The only cross-origin scripts here are our own JSONP
+       tags, so an opaque error with no filename is one of them. Anything with a filename —
+       every error from this app — passes through untouched. */
+    this._scriptErr = (e) => {
+      if (e.filename || (e.message && !/^script error/i.test(e.message))) return;
+      e.stopImmediatePropagation();
+      e.preventDefault();
+      // 표시는 사실대로 / say what happened: the load failed, so do not sit on "loading"
+      this.setState({ sync: 'offline', loadingRemote: false });
+    };
+    window.addEventListener('error', this._scriptErr, true);
     this._blur = (e) => this.blurUnlessTarget(e);
     window.addEventListener('pointerdown', this._blur, true);
     window.addEventListener('pointermove', this._move);
@@ -879,6 +896,7 @@ class Component extends DCLogic {
   }
 
   componentWillUnmount() {
+    window.removeEventListener('error', this._scriptErr, true);
     window.removeEventListener('pointerdown', this._blur, true);
     window.removeEventListener('pointermove', this._move);
     window.removeEventListener('pointerup', this._up);

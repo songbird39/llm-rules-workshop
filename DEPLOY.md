@@ -210,6 +210,23 @@ app's `doPost` writes, and its query params are frozen, so the JSONP resume read
 (`?participant=&callback=`) does nothing. Using it loses all data silently. Get the
 right URL from **Deploy ▸ Manage deployments ▸ Web app URL**.
 
+### When the endpoint answers badly
+
+Reads use JSONP — a `<script>` tag pointed at the Apps Script — because a `no-cors` fetch
+cannot read a response. If the deployment returns an **HTML error page** instead of JSONP
+(most often: the script was never redeployed after an edit, the deployment URL changed, or
+access is not set to *Anyone*), that script loads and then fails to parse. Same-origin that
+reads as `Unexpected token '<'`; cross-origin the browser masks it as a bare **"Script
+error."** with no file and no line — which appeared as an error banner on the board even
+though the request had already timed out to null and the session was fine.
+
+The app now intercepts that specific shape — an error with no filename and no message of
+its own, which can only be one of its own JSONP tags — and shows **오프라인** instead. A real
+error from the app itself still surfaces normally; the browser check asserts both halves.
+
+If you see 오프라인 on sign-in, the endpoint is the thing to look at, starting with a
+redeploy (Manage deployments ▸ Edit ▸ Version: **New**).
+
 ### Changing the endpoint
 
 Per-session override, highest priority, nothing to rebuild:

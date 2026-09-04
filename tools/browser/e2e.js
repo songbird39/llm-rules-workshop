@@ -1357,6 +1357,48 @@ async function dragTileToBoard(page, title, fx = 0.45, fy = 0.4) {
     await page.close();
   }
 
+  // ------------------------------------------------- a failing endpoint stays quiet
+  // Apps Script 가 오류 페이지를 돌려주면 / when the endpoint answers with an HTML error page,
+  // the injected JSONP script throws. Cross-origin that is an opaque "Script error." with no
+  // file, and it surfaced as a banner on the board even though the request had already
+  // timed out to null and the session was fine.
+  console.log("\na failing sync endpoint does not look like a broken app");
+  {
+    const page = await browser.newPage({ viewport: { width: 1500, height: 900 } });
+    const errors = [];
+    page.on("pageerror", (e) => errors.push(e.message.split("\n")[0]));
+    await page.route("**/macros/s/**", (r) => r.fulfill({
+      status: 200, contentType: "text/html",
+      body: "<!DOCTYPE html><html><body>Sorry, unable to open the file.</body></html>"
+    }));
+    await page.goto(APP, { waitUntil: "load", timeout: 120000 });
+    await page.waitForSelector('input[placeholder="P0000"]', { timeout: 120000 });
+    await page.fill('input[placeholder="P0000"]', "JPX");
+    await page.getByText("시작하기", { exact: false }).click();
+    await page.waitForTimeout(2500);
+    check(errors.length === 0, "the page reports no error", errors.length ? ` (${errors[0]})` : "");
+    check(await page.evaluate(() => !!document.body.innerText.match(/무엇을 하나요/)),
+      "and the board opens anyway");
+    check((await page.evaluate(() => {
+      const m = document.body.innerText.match(/오프라인|저장됨|저장 중|연결됨|불러오는 중/);
+      return m ? m[0] : "?";
+    })) === "오프라인", "with the indicator saying offline, not stuck on loading");
+    await page.close();
+
+    // 진짜 오류는 그대로 드러나야 한다 / a real error must still surface, or this is a gag
+    const p2 = await browser.newPage({ viewport: { width: 1200, height: 800 } });
+    const e2 = [];
+    p2.on("pageerror", (e) => e2.push(e.message));
+    await p2.route("**/macros/s/**", (r) => r.fulfill({ status: 200, body: "{}" }));
+    await p2.goto(APP, { waitUntil: "load", timeout: 120000 });
+    await p2.waitForSelector('input[placeholder="P0000"]', { timeout: 120000 });
+    await p2.evaluate(() => { setTimeout(() => { throw new Error("a real bug in the app"); }, 10); });
+    await p2.waitForTimeout(600);
+    check(e2.some((m) => m.includes("a real bug in the app")),
+      "while a real error is still reported", ` (${e2.length})`);
+    await p2.close();
+  }
+
   // ------------------------------------------------- sizing
   console.log("\ntags run longer rather than wrapping; the board reads bigger than the library");
   {

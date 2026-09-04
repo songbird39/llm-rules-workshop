@@ -512,6 +512,22 @@ console.log("\nthe duplicate icon is drawn, not typed");
   check(/stroke="currentColor"/.test(doc), "and it inherits the button's colour");
 }
 
+// ---- 6j. an opaque script error is not the app's ----
+console.log("\na failing endpoint does not look like a broken app");
+{
+  // s.onerror 는 '못 불러온' 경우만 잡는다 / onerror only covers a script that fails to LOAD.
+  // One that loads and then fails to parse — an Apps Script returning an HTML error page —
+  // throws, and cross-origin the browser masks it as a bare "Script error." with no file.
+  check(/window\.addEventListener\('error', this\._scriptErr, true\)/.test(src),
+    "the opaque cross-origin error is intercepted, in the capture phase");
+  check(/if \(e\.filename \|\| \(e\.message && !\/\^script error\/i\.test\(e\.message\)\)\) return;/.test(src),
+    "and only when it has no file and no message of its own");
+  check(/sync: 'offline', loadingRemote: false/.test(src),
+    "the indicator then says offline rather than sitting on loading");
+  check(/window\.removeEventListener\('error', this\._scriptErr, true\)/.test(src),
+    "and the listener is removed on unmount");
+}
+
 // ---- 7. view mode must not be able to write ----
 // The whole point: viewing P01 must never produce a localStorage write or a sheet
 // POST, because latestState_() takes the newest row and would adopt the accident.
