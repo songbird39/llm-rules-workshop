@@ -473,11 +473,14 @@ console.log("\nzoom and page scroll");
 
 console.log("\nwide characters are measured as wide");
 {
-  check(/function textUnits\(str\)/.test(src), "there is a width unit that knows about CJK");
-  check(/tsize: c\.type === 'means' \? Math\.max\(4, textUnits\(c\.title\) \+ 1\)/.test(src),
-    "and the 수단 pill sizes its input with it");
-  check(!/String\(c\.title \|\| ''\)\.length \+ 1/.test(src),
-    "not by .length, which under-measures Hangul by half");
+  // 눈금이 아니라 실측 / measured, not counted: input.size works in "0"-width units, too
+  // coarse for a chip that hugs its text — wide enough never to clip Hangul left visible
+  // slack after the label
+  check(/function textPx\(str\)/.test(src), "the label is measured, not counted in notches");
+  check(/tw: c\.type === 'means' \? Math\.max\(28, textPx\(c\.title \|\| c\.titlePlaceholder\) \+ 3\)/.test(src),
+    "and the chip's input takes that width plus room for the caret");
+  check(!/size="\{\{ c\.tsize \}\}"/.test(doc), "the coarse size attribute is gone");
+  check(/0\.13 \* t\.length/.test(src), "letter-spacing is added back, since measureText ignores it");
 }
 
 // ---- 6h. the 수단 chip ----

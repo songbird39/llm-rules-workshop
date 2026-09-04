@@ -345,7 +345,7 @@
           <div data-obj="card" onPointerDown="{{ c.onDown }}" style="position:absolute;left:{{ c.x }}px;top:{{ c.y }}px;height:38px;display:inline-flex;align-items:stretch;background:#fffefb;border:2px solid {{ c.chipInk }};border-radius:3px;box-sizing:border-box;overflow:hidden;outline:{{ c.outline }};outline-offset:2px;pointer-events:{{ c.pe }};cursor:{{ c.cursor }}">
             <span style="width:9px;background:{{ c.chipInk }};flex:none"></span>
             <span style="display:inline-flex;align-items:center;gap:6px;padding:0 8px 0 12px">
-              <input value="{{ c.title }}" onChange="{{ c.onTitle }}" placeholder="{{ c.titlePlaceholder }}" size="{{ c.tsize }}" style="min-width:0;border:none;background:transparent;font-size:13px;font-weight:700;color:#3a382f;letter-spacing:-0.01em;white-space:nowrap;outline:none;padding:0;pointer-events:{{ c.tpe }}" />
+              <input value="{{ c.title }}" onChange="{{ c.onTitle }}" placeholder="{{ c.titlePlaceholder }}" style="width:{{ c.tw }}px;flex:none;border:none;background:transparent;font-size:13px;font-weight:700;color:#3a382f;letter-spacing:-0.01em;white-space:nowrap;outline:none;padding:0;pointer-events:{{ c.tpe }}" />
               <span style="display:inline-flex;align-items:center;gap:0">
                 <button onPointerDown="{{ c.onDupDown }}" title="{{ t.dupTip }}" style="flex:none;width:22px;height:22px;border:none;border-radius:5px;background:transparent;color:#9c9689;font-size:12px;line-height:1;cursor:pointer;padding:0" style-hover="color:#1b1a17"><svg width="11" height="11" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.25" stroke-linejoin="round" aria-hidden="true"><rect x="3.4" y="0.9" width="7.7" height="7.7" rx="1.5"></rect><rect x="0.9" y="3.4" width="7.7" height="7.7" rx="1.5"></rect></svg></button>
                 <button onPointerDown="{{ c.onDelDown }}" title="{{ t.delTip }}" style="flex:none;width:22px;height:22px;border:none;border-radius:5px;background:transparent;color:#9c9689;font-size:12px;line-height:1;cursor:pointer;padding:0" style-hover="color:#b03f34">✕</button>
@@ -359,7 +359,7 @@
               <sc-if value="{{ c.isMeans }}" hint-placeholder-val="{{ false }}">
                 <span style="flex:none;width:6px;height:6px;border-radius:50%;background:#8f8b81"></span>
               </sc-if>
-              <input value="{{ c.title }}" onChange="{{ c.onTitle }}" placeholder="{{ c.titlePlaceholder }}" size="{{ c.tsize }}" style="flex:1;min-width:{{ c.tmin }};border:none;background:transparent;font-size:{{ c.tfs }};font-weight:600;letter-spacing:-0.01em;color:{{ c.tcol }};outline:none;padding:0;pointer-events:{{ c.tpe }}" />
+              <input value="{{ c.title }}" onChange="{{ c.onTitle }}" placeholder="{{ c.titlePlaceholder }}" style="flex:1;min-width:{{ c.tmin }};border:none;background:transparent;font-size:{{ c.tfs }};font-weight:600;letter-spacing:-0.01em;color:{{ c.tcol }};outline:none;padding:0;pointer-events:{{ c.tpe }}" />
               <sc-if value="{{ c.notMeans }}" hint-placeholder-val="{{ true }}">
                 <span style="font-size:9px;letter-spacing:0.02em;color:{{ c.accent }};border:1px solid {{ c.accent }};border-radius:3px;padding:0 3px">{{ c.mark }}</span>
               </sc-if>
@@ -512,13 +512,22 @@ const GHOST_DX = 14, GHOST_DY = 12;
 const INKS = ['oklch(0.76 0.130 70)', 'oklch(0.66 0.140 15)', 'oklch(0.64 0.110 155)', 'oklch(0.62 0.100 248)'];
 const PEN_W = 6, PEN_A = 0.55;
 
-/* 글자 폭 단위 / input.size counts "0"-width units. CJK glyphs are about twice as wide, so a
-   Korean label measured by .length comes out far too narrow and its tail is clipped. */
-function textUnits(str) {
+/* 글자 폭을 실제로 잰다 / measure the label instead of counting notches. input.size works in
+   "0"-width units, which is too coarse for a chip that hugs its text: wide enough never to
+   clip Hangul left visible slack after the label. Canvas gives the real advance width.
+   letter-spacing is not part of measureText, so it is added back by hand. */
+const TEXT_FONT = "700 13px Pretendard, -apple-system, 'Apple SD Gothic Neo', system-ui, sans-serif";
+function textPx(str) {
   const t = String(str || '');
-  let n = 0;
-  for (let i = 0; i < t.length; i++) n += /[\u1100-\u11FF\u2E80-\uA4CF\uAC00-\uD7FF\uF900-\uFAFF\uFE30-\uFE4F\uFF00-\uFF60\uFFE0-\uFFE6]/.test(t[i]) ? 2 : 1;
-  return n;
+  if (!t) return 0;
+  try {
+    if (!textPx._c) textPx._c = document.createElement('canvas').getContext('2d');
+    const g = textPx._c;
+    if (g.font !== TEXT_FONT) g.font = TEXT_FONT;
+    return Math.ceil(g.measureText(t).width - 0.13 * t.length);
+  } catch (e) {
+    return t.length * 9;
+  }
 }
 
 /* ─────────────────────────────────────────────────────────────────
@@ -2866,7 +2875,8 @@ class Component extends DCLogic {
           tcol: c.type === 'means' ? '#3a382f' : '#1b1a17',
           // size 는 글자 수에 맞춰 입력칸이 스스로 늘어나게 한다 / the input sizes itself to
           // its own content, which is what lets an auto-width pill grow with the text
-          tsize: c.type === 'means' ? Math.max(4, textUnits(c.title) + 1) : 8,
+          // 잰 값에 커서 자리만 / the measured width plus room for the caret
+          tw: c.type === 'means' ? Math.max(28, textPx(c.title || c.titlePlaceholder) + 3) : 0,
           tmin: c.type === 'means' ? 'auto' : '0',
           w: c.w || CARD,
           // 수단은 글자에 맞춰 늘어난다 / a 수단 pill sizes to its text, never wraps
