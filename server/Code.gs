@@ -116,12 +116,15 @@ function roster_() {
     // stored under a "sm:" key and are not participants
     if (pid.indexOf(SENSE_PREFIX) === 0) continue;
     if (isDemo_(pid)) continue;   // 데모는 참여자가 아니다 / a demo is not a participant
-    if (!map[pid]) { map[pid] = { participant: pid, rows: 0, submits: 0, lastAt: null }; order.push(pid); }
+    if (!map[pid]) { map[pid] = { participant: pid, rows: 0, submits: 0, firstAt: null, lastAt: null }; order.push(pid); }
     var rec = map[pid];
     rec.rows++;
     if (String(vals[i][2]) === 'submit') rec.submits++;
     var ts = vals[i][0];
     if (ts && (!rec.lastAt || ts > rec.lastAt)) rec.lastAt = ts;
+    // 첫 행이 곧 세션이 열린 시각 / the first row a participant ever wrote is when their
+    // session started — the sheet is append-only, so nothing earlier can appear later
+    if (ts && (!rec.firstAt || ts < rec.firstAt)) rec.firstAt = ts;
   }
   var out = order.map(function (pid) {
     var r = map[pid];
@@ -130,6 +133,7 @@ function roster_() {
       participant: r.participant,
       rows: r.rows,
       submits: r.submits,
+      firstAt: r.firstAt ? new Date(r.firstAt).toISOString() : null,
       lastAt: r.lastAt ? new Date(r.lastAt).toISOString() : null,
       // 숨김은 목록에서만 빠진다 / hidden only drops it out of the default list; every
       // row it ever wrote is still on the sheet and the client can bring it back
@@ -137,7 +141,10 @@ function roster_() {
       desc: String(m.desc || '')
     };
   });
-  out.sort(function (a, b) { return String(b.lastAt || '').localeCompare(String(a.lastAt || '')); });
+  // 세션이 열린 순서대로 / in the order the sessions happened, oldest first: the roster
+  // is a record of fieldwork, and fieldwork has an order. Sorting by last activity made
+  // the list reshuffle itself every time a record was opened.
+  out.sort(function (a, b) { return String(a.firstAt || '').localeCompare(String(b.firstAt || '')); });
   return out;
 }
 

@@ -30,8 +30,11 @@
 <div style="display:flex;flex-direction:column;height:calc(100vh / {{ ui }});zoom:{{ ui }};overflow:hidden">
 
   <div style="display:flex;flex-wrap:wrap;align-items:center;gap:10px 16px;min-height:58px;flex:0 0 auto;padding:9px 18px;background:#faf8f3;border-bottom:1px solid #e2dfd7">
-    <sc-if value="{{ isStep2 }}" hint-placeholder-val="{{ false }}">
-      <button onClick="{{ goBack }}" style="padding:7px 13px;border:1px solid #d6d3ca;border-radius:7px;background:#fff;font-size:13.5px;cursor:pointer" style-hover="background:#f1efe8">{{ t.prev }}</button>
+    <!-- 뒤로 가는 길은 하나 / one way back, top left, always. For a participant it is the
+         previous step; for the admin it is the list, which is what "back" means when you
+         are reading somebody else's board. -->
+    <sc-if value="{{ showBack }}" hint-placeholder-val="{{ false }}">
+      <button onClick="{{ onBack }}" style="padding:7px 13px;border:1px solid #d6d3ca;border-radius:7px;background:#fff;font-size:13.5px;cursor:pointer" style-hover="background:#f1efe8">{{ backLabel }}</button>
     </sc-if>
     <div style="display:flex;flex-direction:column;gap:1px;min-width:0;flex-shrink:1">
       <div style="font-size:16px;font-weight:600;letter-spacing:-0.01em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ t.title }}</div>
@@ -68,13 +71,11 @@
           <button onClick="{{ zoomIn }}" style="width:26px;height:27px;border:none;background:transparent;cursor:pointer;font-size:15px;line-height:1" style-hover="background:#f1efe8">+</button>
         </div>
         <sc-if value="{{ isViewing }}" hint-placeholder-val="{{ false }}">
-          <button onClick="{{ onBackList }}" style="padding:5px 9px;border:1px solid #d6d3ca;border-radius:6px;background:#fff;font-size:12.5px;cursor:pointer" style-hover="background:#f1efe8">{{ t.backList }}</button>
           <button onClick="{{ onRefresh }}" style="padding:5px 9px;border:1px solid #d6d3ca;border-radius:6px;background:#fff;font-size:12.5px;cursor:pointer" style-hover="background:#f1efe8">{{ t.refreshBtn }}</button>
           <button onClick="{{ onDupAll }}" style="padding:5px 9px;border:1px dashed oklch(0.62 0.11 62);border-radius:6px;background:#fdfbf5;color:#7a5a1f;font-size:12.5px;cursor:pointer">{{ t.dupAllBtn }}</button>
           <button onClick="{{ onDupSel }}" style="padding:5px 9px;border:1px dashed oklch(0.62 0.11 62);border-radius:6px;background:#fdfbf5;color:#7a5a1f;font-size:12.5px;cursor:pointer">{{ t.dupSelBtn }}</button>
           <button onClick="{{ onImg }}" style="padding:5px 9px;border:1px solid #d6d3ca;border-radius:6px;background:#fff;font-size:12.5px;cursor:pointer" style-hover="background:#f1efe8">{{ t.imgBtn }}</button>
           <button onClick="{{ onImgSense }}" style="padding:5px 9px;border:1px dashed oklch(0.62 0.11 62);border-radius:6px;background:#fdfbf5;color:#7a5a1f;font-size:12.5px;cursor:pointer">{{ t.imgSenseBtn }}</button>
-          <button onClick="{{ onTogglePanel }}" style="padding:5px 9px;border:1px solid #d6d3ca;border-radius:6px;background:{{ panelBtnBg }};color:{{ panelBtnFg }};font-size:12.5px;cursor:pointer" style-hover="background:#f1efe8">{{ panelBtnLabel }}</button>
           <button onClick="{{ onClearSense }}" style="padding:5px 8px;border:1px solid #e2dfd7;border-radius:6px;background:transparent;color:#98958c;font-size:12.5px;cursor:pointer" style-hover="color:#b03f34">{{ t.clearSenseBtn }}</button>
           <button onClick="{{ onHistory }}" style="padding:5px 9px;border:1px solid #d6d3ca;border-radius:6px;background:#fff;font-size:12.5px;cursor:pointer" style-hover="background:#f1efe8">{{ t.histBtn }}</button>
         </sc-if>
@@ -167,6 +168,11 @@
         <div style="display:flex;align-items:baseline;gap:10px;flex-wrap:wrap">
           <div style="font-size:17px;font-weight:700;letter-spacing:-0.01em">{{ rosterHeading }}</div>
           <div style="flex:1"></div>
+          <!-- 한 번에 한 모드 / one mode at a time. The list itself stays a list: the
+               description field and the hide control only appear when that is what the
+               admin came to do, so a mis-aimed click cannot rewrite or hide a record. -->
+          <button onClick="{{ onModeDesc }}" style="padding:6px 12px;border:1px solid #d6d3ca;border-radius:7px;background:{{ descBtnBg }};color:{{ descBtnFg }};font-size:13px;cursor:pointer" style-hover="background:#faf8f3">{{ t.descMode }}</button>
+          <button onClick="{{ onModeHide }}" style="padding:6px 12px;border:1px solid #d6d3ca;border-radius:7px;background:{{ hideBtnBg }};color:{{ hideBtnFg }};font-size:13px;cursor:pointer" style-hover="background:#faf8f3">{{ t.hideMode }}</button>
           <button onClick="{{ onToggleHidden }}" style="padding:6px 12px;border:1px solid #d6d3ca;border-radius:7px;background:{{ hiddenBtnBg }};color:{{ hiddenBtnFg }};font-size:13px;cursor:pointer" style-hover="background:#faf8f3">{{ hiddenBtnLabel }}</button>
           <button onClick="{{ onRefresh }}" style="padding:6px 12px;border:1px solid #d6d3ca;border-radius:7px;background:#fff;font-size:13px;cursor:pointer" style-hover="background:#faf8f3">{{ t.refreshBtn }}</button>
           <button onClick="{{ doLogout }}" style="padding:6px 12px;border:1px solid transparent;border-radius:7px;background:transparent;color:#98958c;font-size:13px;cursor:pointer" style-hover="color:#1b1a17">{{ t.logout }}</button>
@@ -186,11 +192,18 @@
                   <span style="font-size:11.5px;color:#a7a49b;white-space:nowrap">{{ r.when }}</span>
                 </div>
                 <!-- 설명은 코드와 실제 참여자를 잇는 유일한 끈 / the description is the only
-                     thread between a code and a real person, so it is typed right in the
-                     row rather than behind a dialog nobody would open -->
-                <input value="{{ r.desc }}" onChange="{{ r.onDesc }}" placeholder="{{ t.metaPh }}" style="width:100%;border:none;border-bottom:1px dashed #e2dfd7;background:transparent;font-size:12.5px;color:#5c5950;outline:none;padding:2px 0;font-family:inherit" style-focus="border-bottom-color:oklch(0.51 0.08 253)" />
+                     thread between a code and a real person. It always READS in the row;
+                     it only becomes typeable in description mode. -->
+                <sc-if value="{{ r.editing }}" hint-placeholder-val="{{ false }}">
+                  <input value="{{ r.desc }}" onChange="{{ r.onDesc }}" placeholder="{{ t.metaPh }}" autoFocus="{{ r.focus }}" style="width:100%;border:none;border-bottom:1px dashed #c9c6bd;background:transparent;font-size:12.5px;color:#5c5950;outline:none;padding:2px 0;font-family:inherit" style-focus="border-bottom-color:oklch(0.51 0.08 253)" />
+                </sc-if>
+                <sc-if value="{{ r.showDesc }}" hint-placeholder-val="{{ false }}">
+                  <div style="font-size:12.5px;color:#7a776f;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ r.desc }}</div>
+                </sc-if>
               </div>
-              <button onClick="{{ r.onHide }}" title="{{ r.hideTip }}" style="flex:none;padding:4px 9px;border:1px solid #e2dfd7;border-radius:7px;background:transparent;color:#98958c;font-size:12px;cursor:pointer" style-hover="color:#1b1a17;border-color:#d6d3ca">{{ r.hideLabel }}</button>
+              <sc-if value="{{ r.hiding }}" hint-placeholder-val="{{ false }}">
+                <button onClick="{{ r.onHide }}" title="{{ r.hideTip }}" style="flex:none;padding:4px 9px;border:1px solid #e2dfd7;border-radius:7px;background:transparent;color:#98958c;font-size:12px;cursor:pointer" style-hover="color:#1b1a17;border-color:#d6d3ca">{{ r.hideLabel }}</button>
+              </sc-if>
             </div>
           </sc-for>
         </div>
@@ -207,6 +220,11 @@
         <div style="display:flex;gap:0;border-bottom:1px solid #ece9e1">
           <button onClick="{{ onTabFlow }}" style="flex:1;padding:10px 8px;border:none;border-bottom:2px solid {{ tabFlowBd }};background:{{ tabFlowBg }};color:{{ tabFlowFg }};font-size:12.5px;font-weight:600;cursor:pointer">{{ t.tabFlow }}</button>
           <button onClick="{{ onTabGuard }}" style="flex:1;padding:10px 8px;border:none;border-bottom:2px solid {{ tabGuardBd }};background:{{ tabGuardBg }};color:{{ tabGuardFg }};font-size:12.5px;font-weight:600;cursor:pointer">{{ t.tabGuard }}</button>
+          <!-- 접기는 덱 옆에 붙어 있어야 한다 / the fold belongs beside the thing it folds,
+               not adrift in the toolbar with the export buttons -->
+          <sc-if value="{{ canFold }}" hint-placeholder-val="{{ false }}">
+            <button onClick="{{ onTogglePanel }}" title="{{ t.panelHide }}" style="flex:0 0 30px;border:none;border-bottom:2px solid #ece9e1;background:transparent;color:#98958c;font-size:12px;line-height:1;cursor:pointer;padding:0" style-hover="color:#1b1a17;background:#f1efe8">◀</button>
+          </sc-if>
         </div>
       </sc-if>
       <div style="flex:1;min-height:0;overflow-y:auto">
@@ -311,6 +329,11 @@
     </div>
 
     </sc-if>
+    <!-- 접힌 덱은 등뼈만 남는다 / a folded deck leaves a spine, so the way back is where the
+         panel was rather than somewhere else on the screen -->
+    <sc-if value="{{ panelFolded }}" hint-placeholder-val="{{ false }}">
+      <button onClick="{{ onTogglePanel }}" title="{{ t.panelShow }}" style="flex:0 0 22px;border:none;border-right:1px solid #e2dfd7;background:#faf8f3;color:#98958c;font-size:12px;line-height:1;cursor:pointer;padding:0" style-hover="color:#1b1a17;background:#f1efe8">▶</button>
+    </sc-if>
     <div ref="{{ canvasRef }}" onPointerDown="{{ onCanvasDown }}" onDoubleClick="{{ onCanvasDouble }}" style="position:relative;flex:1;min-width:0;overflow:hidden;cursor:{{ canvasCursor }};background-color:#ebe8e0;background-image:radial-gradient(#dad6cb 1px, transparent 1px);background-size:24px 24px">
       <div style="position:absolute;left:0;top:0;width:5000px;height:5000px;transform-origin:0 0;pointer-events:{{ layerPE }};transform:translate({{ panX }}px, {{ panY }}px) scale({{ zoom }})">
         <sc-if value="{{ senseRegion }}" hint-placeholder-val="{{ false }}">
@@ -334,9 +357,11 @@
               <div onDoubleClick="{{ n.onFold }}" style="flex:1;min-height:0;display:flex;align-items:center;font-size:11.5px;line-height:1.3;color:{{ n.fg }};white-space:nowrap;overflow:hidden;text-overflow:ellipsis;padding:5px 2px 0">{{ n.head }}</div>
             </sc-if>
             <sc-if value="{{ n.open }}" hint-placeholder-val="{{ true }}">
-              <textarea value="{{ n.text }}" onChange="{{ n.onText }}" autoFocus="{{ n.autoFocus }}" data-grow="1" class="{{ n.cls }}" placeholder="{{ n.ph }}" rows="3" style="width:100%;flex:{{ n.taFlex }};height:{{ n.taH }};min-height:{{ n.taMin }};overflow:{{ n.ov }};resize:none;border:1px dashed {{ n.field }};border-radius:7px;background:rgba(255,254,251,0.7);font-size:12px;line-height:1.55;color:#44423b;outline:none;padding:8px 10px;font-family:{{ n.font }};pointer-events:{{ n.tpe }}" style-focus="border-color:oklch(0.51 0.08 253);background:#fffefb"></textarea>
+              <textarea value="{{ n.text }}" onChange="{{ n.onText }}" autoFocus="{{ n.autoFocus }}" data-grow="1" class="{{ n.cls }}" placeholder="{{ n.ph }}" rows="3" style="width:100%;flex:{{ n.taFlex }};height:{{ n.taH }};min-height:{{ n.taMin }};overflow:{{ n.ov }};resize:none;border:1px dashed {{ n.field }};border-radius:7px;background:rgba(255,254,251,0.7);font-size:12px;line-height:1.55;font-style:{{ n.slant }};color:#44423b;outline:none;padding:8px 10px;font-family:{{ n.font }};pointer-events:{{ n.tpe }}" style-focus="border-color:oklch(0.51 0.08 253);background:#fffefb"></textarea>
             </sc-if>
-            <div style="display:{{ n.ctrls }};align-items:center;gap:5px;height:13px">
+            <!-- 오른쪽 끝은 손잡이 자리 / the right end of this row is the grip's corner, so
+                 the buttons stop short of it. They were sitting on top of each other. -->
+            <div style="display:{{ n.ctrls }};align-items:center;gap:5px;height:13px;padding-right:{{ n.ctrlPad }}">
               <sc-if value="{{ n.isTx }}" hint-placeholder-val="{{ false }}">
                 <button onPointerDown="{{ n.onFoldDown }}" title="{{ t.foldTip }}" style="border:none;background:transparent;color:{{ n.fg }};font-size:10px;line-height:13px;cursor:pointer;padding:0 2px" style-hover="color:#1b1a17">{{ n.foldMark }}</button>
               </sc-if>
@@ -363,7 +388,7 @@
             <span style="position:absolute;inset:0;background:#9c9789;clip-path:polygon(0 0, calc(100% - 17px) 0, 100% 50%, calc(100% - 17px) 100%, 0 100%, 17px 50%)"></span>
             <span style="position:absolute;top:0;bottom:0;left:-1.6px;right:1.6px;background:#413e37;clip-path:polygon(0 0, calc(100% - 17px) 0, 100% 50%, calc(100% - 17px) 100%, 0 100%, 17px 50%)"></span>
             <span style="position:relative;flex:none;width:9px;height:9px;border-radius:2px;background:#c9c3b2"></span>
-            <input value="{{ c.title }}" onChange="{{ c.onTitle }}" placeholder="{{ c.titlePlaceholder }}" style="position:relative;flex:1;min-width:0;border:none;background:transparent;font-size:16.5px;font-weight:700;letter-spacing:-0.015em;white-space:nowrap;color:#f7f5ef;outline:none;padding:0;pointer-events:{{ c.tpe }}" />
+            <input value="{{ c.title }}" onChange="{{ c.onTitle }}" placeholder="{{ c.titlePlaceholder }}" style="position:relative;flex:1;min-width:0;border:none;background:transparent;font-size:16.5px;font-weight:700;letter-spacing:-0.015em;white-space:nowrap;font-style:{{ c.slant }};color:#f7f5ef;outline:none;padding:0;pointer-events:{{ c.tpe }}" />
             <span style="position:relative;flex:none;display:{{ c.ctrls }};align-items:center;gap:0">
               <!-- 단계에 전사를 매단다 / hang transcript off a step. Only in analysis mode,
                    and only on the admin's own copy of a tag. -->
@@ -382,7 +407,7 @@
           <div data-obj="card" onPointerDown="{{ c.onDown }}" style="position:absolute;left:{{ c.x }}px;top:{{ c.y }}px;height:38px;display:inline-flex;align-items:stretch;background:#fffefb;border:2px solid {{ c.chipInk }};border-radius:3px;box-sizing:border-box;overflow:hidden;outline:{{ c.outline }};outline-offset:2px;pointer-events:{{ c.pe }};cursor:{{ c.cursor }}">
             <span style="width:9px;background:{{ c.chipInk }};flex:none"></span>
             <span style="display:inline-flex;align-items:center;gap:6px;padding:0 8px 0 12px">
-              <input value="{{ c.title }}" onChange="{{ c.onTitle }}" placeholder="{{ c.titlePlaceholder }}" style="width:{{ c.tw }}px;flex:none;border:none;background:transparent;font-size:13px;font-weight:700;color:#3a382f;letter-spacing:-0.01em;white-space:nowrap;outline:none;padding:0;pointer-events:{{ c.tpe }}" />
+              <input value="{{ c.title }}" onChange="{{ c.onTitle }}" placeholder="{{ c.titlePlaceholder }}" style="width:{{ c.tw }}px;flex:none;border:none;background:transparent;font-size:13px;font-weight:700;font-style:{{ c.slant }};color:#3a382f;letter-spacing:-0.01em;white-space:nowrap;outline:none;padding:0;pointer-events:{{ c.tpe }}" />
               <span style="display:{{ c.ctrls }};align-items:center;gap:0">
                 <button onPointerDown="{{ c.onDupDown }}" title="{{ t.dupTip }}" style="flex:none;width:22px;height:22px;border:none;border-radius:5px;background:transparent;color:#9c9689;font-size:12px;line-height:1;cursor:pointer;padding:0" style-hover="color:#1b1a17"><svg width="11" height="11" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.25" stroke-linejoin="round" aria-hidden="true"><rect x="3.4" y="0.9" width="7.7" height="7.7" rx="1.5"></rect><rect x="0.9" y="3.4" width="7.7" height="7.7" rx="1.5"></rect></svg></button>
                 <button onPointerDown="{{ c.onDelDown }}" title="{{ t.delTip }}" style="flex:none;width:22px;height:22px;border:none;border-radius:5px;background:transparent;color:#9c9689;font-size:12px;line-height:1;cursor:pointer;padding:0" style-hover="color:#b03f34">✕</button>
@@ -396,7 +421,7 @@
               <sc-if value="{{ c.isMeans }}" hint-placeholder-val="{{ false }}">
                 <span style="flex:none;width:6px;height:6px;border-radius:50%;background:#8f8b81"></span>
               </sc-if>
-              <input value="{{ c.title }}" onChange="{{ c.onTitle }}" placeholder="{{ c.titlePlaceholder }}" style="flex:1;min-width:{{ c.tmin }};border:none;background:transparent;font-size:{{ c.tfs }};font-weight:600;letter-spacing:-0.01em;color:{{ c.tcol }};outline:none;padding:0;pointer-events:{{ c.tpe }}" />
+              <input value="{{ c.title }}" onChange="{{ c.onTitle }}" placeholder="{{ c.titlePlaceholder }}" style="flex:1;min-width:{{ c.tmin }};border:none;background:transparent;font-size:{{ c.tfs }};font-weight:600;letter-spacing:-0.01em;font-style:{{ c.slant }};color:{{ c.tcol }};outline:none;padding:0;pointer-events:{{ c.tpe }}" />
               <sc-if value="{{ c.notMeans }}" hint-placeholder-val="{{ true }}">
                 <span style="font-size:9px;letter-spacing:0.02em;color:{{ c.accent }};border:1px solid {{ c.accent }};border-radius:3px;padding:0 3px">{{ c.mark }}</span>
               </sc-if>
@@ -406,7 +431,7 @@
             </sc-if>
             <sc-if value="{{ c.hasDesc }}" hint-placeholder-val="{{ true }}">
             <div style="flex:none;border-top:{{ c.dsep }};padding-top:4px">
-              <textarea value="{{ c.desc }}" onChange="{{ c.onDesc }}" data-grow="1" placeholder="{{ t.descPh }}" style="width:100%;height:auto;min-height:{{ c.dmin }};overflow:hidden;resize:none;border:none;background:transparent;font-size:12px;line-height:1.45;color:#5b584f;outline:none;padding:0;pointer-events:{{ c.tpe }}"></textarea>
+              <textarea value="{{ c.desc }}" onChange="{{ c.onDesc }}" data-grow="1" placeholder="{{ t.descPh }}" style="width:100%;height:auto;min-height:{{ c.dmin }};overflow:hidden;resize:none;border:none;background:transparent;font-size:12px;line-height:1.45;font-style:{{ c.slant }};color:#5b584f;outline:none;padding:0;pointer-events:{{ c.tpe }}"></textarea>
             </div>
             </sc-if>
             <div style="display:{{ c.ctrls }};align-items:center;gap:5px;height:13px">
@@ -720,7 +745,7 @@ const I18N = {
       syncDemo: '데모 · 저장 안 함', syncLocal: '⚠ 로컬만', syncReady: '연결됨', syncLoading: '불러오는 중…',
       edit: '✎', editTip: '이름 고치기', fit: '화면 맞춤', note: '✎ 메모', exportBtn: '제출 · JSON 저장', clear: '초기화', confirmClear: '보드의 모든 카드를 지울까요?',
       arrow: '↗ 화살표', arrowTip: '카드에서 카드로 드래그해 화살표로 잇기', arrowDelTip: '화살표 삭제',
-      imgBtn: '이미지 저장', imgSenseBtn: '이미지 (해석 포함)',
+      imgBtn: '이미지 (원본)', imgSenseBtn: '이미지 (해석)',
       dupAllBtn: '전체 복제', dupSelBtn: '선택 복제', clearSenseBtn: '해석 지우기',
       regionLabel: '참여자 산출물 (수정 불가)',
       undoBtn: '↩', undoTip: '최근 5단계까지 되돌립니다 (Ctrl+Z)', histBtn: '기록', histTitle: '저장 기록', histSub: '되돌아갈 시점을 선택하세요. 지금 작업은 그대로 남아 있습니다.',
@@ -740,6 +765,9 @@ const I18N = {
       hiddenNote: '기록은 지워지지 않았습니다. 목록에서만 빠져 있습니다.',
       metaPh: '설명 (누구의 기록인지 적어 두세요)',
       panelHide: '덱 접기', panelShow: '덱 펼치기',
+      descMode: '설명 편집', hideMode: '숨기기',
+      descBanner: '설명 편집 중입니다. 코드가 누구의 기록인지 적어 두세요.',
+      hideBanner: '숨기기 모드입니다. 목록에서 뺄 항목을 고르세요. 기록은 지워지지 않습니다.',
       rosterLoading: '불러오는 중…', rosterEmpty: '아직 저장된 참여자가 없습니다.',
       rosterError: '목록을 불러오지 못했습니다. Apps Script를 새 버전으로 다시 배포했는지 확인해 주세요.',
       noSnap: '이 참여자의 저장된 보드가 없습니다.', backList: '← 목록', refreshBtn: '새로고침',
@@ -828,7 +856,7 @@ const I18N = {
       syncDemo: 'Demo · not saved', syncLocal: '⚠ Local only', syncReady: 'Connected', syncLoading: 'Loading…',
       edit: '✎', editTip: 'rename', fit: 'Reset view', note: '✎ Note', exportBtn: 'Submit · Save JSON', clear: 'Clear', confirmClear: 'Clear all cards on the board?',
       arrow: '↗ Arrow', arrowTip: 'Drag from one card to another to connect them', arrowDelTip: 'Delete arrow',
-      imgBtn: 'Save image', imgSenseBtn: 'Image (with workspace)',
+      imgBtn: 'Image (original)', imgSenseBtn: 'Image (analysis)',
       dupAllBtn: 'Duplicate all', dupSelBtn: 'Duplicate selection', clearSenseBtn: 'Clear workspace',
       regionLabel: "Participant's output (read-only)",
       undoBtn: '↩', undoTip: 'steps back up to 5 changes (Ctrl+Z)', histBtn: 'History', histTitle: 'Saved versions', histSub: 'Pick a point to go back to. Your current work stays where it is.',
@@ -847,7 +875,10 @@ const I18N = {
       hiddenTitle: 'Hidden participants', hiddenEmpty: 'Nothing is hidden.',
       hiddenNote: 'Nothing was deleted. These are only out of the list.',
       metaPh: 'Description (who this code belongs to)',
-      panelHide: 'Hide deck', panelShow: 'Show deck',
+      panelHide: 'Fold the deck away', panelShow: 'Bring the deck back',
+      descMode: 'Descriptions', hideMode: 'Hide',
+      descBanner: 'Editing descriptions. Note whose record each code is.',
+      hideBanner: 'Hiding. Choose what to take out of the list; nothing is deleted.',
       rosterLoading: 'Loading…', rosterEmpty: 'No participants saved yet.',
       rosterError: 'Could not load the list. Check that the Apps Script was redeployed as a new version.',
       noSnap: 'No saved board for this participant.', backList: '← List', refreshBtn: 'Refresh',
@@ -877,7 +908,7 @@ const I18N = {
 class Component extends DCLogic {
   constructor(props) {
     super(props);
-    this.state = { sync: '', step: 0, lang: 'ko', rules: [], pid: '', loginPid: '', cards: [], notes: [], arrows: [], arrowMode: false, pendingArrow: null, pen: null, strokes: [], selArrow: null, noteMode: false, noteKind: 'memo', panelOff: false, undoDepth: 0, focusNote: null, showHidden: false, pan: { x: 0, y: 0 }, zoom: 1, ghost: null, seq: 1, panelW: panelCap(), sel: [], marquee: null, finish: null, tab: 'flow', hist: null, histList: [], travel: null, senseOn: true, admin: false, viewPid: '', roster: [], rosterMsg: '' };
+    this.state = { sync: '', step: 0, lang: 'ko', rules: [], pid: '', loginPid: '', cards: [], notes: [], arrows: [], arrowMode: false, pendingArrow: null, pen: null, strokes: [], selArrow: null, noteMode: false, noteKind: 'memo', panelOff: false, rosterMode: '', undoDepth: 0, focusNote: null, pan: { x: 0, y: 0 }, zoom: 1, ghost: null, seq: 1, panelW: panelCap(), sel: [], marquee: null, finish: null, tab: 'flow', hist: null, histList: [], travel: null, senseOn: true, admin: false, viewPid: '', roster: [], rosterMsg: '' };
     this.canvasRef = React.createRef();
     this.drag = null;
   }
@@ -1105,7 +1136,20 @@ class Component extends DCLogic {
 
   // 해석 레이어에서 만든 것은 전부 sm / everything the admin creates belongs to the
   // analysis layer, so it saves to the sm: key and never into the participant's record
-  mine(o) { return this.isView() ? Object.assign({}, o, { sm: true }) : o; }
+  mine(o) { return this.isView() ? Object.assign({}, o, { sm: true, src: 'a' }) : o; }
+
+  // 출처는 기록하되 색으로 외치지 않는다 / provenance is RECORDED, not shouted. A copy of a
+  // participant's object looks exactly like the original — that is the point of copying
+  // it — and what marks it is the data: src 'p' with the id it came from, versus src 'a'
+  // for anything authored in analysis. Only a content change counts as editing: moving a
+  // card around the board is how you think, not a change to what it says.
+  markEdited(id) {
+    if (!this.isView()) return;
+    this.setState((st) => ({
+      cards: st.cards.map((c) => (c.id === id && c.sm && !c.edited ? Object.assign({}, c, { edited: true }) : c)),
+      notes: (st.notes || []).map((n) => (n.id === id && n.sm && !n.edited ? Object.assign({}, n, { edited: true }) : n))
+    }));
+  }
 
   // 관리자 코드로 로그인하면 참여자 목록 화면으로 / admin code opens the roster
   loginAdmin() {
@@ -1205,12 +1249,12 @@ class Component extends DCLogic {
     this.state.cards.forEach((c) => {
       if (!take(c)) return;
       const id = 's' + (seq++); idmap[c.id] = id;
-      cards.push(Object.assign({}, c, { id: id, sm: true, x: c.x + off }));
+      cards.push(Object.assign({}, c, { id: id, sm: true, src: 'p', of: c.id, x: c.x + off }));
     });
     (this.state.notes || []).forEach((n) => {
       if (!take(n)) return;
       const id = 's' + (seq++); idmap[n.id] = id;
-      notes.push(Object.assign({}, n, { id: id, sm: true, x: n.x + off }));
+      notes.push(Object.assign({}, n, { id: id, sm: true, src: 'p', of: n.id, x: n.x + off }));
     });
     // 복제된 것들 사이의 화살표만 따라온다 / only arrows whose BOTH ends were copied
     (this.state.arrows || []).forEach((a) => {
@@ -2262,7 +2306,10 @@ class Component extends DCLogic {
     }
   }
 
-  patch(id, k, v) { this.setState((s) => ({ cards: s.cards.map((c) => c.id === id ? Object.assign({}, c, { [k]: v }) : c) })); }
+  patch(id, k, v) {
+    this.setState((s) => ({ cards: s.cards.map((c) => c.id === id ? Object.assign({}, c, { [k]: v }) : c) }),
+      () => this.markEdited(id));
+  }
   dupNote(id) {
     const n = (this.state.notes || []).find((k) => k.id === id);
     if (!n) return;
@@ -2578,13 +2625,15 @@ class Component extends DCLogic {
     return Promise.all(jobs).then(() => out);
   }
 
-  exportImage(withSense) {
-    this.iconImages().then((icons) => this.paintImage(withSense, icons));
+  // 두 장 중 하나 / one picture or the other, never both layers at once: an image with
+  // the analysis drawn over the participant's board is unreadable as either.
+  exportImage(mode) {
+    this.iconImages().then((icons) => this.paintImage(mode, icons));
   }
 
-  paintImage(withSense, icons) {
+  paintImage(mode, icons) {
     const pid = this.state.viewPid || this.state.pid || 'board';
-    const keep = (o) => (withSense ? true : !o.sm);
+    const keep = (o) => (mode === 'sense' ? !!o.sm : !o.sm);
     const cards = this.state.cards.filter(keep);
     const notes = (this.state.notes || []).filter(keep);
     if (!cards.length && !notes.length && !(this.state.strokes || []).filter(keep).length) return;
@@ -2730,7 +2779,7 @@ class Component extends DCLogic {
       if (!blob) return;
       const a = document.createElement('a');
       a.href = URL.createObjectURL(blob);
-      a.download = pid + '-board' + (withSense ? '-sense' : '') + '.png';
+      a.download = pid + '-board' + (mode === 'sense' ? '-sense' : '') + '.png';
       a.click();
       URL.revokeObjectURL(a.href);
     }, 'image/png');
@@ -2827,9 +2876,8 @@ class Component extends DCLogic {
       // cards to do the task at all.
       showPanel: this.canAuthor() && !(viewing && this.state.panelOff),
       onTogglePanel: () => this.setState((st) => ({ panelOff: !st.panelOff })),
-      panelBtnLabel: this.state.panelOff ? t.panelShow : t.panelHide,
-      panelBtnBg: this.state.panelOff ? '#1b1a17' : '#fff',
-      panelBtnFg: this.state.panelOff ? '#faf8f3' : '#1b1a17',
+      canFold: viewing,
+      panelFolded: viewing && this.state.panelOff,
       layerPE: this.state.pen ? 'none' : 'auto',
       senseRegion: RO && !!this.state.viewPid && !!this.senseBounds(),
       regionX: (this.senseBounds() || {}).x || 0,
@@ -2839,8 +2887,8 @@ class Component extends DCLogic {
       onDupAll: () => this.duplicateIntoSense(true),
       onDupSel: () => this.duplicateIntoSense(false),
       onClearSense: () => this.clearSense(),
-      onImg: () => this.exportImage(false),
-      onImgSense: () => this.exportImage(true),
+      onImg: () => this.exportImage('orig'),
+      onImgSense: () => this.exportImage('sense'),
       marq: !!this.state.marquee,
       marqX: this.state.marquee ? this.state.marquee.x : 0,
       marqY: this.state.marquee ? this.state.marquee.y : 0,
@@ -2851,36 +2899,59 @@ class Component extends DCLogic {
       // The hidden view shows exactly the complement of the normal one, so nothing can
       // fall out of both lists and quietly disappear.
       rosterList: (this.state.roster || [])
-        .filter((r) => (this.state.showHidden ? !!r.hidden : !r.hidden))
-        .map((r) => ({
+        .filter((r) => (this.state.rosterMode === 'hidden' ? !!r.hidden : !r.hidden))
+        // 서버가 이미 순서대로 주지만 여기서도 세운다 / the server already sorts, but an
+        // un-redeployed one does not send firstAt at all — fall back to last activity so
+        // the list is at least stably ordered rather than in sheet-scan order
+        .sort((a, b) => String(a.firstAt || a.lastAt || '').localeCompare(String(b.firstAt || b.lastAt || '')))
+        .map((r, i) => ({
           key: r.participant,
           label: r.participant,
           meta: (r.rows || 0) + t.rowsSuffix + (r.submits ? ' · ' + t.submittedTag : ''),
-          when: r.lastAt ? new Date(r.lastAt).toLocaleString() : t.neverSaved,
+          // 목록에 보이는 시각은 정렬 기준과 같아야 한다 / show the time the list is sorted
+          // by; showing last-activity beside a created-time order reads as a bug
+          when: (r.firstAt || r.lastAt) ? new Date(r.firstAt || r.lastAt).toLocaleString() : t.neverSaved,
           desc: r.desc || '',
+          editing: this.state.rosterMode === 'desc',
+          focus: this.state.rosterMode === 'desc' && i === 0,
+          showDesc: this.state.rosterMode !== 'desc' && !!r.desc,
+          hiding: this.state.rosterMode === 'hide' || this.state.rosterMode === 'hidden',
           onDesc: (e) => this.setDesc(r.participant, e.target.value),
           hideLabel: r.hidden ? t.restoreRecTip : t.hideRecTip,
           hideTip: r.hidden ? t.restoreRecTip : t.hideRecTip,
           onOpen: () => this.openParticipant(r.participant),
           onHide: (e) => { e.stopPropagation(); this.setMeta(r.participant, { hidden: !r.hidden }); }
         })),
-      rosterHeading: this.state.showHidden ? t.hiddenTitle : t.rosterTitle,
-      rosterBanner: this.state.showHidden ? t.hiddenNote : t.viewBanner,
-      hiddenBtnLabel: this.state.showHidden ? t.hiddenBack
+      rosterHeading: this.state.rosterMode === 'hidden' ? t.hiddenTitle : t.rosterTitle,
+      rosterBanner:
+        this.state.rosterMode === 'hidden' ? t.hiddenNote :
+        this.state.rosterMode === 'desc' ? t.descBanner :
+        this.state.rosterMode === 'hide' ? t.hideBanner : t.viewBanner,
+      // 모드는 서로를 끈다 / the modes switch each other off; pressing the one you are in
+      // returns to the plain list
+      onModeDesc: () => this.setState((st) => ({ rosterMode: st.rosterMode === 'desc' ? '' : 'desc' })),
+      onModeHide: () => this.setState((st) => ({ rosterMode: st.rosterMode === 'hide' ? '' : 'hide' })),
+      descBtnBg: this.state.rosterMode === 'desc' ? '#1b1a17' : '#fff',
+      descBtnFg: this.state.rosterMode === 'desc' ? '#faf8f3' : '#1b1a17',
+      hideBtnBg: this.state.rosterMode === 'hide' ? '#1b1a17' : '#fff',
+      hideBtnFg: this.state.rosterMode === 'hide' ? '#faf8f3' : '#1b1a17',
+      hiddenBtnLabel: this.state.rosterMode === 'hidden' ? t.hiddenBack
         : t.hiddenBtn + ' (' + (this.state.roster || []).filter((r) => r.hidden).length + ')',
-      hiddenBtnBg: this.state.showHidden ? '#1b1a17' : '#fff',
-      hiddenBtnFg: this.state.showHidden ? '#faf8f3' : '#1b1a17',
-      onToggleHidden: () => this.setState((st) => ({ showHidden: !st.showHidden })),
+      hiddenBtnBg: this.state.rosterMode === 'hidden' ? '#1b1a17' : '#fff',
+      hiddenBtnFg: this.state.rosterMode === 'hidden' ? '#faf8f3' : '#1b1a17',
+      onToggleHidden: () => this.setState((st) => ({ rosterMode: st.rosterMode === 'hidden' ? '' : 'hidden' })),
       rosterBusy: this.state.rosterMsg === 'loading',
       rosterNote:
         this.state.rosterMsg === 'loading' ? t.rosterLoading :
         this.state.rosterMsg === 'empty' ? t.rosterEmpty :
         this.state.rosterMsg === 'error' ? t.rosterError :
         this.state.rosterMsg === 'nosnap' ? t.noSnap :
-        this.state.showHidden && !(this.state.roster || []).some((r) => r.hidden) ? t.hiddenEmpty : '',
-      hasRosterNote: !!this.state.rosterMsg || (this.state.showHidden && !(this.state.roster || []).some((r) => r.hidden)),
+        this.state.rosterMode === 'hidden' && !(this.state.roster || []).some((r) => r.hidden) ? t.hiddenEmpty : '',
+      hasRosterNote: !!this.state.rosterMsg || (this.state.rosterMode === 'hidden' && !(this.state.roster || []).some((r) => r.hidden)),
       onRefresh: () => (this.state.viewPid ? this.openParticipant(this.state.viewPid) : this.refreshRoster()),
-      onBackList: () => this.backToRoster(),
+      showBack: viewing || this.state.step === 2,
+      backLabel: viewing ? t.backList : t.prev,
+      onBack: viewing ? () => this.backToRoster() : () => this.setState({ step: 1, tab: 'flow' }),
       isLoggedIn: this.state.step > 0 || viewing,
       showSync: this.state.step > 0 && !RO,
       syncLabel: this.isDemo() ? t.syncDemo : !this.syncUrl() ? t.syncLocal : this.state.loadingRemote ? t.syncLoading : this.state.sync === 'saved' ? t.syncSaved : this.state.sync === 'offline' ? t.syncOffline : this.state.sync ? t.syncPending : t.syncReady,
@@ -3037,9 +3108,10 @@ class Component extends DCLogic {
           // 참여자 메모는 그대로, 분석 메모는 두 색 / a participant's note is unchanged;
           // the analysis layer speaks in two colours — gold for the admin's own remark,
           // slate for transcript, which is somebody else's words
-          bg: n.sm ? (tx ? TX_BG : '#fdfbf5') : 'transparent',
-          ring: n.sm ? ('0 0 0 1.5px ' + (tx ? TX_INK : SM_INK)) : 'none',
-          fg: n.sm ? (tx ? TX_INK : '#a08a55') : '#bfbcb3',
+          bg: (n.sm && n.src === 'a') ? (tx ? TX_BG : '#fdfbf5') : 'transparent',
+          ring: (n.sm && n.src === 'a') ? ('0 0 0 1.5px ' + (tx ? TX_INK : SM_INK)) : 'none',
+          fg: (n.sm && n.src === 'a') ? (tx ? TX_INK : '#a08a55') : '#bfbcb3',
+          slant: n.edited ? 'italic' : 'normal',
           field: n.sm && tx ? '#c3cbd8' : '#c2beb2',
           font: tx ? 'ui-monospace, SFMono-Regular, Menlo, monospace' : 'inherit',
           ph: tx ? t.txPh : t.notePh,
@@ -3049,11 +3121,15 @@ class Component extends DCLogic {
           foldMark: n.collapsed ? '▸' : '▾',
           head: (n.text || '').split('\n')[0] || t.txPh,
           linked: !!n.link && own,
-          canSize: own,
+          // 크기 조절은 분석 메모만 / only an analysis note resizes. A participant's note
+          // grows with its text and always has; handing them a grip mid-fieldwork would
+          // change the task under them.
+          canSize: RO && n.sm,
+          ctrlPad: (RO && n.sm) ? '14px' : '0',
           text: n.text,
           autoFocus: this.state.focusNote === n.id,
           onDown: own ? (e) => this.startNoteMove(n.id, e) : (e) => this.pickOnly(n.id, e),
-          onText: own ? (e) => this.setState((st) => ({ notes: st.notes.map((k) => k.id === n.id ? Object.assign({}, k, { text: e.target.value }) : k) })) : NOOP,
+          onText: own ? (e) => this.setState((st) => ({ notes: st.notes.map((k) => k.id === n.id ? Object.assign({}, k, { text: e.target.value }) : k) }), () => this.markEdited(n.id)) : NOOP,
           onFold: own ? () => this.toggleFold(n.id) : NOOP,
           onFoldDown: own ? (e) => { e.stopPropagation(); e.preventDefault(); this.toggleFold(n.id); } : NOOP,
           onUnlinkDown: own ? (e) => { e.stopPropagation(); e.preventDefault(); this.unlinkNote(n.id); } : NOOP,
@@ -3095,7 +3171,7 @@ class Component extends DCLogic {
           notTag: c.type !== 'act',
           isPlainCard: c.type !== 'act' && c.type !== 'means',
           // 해석 레이어 표시는 테두리 색으로 / the sensemaking layer shows in the ink
-          chipInk: c.sm ? 'oklch(0.62 0.11 62)' : '#413e37',
+          chipInk: (c.sm && c.src === 'a') ? SM_INK : '#413e37',
           isMeans: c.type === 'means',
           notMeans: c.type !== 'means',
           radius: c.type === 'means' ? 15 : 10,
@@ -3135,9 +3211,14 @@ class Component extends DCLogic {
           // 참여자 것에는 복제·삭제 버튼을 보이지 않는다 / no edit affordances on what is
           // not the admin's to edit — a dead button is worse than no button
           ctrls: (RO && !c.sm) ? 'none' : 'flex',
-          bg: c.sm ? '#fdfbf5' : '#fffefb',
-          bstyle: c.sm ? 'dashed' : 'solid',
-          bd: c.sm ? 'oklch(0.62 0.11 62)' : (c.type === 'means' ? '#ddd9cf' : '#e2dfd7'),
+          // 복제본은 원본과 똑같이 보인다 / a copy looks like the original: the marker is in
+          // the record, not on the card. Only what was authored in analysis is tinted.
+          bg: (c.sm && c.src === 'a') ? '#fdfbf5' : '#fffefb',
+          bstyle: (c.sm && c.src === 'a') ? 'dashed' : 'solid',
+          bd: (c.sm && c.src === 'a') ? SM_INK : (c.type === 'means' ? '#ddd9cf' : '#e2dfd7'),
+          // 분석에서 내용을 고친 것만 기울임 / italic marks a content change made in analysis,
+          // so a copy that has been rewritten never passes for what the participant wrote
+          slant: c.edited ? 'italic' : 'normal',
           outline: this.isSel(c.id) ? '2px solid oklch(0.51 0.08 253)' : 'none',
           h: c.h || 168,
           accent: ACC[c.type] || '#6f6b62',

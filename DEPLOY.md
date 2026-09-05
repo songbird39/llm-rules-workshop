@@ -155,10 +155,32 @@ click. The description in each roster row is the only thread between a code and 
 person — it lives in the same `mt:` record, coalesced so a typed sentence is one row and
 not forty.
 
+The roster is ordered by **created time** — the first row a participant ever wrote, which
+is when their session opened — oldest first, and the row shows that same time. Sorting by
+last activity made the list reshuffle itself every time a record was opened.
+
+The list stays a list: the description field and the hide control each live in their own
+mode, reached from the header, so a mis-aimed click on the way to opening a record cannot
+rewrite or hide it. The description still *reads* in the plain row — that is what it is for.
+
 ⚠ This needs the redeployed Apps Script. On an old deployment `roster_` does not know
 about `mt:` rows and hands them back as participants; the client filters them out so a
 stale backend shows a stale roster rather than a broken one, but hide and description do
 nothing until the new version is live.
+
+**Provenance is recorded, not shouted.** A copy looks exactly like the original — no tint,
+no dashed border — because a copy that looks different is not a copy. What marks it is the
+data: `src: 'p'` with `of`, the id it came from, against `src: 'a'` for anything authored
+in analysis (which *is* tinted, so it never passes for the participant's work). `edited`
+is set only when the CONTENT changes, and renders as italic; moving a card around the
+board is how you think, not a change to what it says. Note that an analysis record saved
+before this existed has no `src` at all and will read as a copy.
+
+The back button is top left and there is only one of it: for a participant it is the
+previous step, for the admin it is the list. The deck's fold sits on the deck's own tab
+row, and folding leaves a narrow spine where the panel was. The two image exports are one
+layer or the other — an image with the analysis drawn over the participant's board is
+unreadable as either.
 
 In analysis mode the admin authors with the participant's own tools — the deck panel, the
 pen, arrows, notes — and everything created is flagged `sm` and saved to the `sm:` key.

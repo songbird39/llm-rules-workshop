@@ -687,9 +687,11 @@ module.exports = async function (browser) {
     await page.getByText("전체 복제", { exact: true }).click();
     await page.waitForTimeout(800);
     o = await objs();
-    const sm = o.filter((x) => x.sm);
     check(o.length === 6, "duplicate all created copies", ` (${o.length})`);
-    check(sm.length === 3 && sm.every((x) => x.pe === "auto"), "copies are marked and interactive");
+    // 복제본은 눈으로는 원본과 같다 / a copy is indistinguishable from the original by eye —
+    // that is deliberate — so what proves it is a copy is the record, not the styling
+    check(o.every((x) => x.pe === "auto"), "and everything on the board can be picked up");
+    check(o.filter((x) => x.sm).length === 0, "copies carry no tint of their own");
 
     await page.waitForTimeout(2200);
     const keys = posted.map((x) => x && x.participant);
@@ -700,11 +702,20 @@ module.exports = async function (browser) {
     const sent = posted[posted.length - 1].payload.state;
     check(sent.cards.every((c) => c.sm) && sent.notes.every((n) => n.sm),
       "payload contains only sm-flagged objects");
+    check(sent.cards.every((c) => c.src === "p" && c.of) && sent.notes.every((n) => n.src === "p" && n.of),
+      "and every one of them records the participant object it was copied from");
+    check(!sent.cards.some((c) => c.edited) && !sent.notes.some((n) => n.edited),
+      "a copy nobody has rewritten is not marked edited");
 
+    // 복제본은 이제 겉으로 구분되지 않는다 / a copy is no longer visually distinguishable, so
+    // pick by DOM order instead: duplicateIntoSense appends, so the originals come first
     const rect = (isSm) => page.evaluate((d) => {
       const L = [...document.querySelectorAll("div")].find((x) => x.style.width === "5000px");
-      const el = [...L.children].filter((c) => c.tagName === "DIV" && c.querySelector("input"))
-        .find((c) => /dashed/.test(c.style.border) === d);
+      const els = [...L.children].filter((c) => c.tagName === "DIV" && c.querySelector("input"));
+      // 복제본은 원본 수만큼 뒤에 붙는다 / the copies are appended one-for-one, so the first
+      // of them sits at the halfway mark. Taking the LAST one put it against the right
+      // edge of the viewport, where the drag had nowhere to go.
+      const el = d ? els[els.length / 2] : els[0];
       const r = el.getBoundingClientRect();
       return { x: r.x, y: r.y, left: el.offsetLeft };
     }, isSm);
@@ -810,7 +821,7 @@ module.exports = async function (browser) {
     const fs2 = require("fs");
     const [dl] = await Promise.all([
       page.waitForEvent("download", { timeout: 15000 }).catch(() => null),
-      page.getByRole("button", { name: /이미지 저장/ }).click(),
+      page.getByRole("button", { name: /이미지 \(원본\)/ }).click(),
     ]);
     check(dl !== null, "clean image downloads", dl ? ` (${dl.suggestedFilename()})` : "");
     let cleanSize = 0;
@@ -825,14 +836,19 @@ module.exports = async function (browser) {
     await page.waitForTimeout(700);
     const [dl2] = await Promise.all([
       page.waitForEvent("download", { timeout: 15000 }).catch(() => null),
-      page.getByRole("button", { name: /해석 포함/ }).click(),
+      page.getByRole("button", { name: /이미지 \(해석\)/ }).click(),
     ]);
-    check(dl2 !== null, "workspace image downloads", dl2 ? ` (${dl2.suggestedFilename()})` : "");
+    check(dl2 !== null, "analysis image downloads", dl2 ? ` (${dl2.suggestedFilename()})` : "");
     if (dl2) {
       const f2 = "/tmp/ws-board-sense.png";
       await dl2.saveAs(f2);
-      check(fs2.statSync(f2).size > cleanSize,
-        "the workspace image carries more than the clean one");
+      // 한 장에 두 겹을 겹쳐 그리지 않는다 / never both layers in one picture: the analysis
+      // image holds the analysis and nothing else, so it is a DIFFERENT image, not a
+      // bigger one. Same board copied whole, so the two come out close in size.
+      const senseSize = fs2.statSync(f2).size;
+      check(senseSize > 3000, "and has real content", ` (${senseSize} bytes)`);
+      check(fs2.readFileSync(f2).compare(fs2.readFileSync("/tmp/ws-board.png")) !== 0,
+        "it is a different picture from the original", ` (${cleanSize} vs ${senseSize})`);
     }
     check(errors.length === 0, "no console errors", errors.length ? ` (${errors[0]})` : "");
     await page.close();
@@ -845,8 +861,10 @@ module.exports = async function (browser) {
   console.log("\nhiding a record, restoring it, and saying whose it is");
   {
     const EP = "https://script.google.com/macros/s/FAKE/exec";
-    const people = [{ participant: "P01", rows: 12, submits: 1, lastAt: "2026-08-29T10:00:00Z", hidden: false, desc: "" },
-                    { participant: "P02", rows: 4, submits: 0, lastAt: "2026-08-29T09:00:00Z", hidden: true, desc: "파일럿" }];
+    // 정렬 기준이 진짜 '만든 시각'인지 보려면 두 시각이 엇갈려야 한다 / the two orderings must
+    // DISAGREE, or a list sorted by last activity would pass a created-time check
+    const people = [{ participant: "P01", rows: 12, submits: 1, firstAt: "2026-08-20T09:00:00Z", lastAt: "2026-08-29T10:00:00Z", hidden: false, desc: "" },
+                    { participant: "P02", rows: 4, submits: 0, firstAt: "2026-08-18T09:00:00Z", lastAt: "2026-08-29T09:00:00Z", hidden: true, desc: "파일럿" }];
     const posts = [];
     const page = await browser.newPage({ viewport: { width: 1400, height: 900 } });
     const errors = [];
@@ -871,10 +889,14 @@ module.exports = async function (browser) {
     await page.waitForTimeout(1000);
     const rows = () => page.evaluate(() =>
       [...document.querySelectorAll("span")].filter((s) => s.style.minWidth === "64px").map((s) => s.textContent));
-    const hideBtn = (n) => page.evaluate((k) => {
-      const b = [...document.querySelectorAll("button")].filter((x) => /숨기기|되돌리기/.test(x.textContent));
-      b[k].click();
-    }, n);
+    // 코드로 찾는다 / find the control by the row it belongs to. Picking by index quietly
+    // restored the wrong participant once the list was ordered by created time.
+    const hideBtn = (code) => page.evaluate((c) => {
+      const row = [...document.querySelectorAll("div")].find((d) => d.style.borderRadius === "10px"
+        && [...d.querySelectorAll("span")].some((s) => s.style.minWidth === "64px" && s.textContent === c));
+      const b = [...row.querySelectorAll("button")].find((x) => /숨기기$|되돌리기/.test(x.textContent.trim()));
+      b.click();
+    }, code);
 
     check(JSON.stringify(await rows()) === JSON.stringify(["P01"]),
       "the hidden one is out of the default list", ` (${JSON.stringify(await rows())})`);
@@ -882,8 +904,21 @@ module.exports = async function (browser) {
       "and the toggle says how many are hidden");
     check(!(await page.evaluate(() => /삭제/.test(document.body.innerText))),
       "the word delete appears nowhere in the roster");
+    // 목록은 목록이다 / the plain list is a list: neither control is reachable from it
+    const controls = () => page.evaluate(() => ({
+      fields: document.querySelectorAll('input[placeholder*="설명"]').length,
+      hides: [...document.querySelectorAll("button")].filter((x) => /숨기기$|되돌리기/.test(x.textContent.trim())).length,
+    }));
+    let c = await controls();
+    check(c.fields === 0, "no description field in the plain list", ` (${c.fields})`);
+    check(c.hides === 1, "and the only 숨기기 is the mode button itself", ` (${c.hides})`);
 
-    // 설명 / the description
+    // 설명 편집 모드 / description mode
+    await page.getByText("설명 편집", { exact: true }).click();
+    await page.waitForTimeout(400);
+    c = await controls();
+    check(c.fields === 1, "description mode opens the field", ` (${c.fields})`);
+    check(c.hides === 1, "and brings no hide control with it", ` (${c.hides})`);
     await page.locator('input[placeholder*="설명"]').first().fill("이지원 · 9월 2일");
     await page.waitForTimeout(1500);
     const meta = posts.filter((b) => b.kind === "meta");
@@ -891,9 +926,17 @@ module.exports = async function (browser) {
     check(meta[0] && meta[0].participant === "mt:P01", "under the mt: key", meta[0] ? ` (${meta[0].participant})` : "");
     check(meta[0] && meta[0].payload.state.desc === "이지원 · 9월 2일", "carrying the text");
     check(meta[0] && meta[0].payload.state.hidden === false, "and the flag it must not clobber");
+    await page.getByText("설명 편집", { exact: true }).click();
+    await page.waitForTimeout(400);
+    check((await controls()).fields === 0, "leaving the mode closes the field");
+    check(await page.evaluate(() => document.body.innerText.includes("이지원 · 9월 2일")),
+      "but the description still reads in the list");
 
-    // 숨기기 / hide P01
-    await hideBtn(0);
+    // 숨기기 모드 / hide mode
+    await page.getByText("숨기기", { exact: true }).click();
+    await page.waitForTimeout(400);
+    check((await controls()).hides === 2, "hide mode puts a control on the row");
+    await hideBtn("P01");
     await page.waitForTimeout(500);
     check(JSON.stringify(await rows()) === JSON.stringify([]), "hiding empties the list");
     const hid = posts.filter((b) => b.kind === "meta").pop();
@@ -904,11 +947,15 @@ module.exports = async function (browser) {
     // 숨긴 항목 보기 / the hidden view, and back
     await page.getByText("숨긴 항목", { exact: false }).click();
     await page.waitForTimeout(400);
-    check(JSON.stringify(await rows()) === JSON.stringify(["P01", "P02"]),
-      "the hidden view holds both of them", ` (${JSON.stringify(await rows())})`);
+    // P02 는 나중에 활동했지만 먼저 열렸다 / P02 was active LAST but opened FIRST, so this
+    // order can only have come from the created time
+    check(JSON.stringify(await rows()) === JSON.stringify(["P02", "P01"]),
+      "the hidden view holds both, oldest session first", ` (${JSON.stringify(await rows())})`);
+    check(await page.evaluate(() => document.body.innerText.includes("8/18/2026")),
+      "and the time shown is the one it is sorted by");
     check(await page.evaluate(() => document.body.innerText.includes("기록은 지워지지 않았습니다")),
-      "and says plainly that nothing was deleted");
-    await hideBtn(0);
+      "it says plainly that nothing was deleted");
+    await hideBtn("P01");
     await page.waitForTimeout(500);
     check(JSON.stringify(await rows()) === JSON.stringify(["P02"]), "restoring takes it back out of hiding");
     check(posts.filter((b) => b.kind === "meta").pop().payload.state.hidden === false, "posted as a flag again");

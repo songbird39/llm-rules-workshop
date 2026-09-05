@@ -552,6 +552,12 @@ module.exports = async function (browser) {
     // 1. 참여자 것을 하나만 복제 / copy ONE participant object, not the whole board
     check(await page.evaluate(() => document.body.innerText.includes("학습 계획")),
       "the card panel is open in analysis mode");
+    // 뒤로 가는 길은 하나 / one way back, top left. There used to be two, and the second
+    // sat in a row of export buttons where nothing else navigated anywhere.
+    const backs = await page.evaluate(() =>
+      [...document.querySelectorAll("button")].filter((x) => /← 목록/.test(x.textContent)).map((x) => Math.round(x.getBoundingClientRect().x)));
+    check(backs.length === 1, "there is exactly one way back to the list", ` (${backs.length})`);
+    check(backs[0] < 120, "and it is the top-left button", ` (x=${backs[0]})`);
     let o = await objs();
     check(o.length === 3, "the participant's board loaded", ` (${o.length})`);
     await page.mouse.click(o[1].x + o[1].w / 2, o[1].y + 8);   // the act tag
@@ -564,15 +570,39 @@ module.exports = async function (browser) {
     // 2. 덱 접기 / the deck folds away and comes back, and the board takes the space
     const boardW = async () => (await (await page.$('div[style*="radial-gradient"]')).boundingBox()).width;
     const wOpen = await boardW();
-    await page.getByText("덱 접기", { exact: true }).click();
+    // 접기는 덱 자기 탭에 붙어 있다 / the fold is on the deck's own tab row, not adrift in
+    // the toolbar, and folding leaves a spine where the panel was
+    const foldBtn = () => page.evaluate(() => {
+      const b = [...document.querySelectorAll("button")].find((x) => x.title === "덱 접기");
+      if (!b) return null;
+      const r = b.getBoundingClientRect();
+      return { x: r.x + r.width / 2, y: r.y + r.height / 2 };
+    });
+    const f = await foldBtn();
+    check(f !== null, "the fold control sits on the deck's tab row");
+    const tabs = await page.evaluate(() => {
+      const b = [...document.querySelectorAll("button")].find((x) => x.title === "덱 접기");
+      return [...b.parentElement.querySelectorAll("button")].map((x) => x.textContent.trim());
+    });
+    check(tabs.length === 3 && tabs[0] === "규칙" && tabs[1] === "가드레일",
+      "beside the two deck tabs", ` (${JSON.stringify(tabs)})`);
+    await page.mouse.click(f.x, f.y);
     await page.waitForTimeout(400);
     check(!(await page.evaluate(() => document.body.innerText.includes("아이디에이션"))),
-      "the deck folds away in analysis mode");
+      "pressing it folds the deck away");
     check((await boardW()) > wOpen + 200, "and the board takes the width it left",
       ` (${Math.round(wOpen)} -> ${Math.round(await boardW())})`);
-    await page.getByText("덱 펼치기", { exact: true }).click();
+    const spine = await page.evaluate(() => {
+      const b = [...document.querySelectorAll("button")].find((x) => x.title === "덱 펼치기");
+      if (!b) return null;
+      const r = b.getBoundingClientRect();
+      return { x: r.x + r.width / 2, y: r.y + r.height / 2, w: r.width };
+    });
+    check(spine !== null && spine.w < 40, "a narrow spine is left where the panel was",
+      spine ? ` (${Math.round(spine.w)}px)` : "");
+    await page.mouse.click(spine.x, spine.y);
     await page.waitForTimeout(400);
-    check(await page.evaluate(() => document.body.innerText.includes("아이디에이션")), "and comes back");
+    check(await page.evaluate(() => document.body.innerText.includes("아이디에이션")), "and it brings the deck back");
 
     // 3. 덱에서 새 카드 / a brand-new card dragged in during analysis
     const cb = await (await page.$('div[style*="radial-gradient"]')).boundingBox();

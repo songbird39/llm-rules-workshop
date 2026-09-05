@@ -492,9 +492,10 @@ console.log("\n수단 is a chip with an ink bar, in the library and on the board
   check((doc.match(/border:2px solid (#413e37|\{\{ c\.chipInk \}\})/g) || []).length === 3,
     "and all three carry the 2px ink border");
   check((doc.match(/height:38px/g) || []).length >= 3, "all three are 38px tall");
-  // 해석 레이어는 잉크 색으로 / an admin's own chip is told apart by its ink
-  check(/chipInk: c\.sm \? 'oklch\(0\.62 0\.11 62\)' : '#413e37'/.test(doc),
-    "a sensemaking chip is inked differently");
+  // 복제본은 원본과 똑같다 / a COPY is inked like the original — only what was authored
+  // in analysis is told apart, because a copy that looks different is not a copy
+  check(/chipInk: \(c\.sm && c\.src === 'a'\) \? SM_INK : '#413e37'/.test(doc),
+    "only a chip authored in analysis is inked differently");
   // 칩도 자기 조작을 갖는다 / the chip keeps its own controls
   const chip = doc.slice(doc.indexOf("{{ c.isMeans }}"), doc.indexOf("{{ c.isPlainCard }}"));
   for (const h of ["onDupDown", "onDelDown"])
@@ -560,8 +561,22 @@ console.log("\ntwo kinds of analysis note, sized by hand and tied to a step");
 {
   // 색이 유일한 구분 / colour is the only thing that separates them, so the three grounds
   // must actually be three: participant, admin remark, transcript
-  check(/bg: n\.sm \? \(tx \? TX_BG : '#fdfbf5'\) : 'transparent'/.test(doc),
-    "a participant note, an admin note and a transcript note are three different grounds");
+  check(/bg: \(n\.sm && n\.src === 'a'\) \? \(tx \? TX_BG : '#fdfbf5'\) : 'transparent'/.test(doc),
+    "a copied note, an admin note and a transcript note are three different grounds");
+  // 출처는 데이터로 남는다 / provenance lives in the record instead: 'p' with the id it was
+  // copied from, 'a' for authored here, and `edited` only when the CONTENT changed
+  check(/sm: true, src: 'p', of: c\.id/.test(doc), "a copied card records where it came from");
+  check(/sm: true, src: 'p', of: n\.id/.test(doc), "and so does a copied note");
+  check(/sm: true, src: 'a'/.test(doc), "anything authored in analysis is marked as such");
+  check(/slant: c\.edited \? 'italic' : 'normal'/.test(doc), "an edited card is set in italic");
+  check(/slant: n\.edited \? 'italic' : 'normal'/.test(doc), "and so is an edited note");
+  // 옮기는 건 고치는 게 아니다 / moving is not editing: markEdited is reached from patch and
+  // from the note's text handler, and from nowhere that changes x or y
+  const edCalls = (doc.match(/this\.markEdited\(/g) || []).length;
+  check(edCalls === 2, "markEdited is reached from the two content paths and no other",
+    ` (${edCalls})`);
+  check(!/x: Math\.round[^;]*markEdited/.test(doc), "never from a move");
+  check(/c\.id === id && c\.sm && !c\.edited/.test(doc), "and it only ever marks an analysis object");
   check(/const TX_INK = 'oklch\(0\.52 0\.055 250\)'/.test(src), "transcript ink is defined once");
   check(/font: tx \? 'ui-monospace/.test(doc), "and transcript is set in mono, not the UI face");
   check(/noteKind: 'tx'/.test(doc), "the transcript tool arms its own note kind");
@@ -575,6 +590,10 @@ console.log("\ntwo kinds of analysis note, sized by hand and tied to a step");
   // which is exactly why this cannot be data-manual
   check(!/data-\w+="\{\{/.test(doc), "no interpolated data-* attribute anywhere in the markup");
   check(/ov: n\.manual \? 'auto' : 'hidden'/.test(doc), "a hand-sized note scrolls rather than clipping");
+  // 손잡이와 ✕ 가 같은 모서리를 쓰고 있었다 / the grip and the delete button shared one corner
+  check(/ctrlPad: \(RO && n\.sm\) \? '14px' : '0'/.test(doc),
+    "the control row stops short of the resize grip");
+  check(/canSize: RO && n\.sm/.test(doc), "and only an analysis note has a grip to stop short of");
   check(/w: Math\.max\(NOTE_MIN_W/.test(doc) && /h: Math\.max\(NOTE_MIN_H/.test(doc),
     "and it resizes in both directions, with a floor");
   check(/!n\.manual && !n\.collapsed && nhs\[i\]/.test(doc),
@@ -686,7 +705,7 @@ console.log("\nview mode cannot write");
   check(/canAuthor\(\) \{ return this\.isView\(\) \? \(!!this\.state\.viewPid && !this\.state\.travel\) : true; \}/.test(doc),
     "authoring is off in the roster and while browsing an old version");
   check(/canEdit: !RO/.test(doc), "the participant-flow buttons stay participant-only");
-  check(/mine\(o\) \{ return this\.isView\(\) \? Object\.assign\(\{\}, o, \{ sm: true \}\) : o; \}/.test(doc),
+  check(/mine\(o\) \{ return this\.isView\(\) \? Object\.assign\(\{\}, o, \{ sm: true, src: 'a' \}\) : o; \}/.test(doc),
     "everything the admin creates is flagged sm, so it saves to the sm: key");
   check(/concat\(\[this\.mine\(card\)\]\)/.test(doc), "a card dragged in during analysis is flagged");
   check(/concat\(\[this\.mine\(\{ id: id/.test(doc), "and so is a note");
@@ -803,8 +822,31 @@ console.log("\nview mode cannot write");
   check(/state: \{ hidden: !!r\.hidden, desc: r\.desc \|\| '' \}/.test(doc),
     "carrying both the flag and the description, so neither can clobber the other");
   // 숨김은 되돌릴 수 있어야 뜻이 있다 / hiding is only meaningful if it comes back
-  check(/this\.state\.showHidden \? !!r\.hidden : !r\.hidden/.test(doc),
+  check(/this\.state\.rosterMode === 'hidden' \? !!r\.hidden : !r\.hidden/.test(doc),
     "the two roster views are exact complements, so nothing falls out of both");
+  // 목록은 목록으로 / the list stays a list: the description field and the hide control
+  // appear only in the mode that is about them, so a mis-aimed click cannot rewrite or
+  // hide a record on the way to opening it
+  check(/editing: this\.state\.rosterMode === 'desc'/.test(doc), "the description field is a mode");
+  check(/hiding: this\.state\.rosterMode === 'hide' \|\| this\.state\.rosterMode === 'hidden'/.test(doc),
+    "and so is the hide control");
+  check(/showDesc: this\.state\.rosterMode !== 'desc' && !!r\.desc/.test(doc),
+    "but the description still READS in the plain list — that is what it is for");
+  // 정렬은 만든 시각 / ordered by when the session was opened, not by last activity: a
+  // roster that reshuffles itself every time you open a record is not a roster
+  check(/String\(a\.firstAt \|\| a\.lastAt \|\| ''\)\.localeCompare/.test(doc),
+    "the roster is ordered by created time, with a fallback for an old backend");
+  check(/when: \(r\.firstAt \|\| r\.lastAt\)/.test(doc), "and shows the time it is sorted by");
+
+  // 뒤로 가는 길은 하나 / one way back, and the analysis exports are one layer or the other
+  check(/showBack: viewing \|\| this\.state\.step === 2/.test(doc), "one back button, top left");
+  check(/onBack: viewing \? \(\) => this\.backToRoster\(\)/.test(doc), "and in admin it means the list");
+  check(!/t\.backList \}\}<\/button>[\s\S]{0,200}onRefresh/.test(doc), "the duplicate list button is gone");
+  check(/const keep = \(o\) => \(mode === 'sense' \? !!o\.sm : !o\.sm\)/.test(doc),
+    "an exported image is one layer or the other, never both");
+  // 접기는 덱 옆에 / the fold sits on the deck's own tab row, and folding leaves a spine
+  check(/canFold: viewing/.test(doc), "only the admin may fold the deck");
+  check(/panelFolded: viewing && this\.state\.panelOff/.test(doc), "a folded deck leaves a way back");
   check(/this\._mt = setTimeout/.test(doc), "the typed description is coalesced, not one row per keystroke");
   // 배포가 밀렸을 때 / a backend still on the old version returns mt: rows as participants
   check(/filter\(\(r\) => String\(r\.participant \|\| ''\)\.indexOf\('mt:'\) !== 0\)/.test(doc),
