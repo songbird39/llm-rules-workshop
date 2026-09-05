@@ -186,6 +186,12 @@ to 1.0 automatically.
 This is separate from the **board zoom** (the −/+ control on the canvas, 35–160%), which
 only scales the cards. The UI scale covers the panel, header and toolbar too.
 
+⚠ Two suites, and running one is not running the tests — the static checks have been
+broken by browser-side work and committed unnoticed. `node tools/test_ui_scale.js` reads
+the source; `node tools/browser/e2e.js` drives a real browser. The browser suite is split
+into `part1.js` / `part2.js` behind a `PART=1|2` env var because the whole run exhausts a
+small machine's memory and stalls silently partway; each half passes alone.
+
 ⚠ If you change any pointer/drag code, re-run `node tools/test_ui_scale.js`. Pointer
 events arrive in scaled client px while card positions are stored in unscaled px, so a
 missing division makes cards drift away from the cursor.
