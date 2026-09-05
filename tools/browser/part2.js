@@ -561,13 +561,26 @@ module.exports = async function (browser) {
     o = await objs();
     check(o.length === 4, "one selected participant object can be copied on its own", ` (${o.length})`);
 
-    // 2. 덱에서 새 카드 / a brand-new card dragged in during analysis
+    // 2. 덱 접기 / the deck folds away and comes back, and the board takes the space
+    const boardW = async () => (await (await page.$('div[style*="radial-gradient"]')).boundingBox()).width;
+    const wOpen = await boardW();
+    await page.getByText("덱 접기", { exact: true }).click();
+    await page.waitForTimeout(400);
+    check(!(await page.evaluate(() => document.body.innerText.includes("아이디에이션"))),
+      "the deck folds away in analysis mode");
+    check((await boardW()) > wOpen + 200, "and the board takes the width it left",
+      ` (${Math.round(wOpen)} -> ${Math.round(await boardW())})`);
+    await page.getByText("덱 펼치기", { exact: true }).click();
+    await page.waitForTimeout(400);
+    check(await page.evaluate(() => document.body.innerText.includes("아이디에이션")), "and comes back");
+
+    // 3. 덱에서 새 카드 / a brand-new card dragged in during analysis
     const cb = await (await page.$('div[style*="radial-gradient"]')).boundingBox();
     await dragTileToBoard(page, "학습 계획", 0.74, 0.30);
     o = await objs();
     check(o.length === 5, "and a new card can be dragged in from the deck", ` (${o.length})`);
 
-    // 3. 전사 메모 / the transcription note is a different animal from the memo
+    // 4. 전사 메모 / the transcription note is a different animal from the memo
     await page.getByText("✎ 전사", { exact: true }).click();
     await page.waitForTimeout(200);
     await page.mouse.click(cb.x + cb.width * 0.55, cb.y + cb.height * 0.62);
@@ -582,7 +595,7 @@ module.exports = async function (browser) {
     check(tx.sizer === true, "an analysis note carries a resize grip");
     check(own.sizer === false, "a participant's note does not");
 
-    // 4. 크기 조절 / resizing, and the scroll that has to come with it
+    // 5. 크기 조절 / resizing, and the scroll that has to come with it
     const before = { w: tx.w, h: tx.h };
     const box = await page.evaluate(() => {
       const L = [...document.querySelectorAll("div")].find((d) => d.style.width === "5000px");
@@ -603,7 +616,7 @@ module.exports = async function (browser) {
     check(sized.ov === "auto", "and scrolls once it is sized rather than clipping");
     check(sized.grow === false, "the auto-grow is switched off, so the size sticks");
 
-    // 5. 단계에 매단 메모 / a note hung off a step, and the line that says so
+    // 6. 단계에 매단 메모 / a note hung off a step, and the line that says so
     await page.keyboard.down("Alt");
     await page.mouse.move(cb.x + cb.width * 0.6, cb.y + 60);
     await page.mouse.down();
@@ -641,7 +654,7 @@ module.exports = async function (browser) {
     check(!withLine.equals(withoutLine), "and the line is really on the pixels");
     await page.evaluate(() => { document.querySelectorAll("line").forEach((l) => { l.style.display = ""; }); });
 
-    // 6. 붙는 자리가 메모 위치를 따라간다 / the tag-side end follows the note around
+    // 7. 붙는 자리가 메모 위치를 따라간다 / the tag-side end follows the note around
     const nb = await page.evaluate(() => {
       const L = [...document.querySelectorAll("div")].find((d) => d.style.width === "5000px");
       const el = [...L.querySelectorAll(':scope > [data-obj="note"]')].pop();
@@ -659,7 +672,7 @@ module.exports = async function (browser) {
       "moving the note moves where the line leaves the tag",
       ` (${l1[0] && Math.round(l1[0].x1)} -> ${l2[0] && Math.round(l2[0].x1)})`);
 
-    // 7. 서버에 남는다 / all of it belongs to the sm: record and nothing else
+    // 8. 서버에 남는다 / all of it belongs to the sm: record and nothing else
     await page.waitForTimeout(2400);
     const sm = posted.filter((b) => b.kind === "sensemaking");
     check(sm.length > 0 && sm.every((b) => b.participant === "sm:P9"),

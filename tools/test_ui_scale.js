@@ -677,7 +677,11 @@ console.log("\nview mode cannot write");
   // 해석 레이어에서는 관리자도 참여자와 같은 도구를 쓴다 / in the analysis layer the admin
   // gets the participant's own tools: the deck panel, the pen, the arrow, the note. What
   // stays theirs alone is the participant flow — 다음 · 제출 · 초기화.
-  check(/showPanel: this\.canAuthor\(\)/.test(doc), "the deck panel opens in analysis mode");
+  check(/showPanel: this\.canAuthor\(\) && !\(viewing && this\.state\.panelOff\)/.test(doc),
+    "the deck panel opens in analysis mode, and only the admin can fold it away");
+  // 참여자에게서 덱을 빼앗을 수는 없다 / a participant cannot lose the deck: without it there
+  // is no task. The fold is gated on `viewing`, not on the flag alone.
+  check(/panelOff: false/.test(doc), "the fold starts open");
   check(/canDraw: this\.canAuthor\(\)/.test(doc), "and so do the drawing tools");
   check(/canAuthor\(\) \{ return this\.isView\(\) \? \(!!this\.state\.viewPid && !this\.state\.travel\) : true; \}/.test(doc),
     "authoring is off in the roster and while browsing an old version");

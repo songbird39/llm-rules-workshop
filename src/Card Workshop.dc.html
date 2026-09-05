@@ -74,6 +74,7 @@
           <button onClick="{{ onDupSel }}" style="padding:5px 9px;border:1px dashed oklch(0.62 0.11 62);border-radius:6px;background:#fdfbf5;color:#7a5a1f;font-size:12.5px;cursor:pointer">{{ t.dupSelBtn }}</button>
           <button onClick="{{ onImg }}" style="padding:5px 9px;border:1px solid #d6d3ca;border-radius:6px;background:#fff;font-size:12.5px;cursor:pointer" style-hover="background:#f1efe8">{{ t.imgBtn }}</button>
           <button onClick="{{ onImgSense }}" style="padding:5px 9px;border:1px dashed oklch(0.62 0.11 62);border-radius:6px;background:#fdfbf5;color:#7a5a1f;font-size:12.5px;cursor:pointer">{{ t.imgSenseBtn }}</button>
+          <button onClick="{{ onTogglePanel }}" style="padding:5px 9px;border:1px solid #d6d3ca;border-radius:6px;background:{{ panelBtnBg }};color:{{ panelBtnFg }};font-size:12.5px;cursor:pointer" style-hover="background:#f1efe8">{{ panelBtnLabel }}</button>
           <button onClick="{{ onClearSense }}" style="padding:5px 8px;border:1px solid #e2dfd7;border-radius:6px;background:transparent;color:#98958c;font-size:12.5px;cursor:pointer" style-hover="color:#b03f34">{{ t.clearSenseBtn }}</button>
           <button onClick="{{ onHistory }}" style="padding:5px 9px;border:1px solid #d6d3ca;border-radius:6px;background:#fff;font-size:12.5px;cursor:pointer" style-hover="background:#f1efe8">{{ t.histBtn }}</button>
         </sc-if>
@@ -738,6 +739,7 @@ const I18N = {
       hiddenTitle: '숨긴 참여자', hiddenEmpty: '숨긴 항목이 없습니다.',
       hiddenNote: '기록은 지워지지 않았습니다. 목록에서만 빠져 있습니다.',
       metaPh: '설명 (누구의 기록인지 적어 두세요)',
+      panelHide: '덱 접기', panelShow: '덱 펼치기',
       rosterLoading: '불러오는 중…', rosterEmpty: '아직 저장된 참여자가 없습니다.',
       rosterError: '목록을 불러오지 못했습니다. Apps Script를 새 버전으로 다시 배포했는지 확인해 주세요.',
       noSnap: '이 참여자의 저장된 보드가 없습니다.', backList: '← 목록', refreshBtn: '새로고침',
@@ -845,6 +847,7 @@ const I18N = {
       hiddenTitle: 'Hidden participants', hiddenEmpty: 'Nothing is hidden.',
       hiddenNote: 'Nothing was deleted. These are only out of the list.',
       metaPh: 'Description (who this code belongs to)',
+      panelHide: 'Hide deck', panelShow: 'Show deck',
       rosterLoading: 'Loading…', rosterEmpty: 'No participants saved yet.',
       rosterError: 'Could not load the list. Check that the Apps Script was redeployed as a new version.',
       noSnap: 'No saved board for this participant.', backList: '← List', refreshBtn: 'Refresh',
@@ -874,7 +877,7 @@ const I18N = {
 class Component extends DCLogic {
   constructor(props) {
     super(props);
-    this.state = { sync: '', step: 0, lang: 'ko', rules: [], pid: '', loginPid: '', cards: [], notes: [], arrows: [], arrowMode: false, pendingArrow: null, pen: null, strokes: [], selArrow: null, noteMode: false, noteKind: 'memo', undoDepth: 0, focusNote: null, showHidden: false, pan: { x: 0, y: 0 }, zoom: 1, ghost: null, seq: 1, panelW: panelCap(), sel: [], marquee: null, finish: null, tab: 'flow', hist: null, histList: [], travel: null, senseOn: true, admin: false, viewPid: '', roster: [], rosterMsg: '' };
+    this.state = { sync: '', step: 0, lang: 'ko', rules: [], pid: '', loginPid: '', cards: [], notes: [], arrows: [], arrowMode: false, pendingArrow: null, pen: null, strokes: [], selArrow: null, noteMode: false, noteKind: 'memo', panelOff: false, undoDepth: 0, focusNote: null, showHidden: false, pan: { x: 0, y: 0 }, zoom: 1, ghost: null, seq: 1, panelW: panelCap(), sel: [], marquee: null, finish: null, tab: 'flow', hist: null, histList: [], travel: null, senseOn: true, admin: false, viewPid: '', roster: [], rosterMsg: '' };
     this.canvasRef = React.createRef();
     this.drag = null;
   }
@@ -2819,7 +2822,14 @@ class Component extends DCLogic {
       // 그리기 도구는 관리자에게도 열려 있다 / the drawing tools open for the admin too;
       // only the participant-flow buttons (다음 · 제출 · 초기화) stay theirs alone
       canDraw: this.canAuthor(),
-      showPanel: this.canAuthor(),
+      // 해석할 때는 덱이 늘 필요하진 않다 / the deck is not always wanted while analysing —
+      // transcript wants width. Only the admin may fold it away: a participant needs the
+      // cards to do the task at all.
+      showPanel: this.canAuthor() && !(viewing && this.state.panelOff),
+      onTogglePanel: () => this.setState((st) => ({ panelOff: !st.panelOff })),
+      panelBtnLabel: this.state.panelOff ? t.panelShow : t.panelHide,
+      panelBtnBg: this.state.panelOff ? '#1b1a17' : '#fff',
+      panelBtnFg: this.state.panelOff ? '#faf8f3' : '#1b1a17',
       layerPE: this.state.pen ? 'none' : 'auto',
       senseRegion: RO && !!this.state.viewPid && !!this.senseBounds(),
       regionX: (this.senseBounds() || {}).x || 0,

@@ -25,6 +25,10 @@
  * machine run the halves separately — each passes alone — and pipe through `tee`
  * rather than `>` if you want to watch it advance.
  *
+ * PART=2 now sits close to that limit and dies outright every few runs, partway and
+ * without a failure. A rerun that reaches the end is the answer; a third split is the
+ * real one, when it starts costing more than a rerun.
+ *
  * SELECTOR NOTES (both cost me a debugging round):
  *  - Step-1 rule titles are <input value="…">, not text nodes, so getByText misses them.
  *  - Attribute selectors like [style*="width:168px"] do NOT match: the browser
