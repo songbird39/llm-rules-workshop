@@ -232,5 +232,54 @@ console.log("\nrecords written before any of this still open");
     "there is no transcript record for it, and asking for one is not an error");
 }
 
+console.log("\nan old sheet, read by this server and by the previous client");
+{
+  // 예전 빌드가 쓴 그대로의 시트 / a sheet containing ONLY what older builds wrote: no stamp,
+  // no part/parts, no label, transcript inside the note, and — for the oldest rows — not
+  // even a kind the current code knows about. Nothing here has been touched since.
+  const { post, get } = loadServer();
+  const oldBoard = (n) => ({ savedAt: 1756000000000, pid: "P01", step: 2, lang: "ko", rules: [],
+    cards: Array.from({ length: n }, (_, i) => ({ id: "c" + i, type: "when", title: "t" + i, desc: "d", x: 100 * i, y: 100 })),
+    notes: [{ id: "n1", x: 300, y: 700, text: "참여자 메모" }], arrows: [], seq: 4, panelW: 566 });
+  const oldAnalysis = { savedAt: 1756000100000, pid: "sm:P01", step: 2, lang: "ko", rules: [],
+    cards: [{ id: "s1", type: "when", title: "해석", desc: "", sm: true, x: 900, y: 400 }],
+    notes: [{ id: "n9", x: 900, y: 250, text: "예전 전사 본문", kind: "tx", sm: true }],
+    arrows: [], seq: 9, panelW: 566 };
+
+  post({ participant: "P01", kind: "autosave", queuedAt: "2026-08-20T09:00:00Z", payload: { participant: "P01", state: oldBoard(1) } });
+  post({ participant: "P01", kind: "autosave", queuedAt: "2026-08-20T09:02:00Z", payload: { participant: "P01", state: oldBoard(2) } });
+  post({ participant: "P01", kind: "submit",   queuedAt: "2026-08-20T09:05:00Z", payload: { participant: "P01", state: oldBoard(3) } });
+  post({ participant: "sm:P01", kind: "sensemaking", queuedAt: "2026-08-21T09:00:00Z", payload: { participant: "sm:P01", state: oldAnalysis } });
+  // 예전에는 없던 필드가 하나도 없는 행 / a row from before kind was even set
+  post({ participant: "P02", payload: { participant: "P02", state: oldBoard(1) } });
+
+  // 1. 예전 클라이언트가 하는 읽기 / every read the PREVIOUS client makes
+  const roster = get({ list: "1" }).participants;
+  check(roster.length === 2, "the roster still lists both participants", ` (${roster.map((r) => r.participant)})`);
+  check(roster.every((r) => r.hidden === false && r.desc === ""),
+    "with hidden/desc defaulted, since no mt: row exists for them");
+  check(get({ participant: "P01" }).state.cards.length === 3, "their newest board loads");
+  check(get({ participant: "sm:P01" }).state.cards.length === 1, "and so does the analysis over it");
+  check(get({ participant: "sm:P01" }).state.notes[0].text === "예전 전사 본문",
+    "with the transcript still inside the note, where the old build put it");
+  const vs = get({ versions: "P01" }).versions;   // 예전 클라이언트는 every 를 보내지 않는다
+  check(vs.length >= 2 && vs.some((v) => v.kind === "submit"),
+    "the version list works without an every parameter", ` (${vs.length})`);
+  check(vs.every((v) => v.label === ""), "old rows simply have no label");
+  check(get({ row: String(vs[0].row) }).state !== null, "and each of those versions still opens");
+  check(get({}).rows >= 5, "the plain health check still answers", ` (${get({}).rows})`);
+
+  // 2. 새 클라이언트가 새로 하는 읽기, 예전 데이터 위에서 / the reads only the NEW client makes
+  check(get({ participant: "tx:P01" }).state === null,
+    "asking for a transcript record that never existed is not an error");
+  check(get({ head: "sm:P01" }).head !== null, "head works on an old-shape row too");
+  check(get({ versions: "sm:P01", every: "45000" }).versions.length === 1,
+    "and the analysis history has exactly the one version there is");
+
+  // 3. kind 없는 아주 오래된 행 / the oldest row of all, with no kind at all
+  check(get({ participant: "P02" }).state.cards.length === 1, "a row written before kind existed still loads");
+  check(roster.find((r) => r.participant === "P02").submits === 0, "and counts as no submit, which it was");
+}
+
 console.log(failures ? `\n${failures} FAILURE(S)` : "\nall passed");
 process.exit(failures ? 1 : 0);

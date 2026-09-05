@@ -213,6 +213,20 @@ wrote — a scan that skipped the wrong row would look fine in every browser che
 an analysis record silently. Run all three: `test_ui_scale.js`, `test_server.js`,
 `browser/e2e.js`.
 
+### Compatibility
+
+Three directions, all covered by `tools/test_server.js` against a sheet built only from
+old-shape rows:
+
+| | reads | writes |
+|---|---|---|
+| **old client → new server** | works: version lists without an `every` parameter, boards, analysis, the health check. A record this build sliced across rows comes back to them as one plain state. | works: an old-shape save is stored and returned unchanged. |
+| **new client → old data** | works: old boards and analysis load, transcript still inside the note, rows written before `kind` existed still load, and a missing `tx:` record is not an error. | works, and migrates — see the transcript note below. |
+| **new client → old server** | **broken.** An old deployment cannot reassemble a sliced record, so analysis saves and will not load. This is why the client checks `VERSION` and shows a banner naming the fix. | |
+
+So: deploy the server first, then reload the page. The one order that hurts is a new page
+against an old deployment, and that now says so instead of failing silently.
+
 ### The analysis has a history
 
 Every analysis save appends a row, so the history was always on the sheet; what was missing
