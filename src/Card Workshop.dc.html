@@ -2169,7 +2169,7 @@ class Component extends DCLogic {
         kids.push(h('line', { key: 'pending', x1: c0.x, y1: c0.y, x2: p.x, y2: p.y, stroke: SEL, strokeWidth: 2.2, strokeDasharray: '6 5', strokeLinecap: 'round', markerEnd: 'url(#om-ah-sel)' }));
       }
     }
-    return h('svg', { width: 5000, height: 5000, style: { position: 'absolute', left: 0, top: 0, pointerEvents: 'none' } }, kids);
+    return h('svg', { width: 5000, height: 5000, style: { position: 'absolute', left: 0, top: 0, overflow: 'visible', pointerEvents: 'none' } }, kids);
   }
 
   /* 필기 레이어 / THE INK LAYER
@@ -2196,7 +2196,7 @@ class Component extends DCLogic {
     if (dr && dr.pts.length >= 4) kids.push(line(dr, 'drawing'));
     return h('svg', {
       width: 5000, height: 5000,
-      style: { position: 'absolute', left: 0, top: 0, pointerEvents: 'none', mixBlendMode: 'multiply' }
+      style: { position: 'absolute', left: 0, top: 0, overflow: 'visible', pointerEvents: 'none', mixBlendMode: 'multiply' }
     }, kids);
   }
 

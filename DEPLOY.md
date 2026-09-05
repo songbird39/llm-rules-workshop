@@ -146,6 +146,12 @@ inside a 42% budget. The panel is a card grid (16px padding, 168px cards, 10px g
 anything between two column counts is dead space. It stays freely resizable by dragging its
 edge.
 
+The board's ink and arrow layers are drawn in one 5000×5000 SVG each, anchored at board
+(0,0), with `overflow: visible`. That last part is load-bearing: board coordinates go
+negative as soon as anyone pans right, and an SVG clips whatever falls outside its own
+viewport, so without it every stroke and arrow left of the origin is recorded and then
+thrown away — which reads as an invisible dead zone rather than as a bug.
+
 **Navigating the board**: two-finger scroll (or a wheel) pans vertically, **shift+wheel**
 pans sideways — a mouse wheel has no horizontal axis, so without shift a mouse could only go
 up and down. ctrl+scroll zooms, and middle-drag / Alt+drag / Space+drag pan in any direction. A plain drag on empty board draws the

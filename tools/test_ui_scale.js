@@ -541,6 +541,19 @@ console.log("\nsideways panning works on a mouse, not just a trackpad");
   check(/let dx = e\.deltaX, dy = e\.deltaY;/.test(src), "and only when the device sent no deltaX of its own");
 }
 
+// ---- 6l. the board layers must not clip ----
+console.log("\nink and arrows survive outside the layer's own box");
+{
+  // SVG 는 뷰포트 밖을 잘라낸다 / an SVG clips whatever falls outside its viewport, and both
+  // board layers start at board (0,0) sized 5000. Board coordinates go negative the moment
+  // you pan right, so ink drawn left of the origin was recorded and then thrown away — it
+  // read as an invisible dead zone. A <div> is not clipped that way, which is why the cards
+  // looked fine and only the pen and the arrows were affected.
+  const layers = (src.match(/overflow: 'visible', pointerEvents: 'none'/g) || []).length;
+  check(layers === 2, "both the ink layer and the arrow layer draw outside their box",
+    ` (${layers})`);
+}
+
 // ---- 7. view mode must not be able to write ----
 // The whole point: viewing P01 must never produce a localStorage write or a sheet
 // POST, because latestState_() takes the newest row and would adopt the accident.

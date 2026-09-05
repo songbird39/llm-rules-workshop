@@ -1448,6 +1448,45 @@ async function dragTileToBoard(page, title, fx = 0.45, fy = 0.4) {
     await page.close();
   }
 
+  // ------------------------------------------------- drawing left of the origin
+  console.log("\nink drawn left of the board origin is actually painted");
+  {
+    const { page, errors } = await boot(browser, { width: 1500, height: 900 });
+    await toStep1(page, "NEG");
+    const box = await (await page.$('div[style*="radial-gradient"]')).boundingBox();
+    // 오른쪽으로 밀어 음수 좌표를 화면에 들인다 / pan right so negative board x is on screen
+    await page.keyboard.down("Alt");
+    await page.mouse.move(box.x + 300, box.y + 300);
+    await page.mouse.down();
+    await page.mouse.move(box.x + 600, box.y + 300, { steps: 8 });
+    await page.mouse.up();
+    await page.keyboard.up("Alt");
+    await page.waitForTimeout(300);
+    await page.getByRole("button", { name: "펜", exact: true }).click();
+    await page.waitForTimeout(250);
+    await page.mouse.move(box.x + 40, box.y + 400);
+    await page.mouse.down();
+    for (let i = 1; i <= 8; i++) { await page.mouse.move(box.x + 40 + 18 * i, box.y + 400 + 10 * i); await page.waitForTimeout(30); }
+    await page.mouse.up();
+    await page.waitForTimeout(300);
+    const ink = await page.evaluate(() => {
+      const l = document.querySelector("polyline");
+      if (!l) return null;
+      const xs = l.getAttribute("points").split(" ").map(Number).filter((_, i) => i % 2 === 0);
+      const svg = l.closest("svg");
+      const r = l.getBoundingClientRect();
+      return { minX: Math.min(...xs), overflow: getComputedStyle(svg).overflow,
+               onScreen: r.width > 0 && r.right > 0 && r.left < innerWidth };
+    });
+    check(ink && ink.minX < 0, "the stroke really is left of the origin", ink ? ` (minX ${ink.minX})` : "");
+    // 이 검사가 핵심 / this is the check that matters: the stroke was in the DOM all along,
+    // it was the layer's clip that made it invisible
+    check(ink && ink.overflow === "visible", "the layer does not clip it away", ink ? ` (${ink.overflow})` : "");
+    check(ink && ink.onScreen, "and it lands inside the viewport");
+    check(errors.length === 0, "no console errors", errors.length ? ` (${errors[0]})` : "");
+    await page.close();
+  }
+
   // ------------------------------------------------- sizing
   console.log("\ntags run longer rather than wrapping; the board reads bigger than the library");
   {
