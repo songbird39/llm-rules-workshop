@@ -590,9 +590,23 @@ module.exports = async function (browser) {
     check(await page.evaluate(() => document.body.innerText.includes("기록 보는 중")), "history banner shown");
 
     posts = 0;
-    const ta = page.locator("textarea").first();
-    await ta.click();
-    await ta.type("edited while browsing");
+    // 참여자 글자는 이제 아예 잠겨 있다 / a participant's text is now locked outright in
+    // admin, so the old "type into it and check nothing posts" no longer types. Assert
+    // the stronger property — the field cannot be reached — and that the silence holds.
+    const taPE = await page.evaluate(() => {
+      const ta = document.querySelector("textarea");
+      return ta ? ta.style.pointerEvents : "missing";
+    });
+    check(taPE === "none", "a participant field cannot even be clicked while browsing", ` (${taPE})`);
+    // 값을 강제로 밀어 넣어도 / even forcing a value in and firing the event the app listens
+    // for must not produce a write, which is the property the old typing test was after
+    await page.evaluate(() => {
+      const ta = document.querySelector("textarea");
+      if (!ta) return;
+      ta.value = "edited while browsing";
+      ta.dispatchEvent(new Event("input", { bubbles: true }));
+      ta.dispatchEvent(new Event("change", { bubbles: true }));
+    });
     await page.waitForTimeout(3500);
     check(posts === 0, "no POST while browsing history", ` (${posts})`);
     const kept = await page.evaluate(() => {
@@ -659,7 +673,15 @@ module.exports = async function (browser) {
         }));
     });
     let o = await objs();
-    check(o.length === 3 && o.every((x) => x.pe === "none"), "participant objects load and are inert");
+    // 이제 참여자 것도 포인터를 받는다 — 고르기 위해서 / participant objects now DO take the
+    // pointer, so one of them can be selected and copied on its own; what stays locked is
+    // their text and their position, checked further down by actually dragging one
+    check(o.length === 3 && o.every((x) => x.pe === "auto"), "participant objects load and can be picked");
+    check(await page.evaluate(() => {
+      const L = [...document.querySelectorAll("div")].find((d) => d.style.width === "5000px");
+      return [...L.children].filter((c) => c.tagName === "DIV" && c.querySelector("input, textarea"))
+        .every((c) => [...c.querySelectorAll("input, textarea")].every((f) => f.style.pointerEvents === "none"));
+    }), "but every one of their text fields is inert");
     check(await page.evaluate(() => document.body.innerText.includes("참여자 산출물")), "protected region is labelled");
 
     await page.getByText("전체 복제", { exact: true }).click();
@@ -816,13 +838,15 @@ module.exports = async function (browser) {
     await page.close();
   }
 
-  // ------------------------------------------------- 3l. delete a participant record
-  // Irreversible, so the interesting assertions are the ones about NOT deleting.
-  console.log("\ndeleting a participant record");
+  // ------------------------------------------------- 3l. hide, restore, describe
+  // 삭제가 없어진 자리 / what replaced delete. The property worth asserting is that
+  // hiding is only ever a list filter: nothing is destroyed, and the roster the server
+  // returns is untouched by it.
+  console.log("\nhiding a record, restoring it, and saying whose it is");
   {
     const EP = "https://script.google.com/macros/s/FAKE/exec";
-    let people = [{ participant: "P01", rows: 12, submits: 1, lastAt: "2026-08-29T10:00:00Z" },
-                  { participant: "P02", rows: 4, submits: 0, lastAt: "2026-08-29T09:00:00Z" }];
+    const people = [{ participant: "P01", rows: 12, submits: 1, lastAt: "2026-08-29T10:00:00Z", hidden: false, desc: "" },
+                    { participant: "P02", rows: 4, submits: 0, lastAt: "2026-08-29T09:00:00Z", hidden: true, desc: "파일럿" }];
     const posts = [];
     const page = await browser.newPage({ viewport: { width: 1400, height: 900 } });
     const errors = [];
@@ -833,7 +857,6 @@ module.exports = async function (browser) {
         let b = {};
         try { b = JSON.parse(route.request().postData() || "{}"); } catch (e) {}
         posts.push(b);
-        if (b.action === "delete") people = people.filter((x) => x.participant !== b.participant);
         return route.fulfill({ status: 200, body: "{}" });
       }
       const cbn = u.searchParams.get("callback");
@@ -848,39 +871,50 @@ module.exports = async function (browser) {
     await page.waitForTimeout(1000);
     const rows = () => page.evaluate(() =>
       [...document.querySelectorAll("span")].filter((s) => s.style.minWidth === "64px").map((s) => s.textContent));
-    const dlg = () => page.evaluate(() => {
-      const o = [...document.querySelectorAll("div")].find((d) => d.style.position === "fixed" && d.style.zIndex === "70");
-      return o ? o.innerText.replace(/\s+/g, " ").trim() : null;
-    });
-    const pressDelete = () => page.evaluate(() => {
-      const o = [...document.querySelectorAll("div")].find((d) => d.style.position === "fixed" && d.style.zIndex === "70");
-      [...o.querySelectorAll("button")].find((b) => b.textContent.trim() === "삭제").click();
-    });
-    check(JSON.stringify(await rows()) === JSON.stringify(["P01", "P02"]), "roster lists both");
+    const hideBtn = (n) => page.evaluate((k) => {
+      const b = [...document.querySelectorAll("button")].filter((x) => /숨기기|되돌리기/.test(x.textContent));
+      b[k].click();
+    }, n);
 
-    await page.evaluate(() => {
-      [...document.querySelectorAll("button")].find((x) => x.title && x.title.includes("삭제")).click();
-    });
+    check(JSON.stringify(await rows()) === JSON.stringify(["P01"]),
+      "the hidden one is out of the default list", ` (${JSON.stringify(await rows())})`);
+    check(await page.evaluate(() => document.body.innerText.includes("숨긴 항목 (1)")),
+      "and the toggle says how many are hidden");
+    check(!(await page.evaluate(() => /삭제/.test(document.body.innerText))),
+      "the word delete appears nowhere in the roster");
+
+    // 설명 / the description
+    await page.locator('input[placeholder*="설명"]').first().fill("이지원 · 9월 2일");
+    await page.waitForTimeout(1500);
+    const meta = posts.filter((b) => b.kind === "meta");
+    check(meta.length === 1, "typing a description writes exactly one meta row", ` (${meta.length})`);
+    check(meta[0] && meta[0].participant === "mt:P01", "under the mt: key", meta[0] ? ` (${meta[0].participant})` : "");
+    check(meta[0] && meta[0].payload.state.desc === "이지원 · 9월 2일", "carrying the text");
+    check(meta[0] && meta[0].payload.state.hidden === false, "and the flag it must not clobber");
+
+    // 숨기기 / hide P01
+    await hideBtn(0);
+    await page.waitForTimeout(500);
+    check(JSON.stringify(await rows()) === JSON.stringify([]), "hiding empties the list");
+    const hid = posts.filter((b) => b.kind === "meta").pop();
+    check(hid.payload.state.hidden === true, "the hide is posted as a flag, not a deletion");
+    check(hid.payload.state.desc === "이지원 · 9월 2일", "and it keeps the description alongside it");
+    check(!posts.some((b) => b.action === "delete"), "nothing anywhere posts a delete");
+
+    // 숨긴 항목 보기 / the hidden view, and back
+    await page.getByText("숨긴 항목", { exact: false }).click();
     await page.waitForTimeout(400);
-    const d = await dlg();
-    check(!!d && d.includes("삭제할까요"), "confirmation dialog opens");
-    check(!!d && d.includes("12"), "it states how many rows will go");
-    check(posts.length === 0, "opening it posts nothing");
-
-    await page.locator('input[placeholder="P01"]').fill("P0");
-    await pressDelete();
-    await page.waitForTimeout(600);
-    check(posts.length === 0, "a mistyped code does not delete", ` (${posts.length} posts)`);
-    check((await dlg()) !== null, "and the dialog stays open");
-
-    await page.locator('input[placeholder="P01"]').fill("P01");
-    await pressDelete();
-    await page.waitForTimeout(2600);
-    check(posts.length === 1 && posts[0].action === "delete" && posts[0].participant === "P01",
-      "posts the delete action", ` (${JSON.stringify(posts[0])})`);
-    check((await dlg()) === null, "dialog closes");
-    check(JSON.stringify(await rows()) === JSON.stringify(["P02"]),
-      "roster is reloaded and the record is gone", ` (${JSON.stringify(await rows())})`);
+    check(JSON.stringify(await rows()) === JSON.stringify(["P01", "P02"]),
+      "the hidden view holds both of them", ` (${JSON.stringify(await rows())})`);
+    check(await page.evaluate(() => document.body.innerText.includes("기록은 지워지지 않았습니다")),
+      "and says plainly that nothing was deleted");
+    await hideBtn(0);
+    await page.waitForTimeout(500);
+    check(JSON.stringify(await rows()) === JSON.stringify(["P02"]), "restoring takes it back out of hiding");
+    check(posts.filter((b) => b.kind === "meta").pop().payload.state.hidden === false, "posted as a flag again");
+    await page.getByText("참여자 목록", { exact: false }).first().click();
+    await page.waitForTimeout(400);
+    check(JSON.stringify(await rows()) === JSON.stringify(["P01"]), "and it is back in the normal list");
     check(errors.length === 0, "no console errors", errors.length ? ` (${errors[0]})` : "");
     await page.close();
   }

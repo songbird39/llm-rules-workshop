@@ -146,6 +146,39 @@ inside a 42% budget. The panel is a card grid (16px padding, 168px cards, 10px g
 anything between two column counts is dead space. It stays freely resizable by dragging its
 edge.
 
+## The admin's analysis mode
+
+**There is no delete.** Hiding replaced it: the client appends one `mt:<participant>` row
+holding `{hidden, desc}`, newest row wins, and the roster reads it back. Nothing a
+participant ever wrote is removed, so restoring is just another row and a misclick costs a
+click. The description in each roster row is the only thread between a code and a real
+person — it lives in the same `mt:` record, coalesced so a typed sentence is one row and
+not forty.
+
+⚠ This needs the redeployed Apps Script. On an old deployment `roster_` does not know
+about `mt:` rows and hands them back as participants; the client filters them out so a
+stale backend shows a stale roster rather than a broken one, but hide and description do
+nothing until the new version is live.
+
+In analysis mode the admin authors with the participant's own tools — the deck panel, the
+pen, arrows, notes — and everything created is flagged `sm` and saved to the `sm:` key.
+The participant's own objects take the pointer so one can be *selected* and copied on its
+own, but their text fields are inert and their controls are not drawn: pickable, never
+editable. `canAuthor()` is the single gate, and it is false in the roster and while
+browsing an old version, because a past version is nobody's to edit.
+
+Analysis notes come in two kinds, told apart by colour alone: gold for the admin's own
+remark, slate + mono for transcript, against the participant's plain untinted note. Both
+resize by a corner grip; a hand-set size sets `manual`, which switches the auto-grow off
+(via a **class**, since the template engine drops interpolated `data-*`) and turns on
+scrolling. A transcription note also folds to its first line.
+
+The note button on an analysis activity tag hangs a transcription note off that step and
+draws a thin leader line. The tag-side end is computed by the same border-meeting maths as
+an arrow, which is what makes it slide around the tag as the note moves. Several notes per
+step stack downward; the link can be broken from the note, and deleting a step unties its
+notes rather than leaving them pointing at nothing.
+
 The board's ink and arrow layers are drawn in one 5000×5000 SVG each, anchored at board
 (0,0), with `overflow: visible`. That last part is load-bearing: board coordinates go
 negative as soon as anyone pans right, and an SVG clips whatever falls outside its own

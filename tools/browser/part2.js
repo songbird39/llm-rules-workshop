@@ -487,6 +487,195 @@ module.exports = async function (browser) {
     await page.close();
   }
 
+  // ------------------------------------------------- the analysis layer's own tools
+  // 관리자는 참여자와 같은 도구로 해석한다 / the admin analyses with the participant's own
+  // tools. What this section pins down is the line between the two layers: the admin can
+  // build freely, and none of it may touch or resemble the participant's own work.
+  console.log("\nanalysis mode: the admin's own board on top of the participant's");
+  {
+    const EP = "https://script.google.com/macros/s/FAKE/exec";
+    const board = {
+      savedAt: Date.now(), pid: "P9", step: 2, lang: "ko", rules: [],
+      cards: [{ id: "c1", type: "act", title: "P-STEP", desc: "", dia: null, collapsed: false, w: 352, x: 200, y: 200 },
+              { id: "c2", type: "when", title: "P-B", desc: "b", dia: "w_during", collapsed: false, x: 200, y: 320 }],
+      notes: [{ id: "n1", x: 200, y: 560, text: "참여자 메모" }], arrows: [], seq: 5, panelW: 566,
+    };
+    const posted = [];
+    const page = await browser.newPage({ viewport: { width: 1700, height: 1000 } });
+    const errors = [];
+    page.on("pageerror", (e) => errors.push(e.message));
+    await page.route("**/macros/s/**", async (route) => {
+      const u = new URL(route.request().url());
+      if (route.request().method() === "POST") {
+        try { posted.push(JSON.parse(route.request().postData() || "{}")); } catch (e) {}
+        return route.fulfill({ status: 200, body: "{}" });
+      }
+      const cbn = u.searchParams.get("callback");
+      const reply = (o) => route.fulfill({ status: 200, contentType: "application/javascript", body: cbn + "(" + JSON.stringify(o) + ");" });
+      if (u.searchParams.get("list")) return reply({ ok: true, participants: [{ participant: "P9", rows: 3, submits: 1, lastAt: "2026-08-29T10:00:00Z" }] });
+      const who = u.searchParams.get("participant");
+      if (who === "P9") return reply({ ok: true, state: board });
+      if (who && who.indexOf("sm:") === 0) return reply({ ok: true, state: null });
+      return reply({ ok: true, rows: 0 });
+    });
+    await page.goto(APP + "?sync=" + encodeURIComponent(EP), { waitUntil: "load", timeout: 120000 });
+    await page.waitForSelector('input[placeholder="P0000"]', { timeout: 120000 });
+    await page.fill('input[placeholder="P0000"]', "admin");
+    await page.getByText("시작하기", { exact: false }).click();
+    await page.waitForTimeout(1000);
+    await page.getByText("P9", { exact: true }).first().click();
+    await page.waitForTimeout(1400);
+
+    const objs = () => page.evaluate(() => {
+      const L = [...document.querySelectorAll("div")].find((d) => d.style.width === "5000px");
+      return [...L.querySelectorAll(':scope > [data-obj]')].map((c) => {
+        const r = c.getBoundingClientRect();
+        return { obj: c.dataset.obj, x: Math.round(r.x), y: Math.round(r.y), w: Math.round(r.width) };
+      });
+    });
+    const notes = () => page.evaluate(() => {
+      const L = [...document.querySelectorAll("div")].find((d) => d.style.width === "5000px");
+      return [...L.querySelectorAll(':scope > [data-obj="note"]')].map((c) => {
+        const ta = c.querySelector("textarea");
+        const r = c.getBoundingClientRect();
+        return {
+          bg: getComputedStyle(c).backgroundColor, ring: c.style.boxShadow,
+          mono: ta ? /mono/.test(getComputedStyle(ta).fontFamily) : null,
+          ov: ta ? getComputedStyle(ta).overflowY : null,
+          grow: ta ? !ta.className.includes("nogrow") : null,
+          sizer: !!c.querySelector('div[title*="크기"]'),
+          w: Math.round(r.width), h: Math.round(r.height),
+        };
+      });
+    });
+
+    // 1. 참여자 것을 하나만 복제 / copy ONE participant object, not the whole board
+    check(await page.evaluate(() => document.body.innerText.includes("학습 계획")),
+      "the card panel is open in analysis mode");
+    let o = await objs();
+    check(o.length === 3, "the participant's board loaded", ` (${o.length})`);
+    await page.mouse.click(o[1].x + o[1].w / 2, o[1].y + 8);   // the act tag
+    await page.waitForTimeout(300);
+    await page.getByText("선택 복제", { exact: true }).click();
+    await page.waitForTimeout(700);
+    o = await objs();
+    check(o.length === 4, "one selected participant object can be copied on its own", ` (${o.length})`);
+
+    // 2. 덱에서 새 카드 / a brand-new card dragged in during analysis
+    const cb = await (await page.$('div[style*="radial-gradient"]')).boundingBox();
+    await dragTileToBoard(page, "학습 계획", 0.74, 0.30);
+    o = await objs();
+    check(o.length === 5, "and a new card can be dragged in from the deck", ` (${o.length})`);
+
+    // 3. 전사 메모 / the transcription note is a different animal from the memo
+    await page.getByText("✎ 전사", { exact: true }).click();
+    await page.waitForTimeout(200);
+    await page.mouse.click(cb.x + cb.width * 0.55, cb.y + cb.height * 0.62);
+    await page.waitForTimeout(500);
+    let ns = await notes();
+    const tx = ns[ns.length - 1], own = ns[0];
+    check(ns.length === 2, "a transcription note is created", ` (${ns.length})`);
+    check(tx.bg === "rgb(238, 241, 246)", "it has its own ground, not the memo's", ` (${tx.bg})`);
+    check(tx.bg !== own.bg, "and not the participant's either");
+    check(/oklch\(0\.52/.test(tx.ring), "ringed in the transcript ink", ` (${tx.ring})`);
+    check(tx.mono === true, "and set in mono, so transcript reads as quotation");
+    check(tx.sizer === true, "an analysis note carries a resize grip");
+    check(own.sizer === false, "a participant's note does not");
+
+    // 4. 크기 조절 / resizing, and the scroll that has to come with it
+    const before = { w: tx.w, h: tx.h };
+    const box = await page.evaluate(() => {
+      const L = [...document.querySelectorAll("div")].find((d) => d.style.width === "5000px");
+      const el = [...L.querySelectorAll(':scope > [data-obj="note"]')].pop();
+      const r = el.getBoundingClientRect();
+      return { x: r.x, y: r.y, w: r.width, h: r.height };
+    });
+    await page.mouse.move(box.x + box.w - 5, box.y + box.h - 5);
+    await page.mouse.down();
+    await page.waitForTimeout(60);
+    await page.mouse.move(box.x + box.w + 120, box.y + box.h + 90, { steps: 8 });
+    await page.mouse.up();
+    await page.waitForTimeout(500);
+    ns = await notes();
+    const sized = ns[ns.length - 1];
+    check(sized.w > before.w + 60 && sized.h > before.h + 40,
+      "it resizes in both directions", ` (${before.w}x${before.h} -> ${sized.w}x${sized.h})`);
+    check(sized.ov === "auto", "and scrolls once it is sized rather than clipping");
+    check(sized.grow === false, "the auto-grow is switched off, so the size sticks");
+
+    // 5. 단계에 매단 메모 / a note hung off a step, and the line that says so
+    await page.keyboard.down("Alt");
+    await page.mouse.move(cb.x + cb.width * 0.6, cb.y + 60);
+    await page.mouse.down();
+    await page.mouse.move(cb.x + cb.width * 0.6 - 520, cb.y + 60, { steps: 10 });
+    await page.mouse.up();
+    await page.keyboard.up("Alt");
+    await page.waitForTimeout(400);
+    const btn = await page.evaluate(() => {
+      const b = [...document.querySelectorAll("button[title]")].filter((x) => /단계에 전사/.test(x.title));
+      const vis = b.map((x) => x.getBoundingClientRect())
+        .filter((r) => r.x > 0 && r.right < innerWidth && r.y > 0 && r.bottom < innerHeight);
+      return { total: b.length, x: vis.length ? vis[0].x + vis[0].width / 2 : 0, y: vis.length ? vis[0].y + vis[0].height / 2 : 0, vis: vis.length };
+    });
+    check(btn.total === 2, "the note button is on both analysis tags", ` (${btn.total})`);
+    check(await page.evaluate(() => {
+      const L = [...document.querySelectorAll("div")].find((d) => d.style.width === "5000px");
+      const first = [...L.querySelectorAll(':scope > [data-obj="card"]')][0];
+      return ![...first.querySelectorAll("button[title]")].some((x) => /단계에 전사/.test(x.title));
+    }), "and never on the participant's own tag");
+    await page.mouse.click(btn.x, btn.y);
+    await page.waitForTimeout(600);
+    const leader = () => page.evaluate(() => [...document.querySelectorAll("line")]
+      .filter((l) => /oklch\(0\.52/.test(l.getAttribute("stroke") || ""))
+      .map((l) => ({ x1: +l.getAttribute("x1"), y1: +l.getAttribute("y1"), x2: +l.getAttribute("x2"), y2: +l.getAttribute("y2") })));
+    const l1 = await leader();
+    check(l1.length === 1, "pressing it draws exactly one leader line", ` (${l1.length})`);
+
+    // 선이 실제로 칠해지는지 픽셀로 / prove the line is painted, not merely in the DOM —
+    // the SVG-clip bug taught that a present element proves nothing
+    const clip = { x: Math.max(0, btn.x - 40), y: Math.max(0, btn.y - 40), width: 240, height: 120 };
+    const withLine = await page.screenshot({ clip });
+    await page.evaluate(() => { document.querySelectorAll("line").forEach((l) => { if (/oklch\(0\.52/.test(l.getAttribute("stroke") || "")) l.style.display = "none"; }); });
+    await page.waitForTimeout(120);
+    const withoutLine = await page.screenshot({ clip });
+    check(!withLine.equals(withoutLine), "and the line is really on the pixels");
+    await page.evaluate(() => { document.querySelectorAll("line").forEach((l) => { l.style.display = ""; }); });
+
+    // 6. 붙는 자리가 메모 위치를 따라간다 / the tag-side end follows the note around
+    const nb = await page.evaluate(() => {
+      const L = [...document.querySelectorAll("div")].find((d) => d.style.width === "5000px");
+      const el = [...L.querySelectorAll(':scope > [data-obj="note"]')].pop();
+      const r = el.getBoundingClientRect();
+      return { x: r.x + 4, y: r.y + r.height / 2 };
+    });
+    await page.mouse.move(nb.x, nb.y);
+    await page.mouse.down();
+    await page.waitForTimeout(60);
+    await page.mouse.move(nb.x - 620, nb.y + 40, { steps: 12 });
+    await page.mouse.up();
+    await page.waitForTimeout(600);
+    const l2 = await leader();
+    check(l2.length === 1 && Math.abs(l2[0].x1 - l1[0].x1) > 100,
+      "moving the note moves where the line leaves the tag",
+      ` (${l1[0] && Math.round(l1[0].x1)} -> ${l2[0] && Math.round(l2[0].x1)})`);
+
+    // 7. 서버에 남는다 / all of it belongs to the sm: record and nothing else
+    await page.waitForTimeout(2400);
+    const sm = posted.filter((b) => b.kind === "sensemaking");
+    check(sm.length > 0 && sm.every((b) => b.participant === "sm:P9"),
+      "every write goes to sm:P9", ` (${JSON.stringify(sm.map((b) => b.participant).slice(0, 3))})`);
+    const state = sm[sm.length - 1].payload.state;
+    const linked = state.notes.find((n) => n.link);
+    check(!!linked, "the link is saved");
+    check(linked && linked.kind === "tx", "as a transcription note");
+    check(state.notes.some((n) => n.manual && n.w && n.h), "and the hand-set size is saved too");
+    check(state.notes.every((n) => n.sm) && state.cards.every((c) => c.sm),
+      "with nothing of the participant's mixed in");
+    check(!state.notes.some((n) => n.text === "참여자 메모"), "their own note is not in the analysis record");
+    check(errors.length === 0, "no console errors", errors.length ? ` (${errors[0]})` : "");
+    await page.close();
+  }
+
   // ------------------------------------------------- sizing
   console.log("\ntags run longer rather than wrapping; the board reads bigger than the library");
   {

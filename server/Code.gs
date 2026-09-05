@@ -21,6 +21,12 @@ var SHEET_NAME = 'responses';
 // return one for a bare participant id, so a participant can never load an admin's
 // experiment as their board.
 var SENSE_PREFIX = 'sm:';
+// 참여자 항목을 숨기거나 설명을 붙인 관리자 메모는 'mt:' 키로 따로 쌓인다.
+// Per-participant admin metadata — the hidden flag and the description that says who
+// the code belongs to — lives under 'mt:' + participant, newest row wins. It is a
+// normal appended row, so nothing is ever rewritten or destroyed: hiding is reversible
+// by construction, which is the whole point of not having a delete any more.
+var META_PREFIX = 'mt:';
 var HEADERS = ['receivedAt', 'participant', 'kind', 'queuedAt', 'step', 'selectedRules', 'combinations', 'annotations', 'arrows', 'json'];
 
 function doPost(e) {
@@ -33,10 +39,10 @@ function doPost(e) {
     if (isDemo_(body.participant || (body.payload && body.payload.participant))) {
       return json_({ ok: true, skipped: 'demo' });
     }
-    // 삭제는 되돌릴 수 없다 / deletion is irreversible: it removes the participant's rows
-    // AND the admin sensemaking record keyed to them, which would otherwise be orphaned.
-    if (body.action === 'delete' && body.participant) {
-      return json_(deleteParticipant_(String(body.participant)));
+    // 삭제 기능은 없앴다 / there is no delete any more. A stale cached client may still
+    // post one; answer it without touching the sheet rather than letting it through.
+    if (body.action === 'delete') {
+      return json_({ ok: false, error: 'delete is disabled; hide the participant instead' });
     }
     var p = body.payload || {};
     sheet_().appendRow([
@@ -86,28 +92,9 @@ function doGet(e) {
   return json_(out);
 }
 
-/** Remove every row belonging to one participant, plus their sensemaking record.
- *  Returns how many rows went. Rows are deleted bottom-up so the indices collected
- *  first stay valid as the sheet shrinks.
- */
 /** demo, demo0, DEMO-2 … — anything starting with "demo", case-insensitive. */
 function isDemo_(pid) {
   return /^demo/i.test(String(pid || ''));
-}
-
-function deleteParticipant_(pid) {
-  if (!pid || pid.indexOf(SENSE_PREFIX) === 0) return { ok: false, error: 'bad id' };
-  var sh = sheet_();
-  var last = sh.getLastRow();
-  if (last < 2) return { ok: true, deleted: 0 };
-  var col = sh.getRange(2, 2, last - 1, 1).getValues();
-  var rows = [];
-  for (var i = 0; i < col.length; i++) {
-    var v = String(col[i][0] || '').trim();
-    if (v === pid || v === SENSE_PREFIX + pid) rows.push(i + 2);
-  }
-  for (var j = rows.length - 1; j >= 0; j--) sh.deleteRow(rows[j]);
-  return { ok: true, deleted: rows.length };
 }
 
 /** One row per participant seen in the sheet, newest activity first.
@@ -118,10 +105,13 @@ function roster_() {
   var last = sh.getLastRow();
   if (last < 2) return [];
   var vals = sh.getRange(2, 1, last - 1, 3).getValues(); // receivedAt, participant, kind
-  var map = {}, order = [];
+  var map = {}, order = [], metaRow = {};
   for (var i = 0; i < vals.length; i++) {
     var pid = String(vals[i][1] || '').trim();
     if (!pid) continue;
+    // 숨김·설명은 마지막 mt: 행만 유효하다 / only the LAST mt: row counts, so the loop
+    // just remembers where it was and the json is read once, after the scan
+    if (pid.indexOf(META_PREFIX) === 0) { metaRow[pid.slice(META_PREFIX.length)] = i + 2; continue; }
     // 관리자 해석용 레코드는 참여자 목록에 넣지 않는다 / admin sensemaking records are
     // stored under a "sm:" key and are not participants
     if (pid.indexOf(SENSE_PREFIX) === 0) continue;
@@ -135,15 +125,31 @@ function roster_() {
   }
   var out = order.map(function (pid) {
     var r = map[pid];
+    var m = metaRow[pid] ? readMeta_(sh, metaRow[pid]) : {};
     return {
       participant: r.participant,
       rows: r.rows,
       submits: r.submits,
-      lastAt: r.lastAt ? new Date(r.lastAt).toISOString() : null
+      lastAt: r.lastAt ? new Date(r.lastAt).toISOString() : null,
+      // 숨김은 목록에서만 빠진다 / hidden only drops it out of the default list; every
+      // row it ever wrote is still on the sheet and the client can bring it back
+      hidden: !!m.hidden,
+      desc: String(m.desc || '')
     };
   });
   out.sort(function (a, b) { return String(b.lastAt || '').localeCompare(String(a.lastAt || '')); });
   return out;
+}
+
+/** The {hidden, desc} stored in one 'mt:' row, or {} if it is unreadable. */
+function readMeta_(sh, row) {
+  try {
+    var body = JSON.parse(sh.getRange(row, 10).getValue());
+    var st = (body && body.payload && body.payload.state) || {};
+    return { hidden: !!st.hidden, desc: st.desc };
+  } catch (err) {
+    return {};
+  }
 }
 
 /** Version index for one participant, newest first.
@@ -195,6 +201,7 @@ function latestState_(pid) {
     // 이중 안전장치 / belt and braces: even if a sensemaking row were somehow written
     // under a bare participant id, never hand it back as that participant's board.
     if (String(kindCol[i][0]) === 'sensemaking' && String(pid).indexOf(SENSE_PREFIX) !== 0) continue;
+    if (String(kindCol[i][0]) === 'meta') continue;   // 메타 행은 보드가 아니다 / not a board
     try {
       var body = JSON.parse(jsonCol[i][0]);
       var st = body && body.payload && body.payload.state;

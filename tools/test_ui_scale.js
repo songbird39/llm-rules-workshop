@@ -178,10 +178,11 @@ console.log("\nrule card keeps its size on drop");
 {
   check(!/collapsed: type === 'rule'/.test(doc), "not created pre-collapsed");
   check(/collapsed: false/.test(doc), "created expanded");
-  // the fold control must still exist — collapsing stays available, just not default
-  // the fold control was gated on the rule type and became unreachable, so it is gone;
-  // `collapsed` survives only in older saved boards, where it no longer does anything
-  check(!/onFold/.test(doc), "the unreachable fold control is gone");
+  // 카드의 접기는 사라졌다 / cards no longer fold: that control was gated on the rule
+  // type and became unreachable. `collapsed` came back for a different owner — the
+  // transcription note — so the check is now that no CARD offers it.
+  check(!/onDown: \(!RO \|\| c\.sm\).*onFold/.test(doc), "cards still have no fold control");
+  check(/onFoldDown: own \? /.test(doc), "but a transcription note does");
   check(/h: c\.h \|\| 168/.test(doc), "cards fall back to 168 before being measured");
   check(/cardRect\(c\) \{ return \{ x: c\.x, y: c\.y, w: c\.w \|\| CARD, h: c\.h \|\| 168 \}; \}/.test(doc),
     "cardRect uses each object's own width and measured height");
@@ -550,8 +551,53 @@ console.log("\nink and arrows survive outside the layer's own box");
   // read as an invisible dead zone. A <div> is not clipped that way, which is why the cards
   // looked fine and only the pen and the arrows were affected.
   const layers = (src.match(/overflow: 'visible', pointerEvents: 'none'/g) || []).length;
-  check(layers === 2, "both the ink layer and the arrow layer draw outside their box",
+  check(layers === 3, "ink, arrows and leader lines all draw outside their box",
     ` (${layers})`);
+}
+
+// ---- 6m. the analysis layer's two note kinds, and what they hang off ----
+console.log("\ntwo kinds of analysis note, sized by hand and tied to a step");
+{
+  // 색이 유일한 구분 / colour is the only thing that separates them, so the three grounds
+  // must actually be three: participant, admin remark, transcript
+  check(/bg: n\.sm \? \(tx \? TX_BG : '#fdfbf5'\) : 'transparent'/.test(doc),
+    "a participant note, an admin note and a transcript note are three different grounds");
+  check(/const TX_INK = 'oklch\(0\.52 0\.055 250\)'/.test(src), "transcript ink is defined once");
+  check(/font: tx \? 'ui-monospace/.test(doc), "and transcript is set in mono, not the UI face");
+  check(/noteKind: 'tx'/.test(doc), "the transcript tool arms its own note kind");
+  check(/kind: s\.noteKind \|\| 'memo'/.test(doc), "and a plain click still makes a plain memo");
+
+  // 크기를 잡으면 늘어나기를 멈춘다 / a hand-set size must STOP the auto-grow, or the note
+  // springs back on the next render and the resize looks broken
+  check(/textarea\[data-grow\]:not\(\.nogrow\)/.test(doc), "autoGrow skips a hand-sized note");
+  check(/cls: n\.manual \? 'nogrow' : ''/.test(doc), "and the flag rides on a class");
+  // 보간된 data-* 는 사라진다 / interpolated data-* attributes are dropped by the engine,
+  // which is exactly why this cannot be data-manual
+  check(!/data-\w+="\{\{/.test(doc), "no interpolated data-* attribute anywhere in the markup");
+  check(/ov: n\.manual \? 'auto' : 'hidden'/.test(doc), "a hand-sized note scrolls rather than clipping");
+  check(/w: Math\.max\(NOTE_MIN_W/.test(doc) && /h: Math\.max\(NOTE_MIN_H/.test(doc),
+    "and it resizes in both directions, with a floor");
+  check(/!n\.manual && !n\.collapsed && nhs\[i\]/.test(doc),
+    "the height measurer leaves hand-sized and folded notes alone");
+
+  // 단계에 매다는 선 / the leader line
+  check(/canNote: RO && c\.sm && c\.type === 'act'/.test(doc),
+    "the note button sits only on an activity tag in the analysis layer");
+  check(/y: Math\.round\(r\.y \+ mine\.length \* 96\)/.test(doc),
+    "several notes per step stack instead of landing on each other");
+  // 태그 쪽 끝이 메모 위치에 따라 움직여야 한다 / the tag-side end must move with the note,
+  // which is precisely what arrowEnds' border-meeting maths already does
+  check(/return this\.arrowEnds\(\{ from: \{ k: 'card', id: n\.link \}, to: \{ k: 'note', id: n\.id \} \}\)/.test(doc),
+    "the line leaves from the tag edge that faces the note");
+  check(/unlinkNote\(id\)/.test(doc), "a link can be broken without deleting the note");
+  check(/n\.link === id \? Object\.assign\(\{\}, n, \{ link: null \}\)/.test(doc),
+    "and deleting a step unties its notes instead of leaving them pointing at nothing");
+  // 서버에 남아야 한다 / it has to survive a reload: sm notes are saved whole, so the
+  // link and the size ride along, but only if the note is flagged sm in the first place
+  check(/notes: \(this\.state\.notes \|\| \[\]\)\.filter\(\(n\) => n\.sm\)/.test(doc),
+    "analysis notes are what gets written to the sm: record");
+  check(/concat\(\[this\.mine\(\{\s*id: id, x: Math\.round\(r\.x \+ r\.w \+ 56\)/.test(doc),
+    "and a step note is flagged sm when it is made");
 }
 
 // ---- 7. view mode must not be able to write ----
@@ -607,48 +653,79 @@ console.log("\nview mode cannot write");
   // 7d. read-only UI
   // Protection is per-object now, not a blanket layer setting: that is what lets the
   // admin sensemaking objects be editable while the participant's stay inert.
-  check(/pe: \(PEN \|\| \(RO && !c\.sm\)\) \? 'none' : 'auto'/.test(doc),
-    "participant cards are inert in admin; sensemaking cards are not");
-  check(/pe: \(PEN \|\| \(RO && !n\.sm\)\) \? 'none' : 'auto'/.test(doc),
-    "same for notes");
+  check(/tpe: \(PEN \|\| \(RO && !c\.sm\)\) \? 'none' : 'auto'/.test(doc),
+    "a participant's card text is inert in admin; a sensemaking card's is not");
+  check(/const own = !RO \|\| n\.sm;/.test(doc), "notes make the same judgement once, by name");
+  check(/tpe: \(PEN \|\| !own\) \? 'none' : 'auto'/.test(doc), "and apply it to the text field");
+  // 참여자 것은 고를 수는 있어야 한다 / a participant's object must still be SELECTABLE in
+  // admin, or "duplicate selection" can only ever mean "duplicate everything"
+  check(/onDown: \(!RO \|\| c\.sm\) \? \(e\) => this\.startMove\(c\.id, e\) : \(e\) => this\.pickOnly\(c\.id, e\)/.test(doc),
+    "a participant card answers a click by being selected");
+  check(/if \(e\.ctrlKey \|\| e\.metaKey\) \{ this\.toggleSel\(id\); return; \}/.test(doc),
+    "and ctrl-click adds it to the selection");
+  check(/ctrls: \(RO && !c\.sm\) \? 'none' : 'flex'/.test(doc),
+    "but its duplicate and delete controls are not drawn at all");
   // 같은 값이 펜도 처리한다 / the same value answers to the pen: with it up the board is
   // paper, so a stroke can start on top of a card instead of dragging it
   check(/const PEN = !!this\.state\.pen;/.test(doc), "and both go inert while the pen is up");
-  check(/onDown: \(!RO \|\| c\.sm\) \? \(e\) => this\.startMove\(c\.id, e\) : NOOP/.test(doc),
-    "card drag handler gated per object");
+  check(/onTitle: \(!RO \|\| c\.sm\) \?/.test(doc), "card text stays gated per object");
   // 글자를 누르면 올리지 않는다 / a press on text must not raise: raiseCard reorders
   // state.cards, the node under the pointer is recreated, and the focus goes with it — so
   // the label of any card that was not already frontmost could not be clicked into.
   check(/if \(t === 'INPUT' \|\| t === 'TEXTAREA' \|\| t === 'BUTTON'\) return;\s*\n\s*\/\/ 글자·버튼이 아닐 때만/.test(doc),
     "raising happens only when the press missed the text");
-  check(/showPanel: !RO/.test(doc), "card panel hidden while viewing");
-  check(/canEdit: !RO/.test(doc), "editing toolbar hidden while viewing");
+  // 해석 레이어에서는 관리자도 참여자와 같은 도구를 쓴다 / in the analysis layer the admin
+  // gets the participant's own tools: the deck panel, the pen, the arrow, the note. What
+  // stays theirs alone is the participant flow — 다음 · 제출 · 초기화.
+  check(/showPanel: this\.canAuthor\(\)/.test(doc), "the deck panel opens in analysis mode");
+  check(/canDraw: this\.canAuthor\(\)/.test(doc), "and so do the drawing tools");
+  check(/canAuthor\(\) \{ return this\.isView\(\) \? \(!!this\.state\.viewPid && !this\.state\.travel\) : true; \}/.test(doc),
+    "authoring is off in the roster and while browsing an old version");
+  check(/canEdit: !RO/.test(doc), "the participant-flow buttons stay participant-only");
+  check(/mine\(o\) \{ return this\.isView\(\) \? Object\.assign\(\{\}, o, \{ sm: true \}\) : o; \}/.test(doc),
+    "everything the admin creates is flagged sm, so it saves to the sm: key");
+  check(/concat\(\[this\.mine\(card\)\]\)/.test(doc), "a card dragged in during analysis is flagged");
+  check(/concat\(\[this\.mine\(\{ id: id/.test(doc), "and so is a note");
   // Deck tiles use "RO ? NOOP :"; board objects use the per-object form so that admin
   // sensemaking copies stay editable while the participant's do not. Both must exist.
-  const deckNoops = (doc.match(/RO \? NOOP :/g) || []).length;
-  const objNoops = (doc.match(/\(!RO \|\| [cn]\.sm\) \?/g) || []).length;
-  check(deckNoops >= 2, "deck tiles are inert in admin", ` (${deckNoops})`);
-  check(objNoops >= 9, "every board handler is gated per object", ` (${objNoops})`);
-  for (const h of ["onTitle", "onDesc", "onDup", "onDel", "onText"]) {
-    check(new RegExp(h + ": \\(!RO \\|\\| [cn]\\.sm\\) \\?").test(doc),
-      `${h} cannot edit a participant object in admin`);
+  const deckNoops = (doc.match(/this\.canAuthor\(\) \? \(e\) => this\.startNew/g) || []).length;
+  const objNoops = (doc.match(/\(!RO \|\| c\.sm\) \?/g) || []).length;
+  check(deckNoops >= 1, "deck tiles are live for whoever may author", ` (${deckNoops})`);
+  check(objNoops >= 7, "every card handler is gated per object", ` (${objNoops})`);
+  for (const h of ["onTitle", "onDesc", "onDup", "onDel"]) {
+    check(new RegExp(h + ": \\(!RO \\|\\| c\\.sm\\) \\?").test(doc),
+      `${h} cannot edit a participant card in admin`);
+  }
+  // 메모는 같은 판단을 own 한 번으로 / notes make the same judgement once and reuse it,
+  // so the check is that every note handler goes through it and none slips past
+  for (const h of ["onText", "onDel", "onFold", "onUnlinkDown", "onSizeDown", "onDupDown"]) {
+    check(new RegExp(h + ": own \\?").test(doc), `${h} cannot edit a participant note in admin`);
   }
 
   // 7d-bis. view controls must survive the canEdit guard, editing controls must not.
   // resetView lives between the note and export buttons, so it is easy to sweep into
   // the guard by accident — and it is the control that recovers off-screen content.
   {
-    const gi = doc.indexOf('<sc-if value="{{ canEdit }}"');
-    const gEnd = doc.indexOf("</sc-if>", doc.indexOf("clearAll", gi));
-    const guarded = doc.slice(gi, gEnd);
-    const inGuard = (name) => guarded.includes("{{ " + name + " }}");
+    // 툴바는 두 겹으로 나뉜다 / the toolbar is guarded in two layers: canDraw covers the
+    // tools the admin shares with the participant, canEdit the participant's own flow.
+    const di = doc.indexOf('<sc-if value="{{ canDraw }}"');
+    const ei = doc.indexOf('<sc-if value="{{ canEdit }}"', di);
+    const eEnd = doc.indexOf("</sc-if>", doc.indexOf("clearAll", ei));
+    const drawBlock = doc.slice(di, ei);
+    const editBlock = doc.slice(ei, eEnd);
+    check(di > 0 && ei > di, "the drawing tools and the participant flow are separate blocks");
     // still reachable while viewing
     ["resetView", "zoomIn", "zoomOut"].forEach((n) =>
-      check(!inGuard(n), `${n} stays available in view mode`)
+      check(!drawBlock.includes("{{ " + n + " }}") && !editBlock.includes("{{ " + n + " }}"),
+        `${n} stays available in view mode`)
     );
-    // correctly hidden while viewing
-    ["toggleArrowMode", "toggleNoteMode", "doFinish", "clearAll"].forEach((n) =>
-      check(inGuard(n), `${n} hidden in view mode`)
+    // shared with the admin in analysis mode
+    ["toggleArrowMode", "toggleNoteMode", "togglePen"].forEach((n) =>
+      check(drawBlock.includes("{{ " + n + " }}"), `${n} is a drawing tool, open to both`)
+    );
+    // never the admin's: these drive the participant through their own session
+    ["doFinish", "clearAll", "goNext"].forEach((n) =>
+      check(editBlock.includes("{{ " + n + " }}"), `${n} stays participant-only`)
     );
     // panning does not depend on the card layer, which is pointer-events:none
     check(/window\.addEventListener\('pointermove'/.test(doc), "pan listener is global");
@@ -714,12 +791,20 @@ console.log("\nview mode cannot write");
   check(/cards: this\.state\.cards\.filter\(\(c\) => c\.sm\)/.test(doc),
     "only sm-flagged objects are sent, participant objects are filtered out");
 
-  // 7g. deleting a participant record
-  check(/action: 'delete', participant: r\.participant/.test(doc), "delete posts an explicit action");
-  check(/this\.state\.delTyped\.trim\(\) !== r\.participant\) return;/.test(doc),
-    "delete refuses unless the code was retyped");
-  check(/const still = list\.some\(\(x\) => x\.participant === r\.participant\);/.test(doc),
-    "and verifies from a fresh roster rather than assuming success");
+  // 7g. hiding a record, and saying whose it is — there is no delete any more
+  check(!/action: 'delete'/.test(doc), "the client has no delete path at all");
+  check(!/delTyped|askDelete|confirmDelete/.test(doc), "and nothing left of its confirm dialog");
+  check(/const key = 'mt:' \+ pid;/.test(doc), "hide and description write to an mt: key");
+  check(/participant: key, kind: 'meta'/.test(doc), "posted as kind meta, one more appended row");
+  check(/state: \{ hidden: !!r\.hidden, desc: r\.desc \|\| '' \}/.test(doc),
+    "carrying both the flag and the description, so neither can clobber the other");
+  // 숨김은 되돌릴 수 있어야 뜻이 있다 / hiding is only meaningful if it comes back
+  check(/this\.state\.showHidden \? !!r\.hidden : !r\.hidden/.test(doc),
+    "the two roster views are exact complements, so nothing falls out of both");
+  check(/this\._mt = setTimeout/.test(doc), "the typed description is coalesced, not one row per keystroke");
+  // 배포가 밀렸을 때 / a backend still on the old version returns mt: rows as participants
+  check(/filter\(\(r\) => String\(r\.participant \|\| ''\)\.indexOf\('mt:'\) !== 0\)/.test(doc),
+    "and a stale deployment cannot make the meta rows look like participants");
 
   // 7e. the roster path
   check(/this\.jsonp\('list=1'\)/.test(doc), "roster fetched via ?list=1");
