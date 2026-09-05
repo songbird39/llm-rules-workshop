@@ -201,6 +201,22 @@ an arrow, which is what makes it slide around the tag as the note moves. Several
 step stack downward; the link can be broken from the note, and deleting a step unties its
 notes rather than leaving them pointing at nothing.
 
+## Does the analysis record actually come back?
+
+`tools/test_server.js` runs **server/Code.gs itself** against a simulated sheet: it posts
+exactly what the client posts and gets it back the way the client asks. The browser suite
+stubs the endpoint, so on its own it only ever proves the client reads back what the client
+wrote — a scan that skipped the wrong row would look fine in every browser check and lose
+an analysis record silently. Run all three: `test_ui_scale.js`, `test_server.js`,
+`browser/e2e.js`.
+
+⚠ **A Sheets cell holds 50,000 characters and the whole board rides in one cell.** With
+transcription notes that ceiling is reachable, and the client posts `no-cors` so it cannot
+see Apps Script throw — the record would simply stop being saved with the UI still reading
+"saved". `pushSense` therefore refuses to post past `CELL_MAX` and shows a banner, with a
+warning band from `CELL_WARN`. If you hit it, split the transcript across notes you keep
+elsewhere rather than making the record bigger.
+
 **Nothing pairs a DOM element to a state object by position.** `byId('card' | 'note')`
 returns a map keyed by the id each element carries in a **class** (`cd-…`, `nt-…`) — a
 class because the template engine drops interpolated `data-*`. Position pairing was a live

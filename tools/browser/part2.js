@@ -787,6 +787,25 @@ module.exports = async function (browser) {
     check(afterReload.ink === beforeReload.ink && afterReload.ink > 0, "including the ink");
     check(afterReload.leaders === 1, "including the leader line");
     check(afterReload.widest > 250, "and the hand-set note size");
+
+    // 11. 한도를 넘으면 조용히 실패하지 않는다 / past the cell ceiling it must SAY so. The POST
+    // is no-cors, so nothing else would ever tell the admin their transcript stopped
+    // being saved.
+    const nPosts = posted.filter((b) => b.kind === "sensemaking").length;
+    await page.evaluate(() => {
+      const L = [...document.querySelectorAll("div")].find((d) => d.style.width === "5000px");
+      const ta = [...L.querySelectorAll(':scope > [data-obj="note"] textarea')].pop();
+      const set = Object.getOwnPropertyDescriptor(window.HTMLTextAreaElement.prototype, "value").set;
+      set.call(ta, "가".repeat(60000));
+      ta.dispatchEvent(new Event("change", { bubbles: true }));
+      ta.dispatchEvent(new Event("input", { bubbles: true }));
+    });
+    await page.waitForTimeout(2600);
+    check(posted.filter((b) => b.kind === "sensemaking").length === nPosts,
+      "an oversized record is not posted at all",
+      ` (${posted.filter((b) => b.kind === "sensemaking").length - nPosts} extra)`);
+    check(await page.evaluate(() => document.body.innerText.includes("저장되지 않았습니다")),
+      "and the admin is told so, in a banner they cannot miss");
     check(errors.length === 0, "no console errors", errors.length ? ` (${errors[0]})` : "");
     await page.close();
   }

@@ -833,6 +833,14 @@ console.log("\nview mode cannot write");
     "and a new stroke counts as a change worth saving");
   check(/strokes: \(s\.strokes \|\| \[\]\)\.concat\(tag\(st\.strokes\)\)/.test(doc),
     "and it is read back when the record is opened again");
+  // 조용히 실패하지 않는다 / a save that cannot succeed must say so. The POST is no-cors, so
+  // the client never sees Apps Script throw on a cell over 50,000 characters — and a long
+  // transcript would otherwise stop being saved with the UI still reading "saved".
+  check(/const CELL_MAX = 50000/.test(src), "the sheet's cell ceiling is written down");
+  check(/if \(body\.length > CELL_MAX\) \{ this\.setState\(\{ senseBig: 'over' \}\); return; \}/.test(doc),
+    "an oversized analysis record is refused rather than posted into the void");
+  check(/senseBig: body\.length > CELL_WARN \? 'near' : ''/.test(doc), "and there is a warning before the wall");
+  check(/senseBigLabel: this\.state\.senseBig === 'over'/.test(doc), "both states reach the banner");
 
   // 7g. hiding a record, and saying whose it is — there is no delete any more
   check(!/action: 'delete'/.test(doc), "the client has no delete path at all");
