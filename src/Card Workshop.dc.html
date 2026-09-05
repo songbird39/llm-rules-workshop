@@ -940,7 +940,11 @@ class Component extends DCLogic {
         const step = Math.max(-0.04, Math.min(0.04, -e.deltaY * 0.0035));
         this.zoomBy(step);
       }
-      else this.setState((s) => ({ pan: { x: s.pan.x - e.deltaX, y: s.pan.y - e.deltaY } }));
+      else {
+        let dx = e.deltaX, dy = e.deltaY;
+        if (e.shiftKey && !dx) { dx = dy; dy = 0; }
+        this.setState((s) => ({ pan: { x: s.pan.x - dx, y: s.pan.y - dy } }));
+      }
     };
     el.addEventListener('wheel', this._wheel, { passive: false });
     this._wheelEl = el;

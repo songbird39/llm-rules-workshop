@@ -146,8 +146,9 @@ inside a 42% budget. The panel is a card grid (16px padding, 168px cards, 10px g
 anything between two column counts is dead space. It stays freely resizable by dragging its
 edge.
 
-**Navigating the board**: two-finger scroll (or a wheel) pans, ctrl+scroll zooms, and
-middle-drag / Alt+drag / Space+drag pan as well. A plain drag on empty board draws the
+**Navigating the board**: two-finger scroll (or a wheel) pans vertically, **shift+wheel**
+pans sideways — a mouse wheel has no horizontal axis, so without shift a mouse could only go
+up and down. ctrl+scroll zooms, and middle-drag / Alt+drag / Space+drag pan in any direction. A plain drag on empty board draws the
 selection marquee — selection is used constantly here and has no substitute, whereas
 panning has the trackpad. Double-clicking empty board, or pressing 0, recentres.
 

@@ -1399,6 +1399,55 @@ async function dragTileToBoard(page, title, fx = 0.45, fy = 0.4) {
     await p2.close();
   }
 
+  // ------------------------------------------------- horizontal panning with a mouse
+  // 마우스 휠에는 가로축이 없다 / a mouse wheel has no horizontal axis — only a trackpad sends
+  // deltaX — so without this the board could only be panned up and down with a mouse.
+  console.log("\nshift+wheel pans sideways, for a mouse with no horizontal axis");
+  {
+    const { page, errors } = await boot(browser, { width: 1500, height: 900 });
+    await toStep1(page, "HSC");
+    const box = await (await page.$('div[style*="radial-gradient"]')).boundingBox();
+    const pan = () => page.evaluate(() => {
+      const layer = [...document.querySelectorAll("div")].find((d) => d.style.width === "5000px");
+      const m = layer.style.transform.match(/translate\(([-\d.]+)px,\s*([-\d.]+)px\)/);
+      return m ? { x: +m[1], y: +m[2] } : null;
+    });
+    await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+    let a = await pan();
+    await page.mouse.wheel(0, 200);
+    await page.waitForTimeout(200);
+    let b = await pan();
+    check(b.y !== a.y && b.x === a.x, "a plain wheel pans vertically only", ` (${JSON.stringify(b)})`);
+
+    a = await pan();
+    await page.keyboard.down("Shift");
+    await page.mouse.wheel(0, 200);
+    await page.keyboard.up("Shift");
+    await page.waitForTimeout(200);
+    b = await pan();
+    check(b.x !== a.x && b.y === a.y, "shift+wheel pans horizontally only", ` (${JSON.stringify(b)})`);
+
+    a = await pan();
+    await page.mouse.wheel(150, 0);
+    await page.waitForTimeout(200);
+    b = await pan();
+    check(b.x !== a.x && b.y === a.y, "a trackpad's sideways swipe is unaffected");
+
+    // 브라우저가 이미 축을 바꿔 보내는 경우 / some browsers convert shift+wheel to deltaX
+    // themselves; swapping again would cancel the two out
+    a = await pan();
+    await page.evaluate(() => {
+      document.querySelector('div[style*="radial-gradient"]').dispatchEvent(
+        new WheelEvent("wheel", { deltaX: 150, deltaY: 0, shiftKey: true, bubbles: true, cancelable: true }));
+    });
+    await page.waitForTimeout(200);
+    b = await pan();
+    check(Math.abs((b.x - a.x) + 150) < 1, "and a browser that already swapped it is not swapped twice",
+      ` (moved ${Math.round(b.x - a.x)})`);
+    check(errors.length === 0, "no console errors", errors.length ? ` (${errors[0]})` : "");
+    await page.close();
+  }
+
   // ------------------------------------------------- sizing
   console.log("\ntags run longer rather than wrapping; the board reads bigger than the library");
   {

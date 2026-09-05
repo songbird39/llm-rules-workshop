@@ -531,6 +531,16 @@ console.log("\na failing endpoint does not look like a broken app");
     "and the listener is removed on unmount");
 }
 
+// ---- 6k. horizontal panning ----
+console.log("\nsideways panning works on a mouse, not just a trackpad");
+{
+  check(/if \(e\.shiftKey && !dx\) \{ dx = dy; dy = 0; \}/.test(src),
+    "shift+wheel is read as horizontal");
+  // !dx 가 핵심 / the !dx guard is the point: browsers that already convert shift+wheel to
+  // deltaX would otherwise have the swap applied twice and cancel out
+  check(/let dx = e\.deltaX, dy = e\.deltaY;/.test(src), "and only when the device sent no deltaX of its own");
+}
+
 // ---- 7. view mode must not be able to write ----
 // The whole point: viewing P01 must never produce a localStorage write or a sheet
 // POST, because latestState_() takes the newest row and would adopt the accident.
