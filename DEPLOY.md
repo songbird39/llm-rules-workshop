@@ -213,6 +213,24 @@ wrote — a scan that skipped the wrong row would look fine in every browser che
 an analysis record silently. Run all three: `test_ui_scale.js`, `test_server.js`,
 `browser/e2e.js`.
 
+### The analysis has a history
+
+Every analysis save appends a row, so the history was always on the sheet; what was missing
+was a way in. The 기록 dialog now has two tabs — the participant's board (what it always
+showed) and the analysis, read from the `sm:` key and thinned on a shorter window (45s vs
+120s) because analysis saves far more often. Opening an old analysis version swaps **only**
+the analysis layer: the participant's board underneath is not part of that history and must
+not move.
+
+**Checkpoints** (저장점) stamp the current analysis with a name you type, written as
+`kind: 'checkpoint'` so `versions_` never thins them away, and shown by name in the list.
+They write exactly what an autosave writes, via the shared `senseState()`.
+
+**Two editors.** Saving to the same `sm:` record was silently last-write-wins. The client
+now polls `?head=sm:<pid>` every 20s; if the newest write is not the one it made, saving
+stops and a banner offers *load theirs* or *overwrite with mine*. It is a warning, not a
+merge — two people on one participant still need to agree who owns it.
+
 ### Three records, not one
 
 A Sheets cell holds 50,000 characters, so a board with real transcript pasted into it does

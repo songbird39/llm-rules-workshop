@@ -1,10 +1,10 @@
 // 스위트 2/3 / middle third of the browser suite. Run it through e2e.js, not directly.
 const { APP, SHOTS, check, near, boardCards, boardTransform, uiScale,
-        boot, toStep1, toBoard, dragTileToBoard } = require("./harness");
+        boot, toStep1, toBoard, dragTileToBoard, say } = require("./harness");
 
 module.exports = async function (browser) {
   // ------------------------------------------------- pen and step-1 arrows
-  console.log("\ndrawing tools: the pen, and arrows in step 1 too");
+  say("\ndrawing tools: the pen, and arrows in step 1 too");
   {
     const { page, errors } = await boot(browser, { width: 1700, height: 1000 });
     await toStep1(page, "INK");
@@ -108,7 +108,7 @@ module.exports = async function (browser) {
   }
 
   // ------------------------------------------------- deck naming and order
-  console.log("\nthe decks are 규칙 (①②) and 가드레일 (③④)");
+  say("\nthe decks are 규칙 (①②) and 가드레일 (③④)");
   {
     const { page, errors } = await boot(browser, { width: 1700, height: 1050 });
     await toBoard(page, "DCK");
@@ -129,7 +129,7 @@ module.exports = async function (browser) {
   }
 
   // ------------------------------------------------- library shows descriptions on hover
-  console.log("\n규칙 cards: label on the board, description on hover in the library");
+  say("\n규칙 cards: label on the board, description on hover in the library");
   {
     const { page, errors } = await boot(browser, { width: 1500, height: 950 });
     await toStep1(page, "LIB");
@@ -159,7 +159,7 @@ module.exports = async function (browser) {
   }
 
   // ------------------------------------------------- toolbar, edit button, ghost
-  console.log("\nboth steps share one toolbar; a tag says how to rename it");
+  say("\nboth steps share one toolbar; a tag says how to rename it");
   {
     const { page, errors } = await boot(browser, { width: 1700, height: 1000 });
     const tools = () => page.evaluate(() => [...document.querySelectorAll("button")]
@@ -216,7 +216,7 @@ module.exports = async function (browser) {
   }
 
   // ------------------------------------------------- small screens
-  console.log("\nthe layout holds together on a small screen");
+  say("\nthe layout holds together on a small screen");
   {
     for (const [w, h, maxBar] of [[1440, 900, 60], [1280, 800, 60], [1024, 768, 60]]) {
       const { page, errors } = await boot(browser, { width: w, height: h });
@@ -250,7 +250,7 @@ module.exports = async function (browser) {
   // ONLY while dragging, so notes shifted by one exactly during a marquee drag and note i
   // was tested against note i-1's rectangle. Seeded rather than clicked, because creating
   // notes by synthetic click is flaky and this is about geometry, not the note tool.
-  console.log("\nthe marquee selects the notes it actually covers");
+  say("\nthe marquee selects the notes it actually covers");
   {
     const { page, errors } = await boot(browser, { width: 1600, height: 1000 });
     await page.evaluate(() => localStorage.setItem("llm-guardrail-workshop-v4:MQ", JSON.stringify({
@@ -281,7 +281,7 @@ module.exports = async function (browser) {
   }
 
   // ------------------------------------------------- the tab row is pinned
-  console.log("\nthe 규칙 / 가드레일 tabs stay put while the decks scroll");
+  say("\nthe 규칙 / 가드레일 tabs stay put while the decks scroll");
   {
     const { page, errors } = await boot(browser, { width: 1600, height: 1000 });
     await toBoard(page, "TAB");
@@ -309,7 +309,7 @@ module.exports = async function (browser) {
   // old board is redrawn by whatever the app looks like today. This pins that down, and
   // covers the awkward parts: geometry saved under the old sizes, and a card whose deck
   // no longer exists.
-  console.log("\nan old record is redrawn in the current design");
+  say("\nan old record is redrawn in the current design");
   {
     const { page, errors } = await boot(browser, { width: 1500, height: 900 });
     await page.evaluate(() => localStorage.setItem("llm-guardrail-workshop-v4:OLDREC", JSON.stringify({
@@ -353,7 +353,7 @@ module.exports = async function (browser) {
   // the injected JSONP script throws. Cross-origin that is an opaque "Script error." with no
   // file, and it surfaced as a banner on the board even though the request had already
   // timed out to null and the session was fine.
-  console.log("\na failing sync endpoint does not look like a broken app");
+  say("\na failing sync endpoint does not look like a broken app");
   {
     const page = await browser.newPage({ viewport: { width: 1500, height: 900 } });
     const errors = [];
@@ -393,7 +393,7 @@ module.exports = async function (browser) {
   // ------------------------------------------------- horizontal panning with a mouse
   // 마우스 휠에는 가로축이 없다 / a mouse wheel has no horizontal axis — only a trackpad sends
   // deltaX — so without this the board could only be panned up and down with a mouse.
-  console.log("\nshift+wheel pans sideways, for a mouse with no horizontal axis");
+  say("\nshift+wheel pans sideways, for a mouse with no horizontal axis");
   {
     const { page, errors } = await boot(browser, { width: 1500, height: 900 });
     await toStep1(page, "HSC");
@@ -440,7 +440,7 @@ module.exports = async function (browser) {
   }
 
   // ------------------------------------------------- drawing left of the origin
-  console.log("\nink drawn left of the board origin is actually painted");
+  say("\nink drawn left of the board origin is actually painted");
   {
     const { page, errors } = await boot(browser, { width: 1500, height: 900 });
     await toStep1(page, "NEG");
@@ -491,7 +491,7 @@ module.exports = async function (browser) {
   // 관리자는 참여자와 같은 도구로 해석한다 / the admin analyses with the participant's own
   // tools. What this section pins down is the line between the two layers: the admin can
   // build freely, and none of it may touch or resemble the participant's own work.
-  console.log("\nanalysis mode: the admin's own board on top of the participant's");
+  say("\nanalysis mode: the admin's own board on top of the participant's");
   {
     const EP = "https://script.google.com/macros/s/FAKE/exec";
     const board = {
@@ -818,7 +818,7 @@ module.exports = async function (browser) {
   // behind on whatever node is now showing a different note — and componentDidUpdate used
   // to skip autoGrow for the whole drag, so every note on the board wore somebody else's
   // height until you let go.
-  console.log("\ndragging one note does not resize the others");
+  say("\ndragging one note does not resize the others");
   {
     const { page, errors } = await boot(browser, { width: 1500, height: 950 });
     await toStep1(page, "NDR");

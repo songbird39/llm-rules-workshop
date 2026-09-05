@@ -96,6 +96,8 @@ function doGet(e) {
     out = { ok: true, participants: roster_() };
   } else if (p.versions) {
     out = { ok: true, participant: p.versions, versions: versions_(p.versions, Number(p.every) || 120000) };
+  } else if (p.head) {
+    out = { ok: true, participant: p.head, head: head_(p.head) };
   } else if (p.row) {
     out = { ok: true, row: Number(p.row), state: stateAtRow_(Number(p.row)) };
   } else if (p.participant) {
@@ -189,18 +191,56 @@ function versions_(pid, everyMs) {
   var sh = sheet_();
   var last = sh.getLastRow();
   if (last < 2) return [];
-  var vals = sh.getRange(2, 1, last - 1, 3).getValues(); // receivedAt, participant, kind
+  var vals = sh.getRange(2, 1, last - 1, 3).getValues();   // receivedAt, participant, kind
+  var jsonCol = sh.getRange(2, 10, last - 1, 1).getValues();
   var out = [], lastKept = 0;
   for (var i = 0; i < vals.length; i++) {
     if (String(vals[i][1] || '').trim() !== String(pid)) continue;
     var kind = String(vals[i][2] || '');
+    var label = '';
+    var body = null;
+    try { body = JSON.parse(jsonCol[i][0]); } catch (e) { body = null; }
+    // 조각난 저장은 한 판본이다 / a record written across several rows is ONE version, and
+    // the first slice stands for it: listing the others would show the same save four times
+    if (body && body.parts && body.part !== 0) continue;
+    if (body && body.label) label = String(body.label);
     var t = vals[i][0] ? new Date(vals[i][0]).getTime() : 0;
-    if (kind !== 'submit' && lastKept && (t - lastKept) < everyMs) continue;
+    // 저장점과 제출은 절대 솎아내지 않는다 / a checkpoint is a deliberate mark and a submit is
+    // a deliberate finish; thinning either away would defeat the point of making it
+    if (kind !== 'submit' && kind !== 'checkpoint' && lastKept && (t - lastKept) < everyMs) continue;
     lastKept = t;
-    out.push({ row: i + 2, at: vals[i][0] ? new Date(vals[i][0]).toISOString() : null, kind: kind });
+    out.push({
+      row: i + 2,
+      at: vals[i][0] ? new Date(vals[i][0]).toISOString() : null,
+      kind: kind, label: label
+    });
   }
   out.reverse();
   return out;
+}
+
+/** The newest complete record for a key, as {stamp, at} — or null.
+ *  두 사람이 같은 기록을 열었을 때를 위한 것 / this is what lets a client notice that somebody
+ *  else has written to the same record since it loaded, instead of silently overwriting.
+ */
+function head_(pid) {
+  var sh = sheet_();
+  var last = sh.getLastRow();
+  if (last < 2) return null;
+  var vals = sh.getRange(2, 1, last - 1, 2).getValues();   // receivedAt, participant
+  var jsonCol = sh.getRange(2, 10, last - 1, 1).getValues();
+  for (var i = vals.length - 1; i >= 0; i--) {
+    if (String(vals[i][1] || '').trim() !== String(pid)) continue;
+    try {
+      var b = JSON.parse(jsonCol[i][0]);
+      if (!b) continue;
+      return {
+        stamp: b.stamp || (b.payload && b.payload.state && b.payload.state.savedAt) || null,
+        at: vals[i][0] ? new Date(vals[i][0]).toISOString() : null
+      };
+    } catch (e) {}
+  }
+  return null;
 }
 
 /** The board state stored in one specific row, or null. Read-only. */
@@ -209,6 +249,28 @@ function stateAtRow_(row) {
   if (!row || row < 2 || row > sh.getLastRow()) return null;
   try {
     var body = JSON.parse(sh.getRange(row, 10).getValue());
+    if (body && body.parts) {
+      // 이 판본의 나머지 조각을 모은다 / gather this version's other slices. They share a
+      // stamp and a participant, and may be interleaved with anything else.
+      var last = sh.getLastRow();
+      var pidCol = sh.getRange(2, 2, last - 1, 1).getValues();
+      var jsonCol = sh.getRange(2, 10, last - 1, 1).getValues();
+      var slices = {};
+      for (var i = 0; i < pidCol.length; i++) {
+        if (String(pidCol[i][0]) !== String(body.participant)) continue;
+        try {
+          var b = JSON.parse(jsonCol[i][0]);
+          if (b && b.parts && String(b.stamp) === String(body.stamp)) slices[b.part] = (b.payload && b.payload.chunk) || '';
+        } catch (e2) {}
+      }
+      var joined = '';
+      for (var k = 0; k < body.parts; k++) {
+        if (slices[k] === undefined) return null;   // 조각이 빈다 / incomplete, not a version
+        joined += slices[k];
+      }
+      var whole = JSON.parse(joined);
+      return (whole && whole.cards) ? whole : null;
+    }
     var st = body && body.payload && body.payload.state;
     return (st && st.cards) ? st : null;
   } catch (err) {

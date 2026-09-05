@@ -49,6 +49,22 @@ function makeSheet() {
   return sh;
 }
 
+// 호출할 때마다 1초씩 흐르는 시계 / a clock that advances a second per reading, so rows
+// written one after another carry distinct timestamps the way real ones do
+function TickingDate() {
+  let now = Date.UTC(2026, 8, 1, 9, 0, 0);
+  const D = function (...args) {
+    if (!(this instanceof D)) return new D(...args).toString();
+    if (args.length === 0) { now += 1000; return new Date(now); }
+    return new Date(...args);
+  };
+  D.prototype = Date.prototype;
+  D.now = () => { now += 1000; return now; };
+  D.UTC = Date.UTC;
+  D.parse = Date.parse;
+  return D;
+}
+
 function loadServer() {
   const sh = makeSheet();
   // 첫 호출에서는 시트가 없다 / the sheet does not exist on the first call, which is what
@@ -68,7 +84,11 @@ function loadServer() {
       MimeType: { JSON: "json", JAVASCRIPT: "js" },
       createTextOutput: (t) => ({ _t: t, setMimeType() { return this; }, getContent: () => t }),
     },
-    Date, JSON, String, Number, RegExp, Math, console,
+    // 시계가 멈춰 있으면 안 된다 / the clock must MOVE. Every appendRow stamps new Date(),
+    // and with a frozen clock every row lands in the same millisecond — which makes the
+    // version thinner discard rows it would never discard in life, and quietly turns tests
+    // about history into tests about nothing.
+    Date: TickingDate(), JSON, String, Number, RegExp, Math, console,
   };
   sandbox.ContentService.createTextOutput = (t) => {
     const o = { _t: t };

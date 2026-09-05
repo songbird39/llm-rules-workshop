@@ -26,6 +26,9 @@ const e = bundle.indexOf("</script>", b);
 const doc = JSON.parse(bundle.slice(b, e).trim());
 const k = doc.indexOf("text/x-dc");
 const src = doc.slice(doc.indexOf(">", k) + 1, doc.indexOf("</script>", k));
+// 서버도 같이 읽는다 / the server is read too: some properties live on both sides of the
+// wire, and checking only the client half proves half of nothing
+const gs = fs.readFileSync(path.join(ROOT, "server", "Code.gs"), "utf8");
 
 // 색 값 도우미 / palette helpers, used by more than one block
 const chroma = (v) => Number(String(v).replace(/oklch\([\d.]+ ([\d.]+).*/, "$1"));
@@ -331,7 +334,6 @@ console.log("\ndemo ids are frozen out of every write path");
     "and frozen() covers them, so localStorage, autosave and the queue all stop");
   check(/if \(!this\.isDemo\(pid\)\) this\.syncDown/.test(src), "a demo does not read from the sheet either");
   check(/syncDemo:/.test(src) && /this\.isDemo\(\) \? t\.syncDemo/.test(src), "and the header says so");
-  const gs = fs.readFileSync(path.join(ROOT, "server", "Code.gs"), "utf8");
   check(/function isDemo_\(pid\)/.test(gs) && /skipped: 'demo'/.test(gs),
     "the server drops demo rows as a backstop for stale builds");
   check(/if \(isDemo_\(pid\)\) continue;/.test(gs), "and never lists one as a participant");
@@ -628,6 +630,46 @@ console.log("\ntwo kinds of analysis note, sized by hand and tied to a step");
     "analysis notes are what gets written to the sm: record");
   check(/concat\(\[this\.mine\(\{\s*id: id, x: Math\.round\(r\.x\)/.test(doc),
     "and a step note is flagged sm when it is made");
+}
+
+// ---- 6n. the analysis has a history of its own ----
+console.log("\nanalysis versions, checkpoints, and a second editor");
+{
+  // 해석은 참여자 보드와 다른 기록이다 / the analysis is a DIFFERENT record from the
+  // participant's board, so its history is read from the sm: key, not theirs
+  check(/const pid = who === 'sense' \? 'sm:' \+ base : base;/.test(doc),
+    "the analysis history is read from the sm: key");
+  // 기록 버튼의 뜻은 그대로 / the 기록 button keeps meaning what it has always meant — the
+  // participant's board — and the analysis is one tab away, not a surprise substitution
+  check(/histWho: 'board'/.test(doc), "the history dialog opens on the participant's board");
+  check(/const every = who === 'sense' \? 45000 : 120000;/.test(doc),
+    "and thinned on a shorter window, since analysis saves far more often");
+  // 되돌아갈 때 참여자 보드는 건드리지 않는다 / travelling in the analysis history must not
+  // move the participant's board a pixel: it is not part of this history
+  check(/cards: s\.cards\.filter\(\(c\) => !c\.sm\)\.concat\(tag\(st\.cards\)\)/.test(doc),
+    "opening an old analysis version swaps only the analysis layer");
+  check(/travel: \{ row: v\.row, at: v\.at, sense: true \}/.test(doc), "and marks the travel as such");
+  check(/if \(this\.state\.travel && this\.state\.travel\.sense\)/.test(doc),
+    "restoring one is handled separately from a participant restore");
+
+  // 저장점 / checkpoints
+  check(/kind !== 'submit' && kind !== 'checkpoint' && lastKept/.test(gs),
+    "a checkpoint is never thinned out of the version list");
+  check(/if \(body && body\.parts && body\.part !== 0\) continue;/.test(gs),
+    "and a sliced save is listed once, not once per slice");
+  check(/'checkpoint', label\)/.test(doc), "the checkpoint carries the name that was typed");
+  check(/senseState\(\)/.test(doc), "and writes exactly what an autosave writes");
+
+  // 두 사람 / two editors
+  check(/function head_\(pid\)/.test(gs), "the server can report the newest record for a key");
+  check(/if \(this\.state\.conflict\) return;/.test(doc), "an unresolved conflict stops saving");
+  check(/Number\(h\.stamp\) > Number\(this\._head\)/.test(doc),
+    "a conflict is only newer-than-ours, not merely different");
+  check(/takeTheirs\(\)/.test(doc) && /keepMine\(\)/.test(doc), "and there are both ways out of it");
+  // 조각난 판본도 열 수 있어야 한다 / a version stored across rows must be openable, or the
+  // history would list moments it cannot show
+  check(/if \(body && body\.parts\) \{[\s\S]{0,600}slices\[b\.part\]/.test(gs),
+    "stateAtRow_ reassembles a version that spans rows");
 }
 
 // ---- 7. view mode must not be able to write ----

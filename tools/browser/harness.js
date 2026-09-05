@@ -29,9 +29,14 @@ const APP = "file://" + path.resolve(__dirname, "../../index.html");
 const SHOTS = process.env.SHOTS ? "/tmp/ws-shots" : null;
 
 const tally = { failures: 0 };
+// 버퍼링 없이 쓴다 / write UNBUFFERED. console.log to a pipe or a file is block-buffered, so
+// when the run is killed partway the tail of the log dies with the process — and a kill
+// then looks exactly like a stall at whatever line the last flush ended on. That cost an
+// afternoon of chasing a hang that was not there.
+const say = (line) => { try { require("fs").writeSync(1, line + "\n"); } catch (e) { console.log(line); } };
 const check = (ok, label, extra = "") => {
   if (!ok) tally.failures++;
-  console.log(`  ${ok ? "OK  " : "FAIL"} ${label}${extra}`);
+  say(`  ${ok ? "OK  " : "FAIL"} ${label}${extra}`);
 };
 const near = (a, b, tol = 1.5) => Math.abs(a - b) <= tol;
 
@@ -158,5 +163,5 @@ async function realServer(page, { seed } = {}) {
   return { srv, posts };
 }
 
-module.exports = { realServer, APP, SHOTS, chromium, tally, check, near, boardCards,
+module.exports = { realServer, say, APP, SHOTS, chromium, tally, check, near, boardCards,
   boardTransform, uiScale, boot, toStep1, toBoard, dragTileToBoard };

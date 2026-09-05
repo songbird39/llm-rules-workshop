@@ -77,6 +77,7 @@
           <button onClick="{{ onImg }}" style="padding:5px 9px;border:1px solid #d6d3ca;border-radius:6px;background:#fff;font-size:12.5px;cursor:pointer" style-hover="background:#f1efe8">{{ t.imgBtn }}</button>
           <button onClick="{{ onImgSense }}" style="padding:5px 9px;border:1px dashed oklch(0.62 0.11 62);border-radius:6px;background:#fdfbf5;color:#7a5a1f;font-size:12.5px;cursor:pointer">{{ t.imgSenseBtn }}</button>
           <button onClick="{{ onClearSense }}" style="padding:5px 8px;border:1px solid #e2dfd7;border-radius:6px;background:transparent;color:#98958c;font-size:12.5px;cursor:pointer" style-hover="color:#b03f34">{{ t.clearSenseBtn }}</button>
+          <button onClick="{{ onMark }}" title="{{ t.markTip }}" style="padding:5px 9px;border:1px dashed oklch(0.62 0.11 62);border-radius:6px;background:#fdfbf5;color:#7a5a1f;font-size:12.5px;cursor:pointer">{{ markLabel }}</button>
           <button onClick="{{ onHistory }}" style="padding:5px 9px;border:1px solid #d6d3ca;border-radius:6px;background:#fff;font-size:12.5px;cursor:pointer" style-hover="background:#f1efe8">{{ t.histBtn }}</button>
         </sc-if>
         <sc-if value="{{ canDraw }}" hint-placeholder-val="{{ true }}">
@@ -110,6 +111,18 @@
       </div>
     </sc-if>
   </div>
+
+  <!-- 남이 같은 기록을 건드렸다 / somebody else has written to this record. Saving stops
+       until it is settled: racing them would just mean whoever typed last wins. -->
+  <sc-if value="{{ conflict }}" hint-placeholder-val="{{ false }}">
+    <div style="flex:0 0 auto;display:flex;flex-wrap:wrap;align-items:center;gap:10px;padding:8px 18px;background:#f7e6e3;border-bottom:1px solid #e8cdc7">
+      <span style="font-size:12.5px;font-weight:600;color:#8f342a">{{ t.conflictTitle }}</span>
+      <span style="font-size:12.5px;color:#8f342a">{{ conflictBody }}</span>
+      <div style="flex:1"></div>
+      <button onClick="{{ onTakeTheirs }}" style="padding:6px 12px;border:1px solid #d6d3ca;border-radius:7px;background:#fff;font-size:12.5px;cursor:pointer">{{ t.takeTheirs }}</button>
+      <button onClick="{{ onKeepMine }}" style="padding:6px 12px;border:1px solid transparent;border-radius:7px;background:#8f342a;color:#fff;font-size:12.5px;cursor:pointer">{{ t.keepMine }}</button>
+    </div>
+  </sc-if>
 
   <sc-if value="{{ oldServer }}" hint-placeholder-val="{{ false }}">
     <div style="flex:0 0 auto;display:flex;flex-wrap:wrap;align-items:center;gap:10px;padding:8px 18px;background:#f7e6e3;border-bottom:1px solid #e8cdc7">
@@ -497,7 +510,15 @@
     <div style="position:fixed;left:0;top:0;right:0;bottom:0;background:rgba(27,26,23,0.35);display:flex;align-items:center;justify-content:center;z-index:60">
       <div style="width:420px;max-width:88vw;max-height:76vh;background:#fffefb;border:1px solid #e2dfd7;border-radius:14px;padding:24px 26px;box-shadow:0 12px 36px rgba(0,0,0,0.18);display:flex;flex-direction:column;gap:12px">
         <div style="font-size:16px;font-weight:700;letter-spacing:-0.01em">{{ t.histTitle }}</div>
-        <div style="font-size:12.5px;line-height:1.6;color:#7a776f">{{ t.histSub }}</div>
+        <!-- 두 개의 역사 / two histories in one dialog: the participant's board, and the
+             analysis laid over it. They are different records and are read separately. -->
+        <sc-if value="{{ isViewing }}" hint-placeholder-val="{{ false }}">
+          <div style="display:flex;gap:0;border:1px solid #e2dfd7;border-radius:9px;overflow:hidden">
+            <button onClick="{{ onHistWho }}" style="flex:1;padding:7px 8px;border:none;background:{{ histTheirsBg }};color:{{ histTheirsFg }};font-size:12.5px;font-weight:600;cursor:pointer">{{ t.histTheirs }}</button>
+            <button onClick="{{ onHistMine }}" style="flex:1;padding:7px 8px;border:none;background:{{ histMineBg }};color:{{ histMineFg }};font-size:12.5px;font-weight:600;cursor:pointer">{{ t.histMine }}</button>
+          </div>
+        </sc-if>
+        <div style="font-size:12.5px;line-height:1.6;color:#7a776f">{{ histSub }}</div>
         <sc-if value="{{ hasHistNote }}" hint-placeholder-val="{{ true }}">
           <div style="font-size:12.5px;line-height:1.6;color:#8a6a1f;background:#f7f0dc;border-radius:8px;padding:10px 13px">{{ histNote }}</div>
         </sc-if>
@@ -505,6 +526,9 @@
           <sc-for list="{{ versions }}" as="v" hint-placeholder-count="0">
             <button onClick="{{ v.onOpen }}" style="display:flex;align-items:baseline;gap:10px;text-align:left;padding:9px 12px;border:1px solid #e2dfd7;border-radius:9px;background:#fff;cursor:pointer" style-hover="border-color:oklch(0.51 0.08 253)">
               <span style="font-size:12.5px;color:#44423b">{{ v.when }}</span>
+              <sc-if value="{{ v.hasLabel }}" hint-placeholder-val="{{ false }}">
+                <span style="font-size:12px;font-weight:700;color:#7a5a1f">{{ v.label }}</span>
+              </sc-if>
               <span style="flex:1"></span>
               <span style="font-size:11px;color:{{ v.tagColor }}">{{ v.tag }}</span>
             </button>
@@ -797,6 +821,14 @@ const I18N = {
       hiddenNote: '기록은 지워지지 않았습니다. 목록에서만 빠져 있습니다.',
       metaPh: '설명 (누구의 기록인지 적어 두세요)',
       panelHide: '덱 접기', panelShow: '덱 펼치기',
+      markBtn: '저장점', markTip: '지금 해석에 이름을 붙여 기록에 남기기', markPrompt: '저장점 이름 (예: 1차 코딩 완료)',
+      markedPre: '저장됨 · ',
+      histTheirs: '참여자 보드', histMine: '해석 기록',
+      histSubTheirs: '참여자가 저장한 시점들입니다. 열어 보아도 저장은 멈춰 있습니다.',
+      histSubMine: '해석 작업이 저장된 시점들입니다. 저장점은 이름이 함께 표시됩니다.',
+      conflictTitle: '다른 사람이 이 해석을 저장했습니다 ·',
+      conflictBody2: '내 저장은 멈춰 있습니다. 상대 버전을 불러오거나, 내 것으로 덮어쓸 수 있습니다.',
+      takeTheirs: '상대 버전 불러오기', keepMine: '내 것으로 덮어쓰기',
       oldSrvTitle: 'Apps Script가 오래되었습니다 ·', oldSrvBody: '해석 작업이 저장은 되어도 다시 열리지 않습니다. 배포 관리 ▸ 편집 ▸ 버전: 새 버전으로 다시 배포해 주세요.',
       tooBigTitle: '저장되지 않았습니다 ·', tooBigBody: '해석 기록이 너무 큽니다. 전사 메모를 나누거나 줄여 주세요. 마지막으로 저장된 내용은 그대로 있습니다.',
       descMode: '설명 편집', hideMode: '숨기기',
@@ -910,6 +942,14 @@ const I18N = {
       hiddenNote: 'Nothing was deleted. These are only out of the list.',
       metaPh: 'Description (who this code belongs to)',
       panelHide: 'Fold the deck away', panelShow: 'Bring the deck back',
+      markBtn: 'Checkpoint', markTip: 'Name this moment in the analysis history', markPrompt: 'Checkpoint name (e.g. first coding pass)',
+      markedPre: 'Saved · ',
+      histTheirs: "Participant's board", histMine: 'Analysis',
+      histSubTheirs: 'Moments the participant saved. Opening one pauses saving.',
+      histSubMine: 'Moments the analysis was saved. Checkpoints show their name.',
+      conflictTitle: 'Someone else saved this analysis ·',
+      conflictBody2: 'Your saving is paused. Load their version, or overwrite it with yours.',
+      takeTheirs: 'Load theirs', keepMine: 'Overwrite with mine',
       oldSrvTitle: 'The Apps Script is out of date ·', oldSrvBody: 'Analysis work will save but will not load again. Redeploy it: Manage deployments ▸ Edit ▸ Version: New.',
       tooBigTitle: 'Not saved ·', tooBigBody: 'This analysis record is too large to store. Shorten or split the transcription notes. What was saved before is still there.',
       descMode: 'Descriptions', hideMode: 'Hide',
@@ -944,7 +984,7 @@ const I18N = {
 class Component extends DCLogic {
   constructor(props) {
     super(props);
-    this.state = { sync: '', step: 0, lang: 'ko', rules: [], pid: '', loginPid: '', cards: [], notes: [], arrows: [], arrowMode: false, pendingArrow: null, pen: null, strokes: [], selArrow: null, noteMode: false, noteKind: 'memo', panelOff: false, rosterMode: '', undoDepth: 0, focusNote: null, pan: { x: 0, y: 0 }, zoom: 1, ghost: null, seq: 1, panelW: panelCap(), sel: [], marquee: null, finish: null, tab: 'flow', hist: null, histList: [], travel: null, senseOn: true, admin: false, viewPid: '', roster: [], rosterMsg: '' };
+    this.state = { sync: '', step: 0, lang: 'ko', rules: [], pid: '', loginPid: '', cards: [], notes: [], arrows: [], arrowMode: false, pendingArrow: null, pen: null, strokes: [], selArrow: null, noteMode: false, noteKind: 'memo', panelOff: false, rosterMode: '', histWho: 'board', conflict: null, marked: '', undoDepth: 0, focusNote: null, pan: { x: 0, y: 0 }, zoom: 1, ghost: null, seq: 1, panelW: panelCap(), sel: [], marquee: null, finish: null, tab: 'flow', hist: null, histList: [], travel: null, senseOn: true, admin: false, viewPid: '', roster: [], rosterMsg: '' };
     this.canvasRef = React.createRef();
     this.drag = null;
   }
@@ -1207,11 +1247,19 @@ class Component extends DCLogic {
   }
 
   // ── 기록 / version history ────────────────────────────────────────────
-  openHistory() {
-    const pid = this.state.viewPid || this.state.pid;
-    if (!pid || !this.syncUrl()) { this.setState({ hist: 'error', histList: [] }); return; }
-    this.setState({ hist: 'loading', histList: [] });
-    this.jsonp('versions=' + encodeURIComponent(pid)).then((res) => {
+  // 해석 기록은 sm: 키의 역사다 / the analysis history is the history of the sm: record, a
+  // different key from the participant's own board — so which one is being read has to be
+  // chosen, not inferred.
+  openHistory(which) {
+    const who = which || this.state.histWho || (this.isView() ? 'sense' : 'board');
+    const base = this.state.viewPid || this.state.pid;
+    const pid = who === 'sense' ? 'sm:' + base : base;
+    if (!base || !this.syncUrl()) { this.setState({ hist: 'error', histList: [], histWho: who }); return; }
+    this.setState({ hist: 'loading', histList: [], histWho: who });
+    // 해석은 자주 저장된다 / analysis saves often, so its versions are thinned on a shorter
+    // window than a participant's board: a two-minute grid would hide most of a session
+    const every = who === 'sense' ? 45000 : 120000;
+    this.jsonp('versions=' + encodeURIComponent(pid) + '&every=' + every).then((res) => {
       if (res && res.ok && res.versions) {
         this.setState({ hist: 'open', histList: res.versions });
       } else {
@@ -1222,9 +1270,25 @@ class Component extends DCLogic {
 
   // 그 시점의 보드를 불러온다 — 저장은 얼어 있다 / load that snapshot; writes stay frozen
   travelTo(v) {
+    const who = this.state.histWho;
     this.setState({ hist: 'loading' });
     this.jsonp('row=' + encodeURIComponent(v.row)).then((res) => {
       if (!res || !res.ok || !res.state) { this.setState({ hist: 'error' }); return; }
+      if (who === 'sense') {
+        // 참여자 보드는 그대로 두고 해석 레이어만 갈아 끼운다 / swap ONLY the analysis layer;
+        // the participant's board underneath is not part of this history and must not
+        // move a pixel because the admin looked at an older version of their own work
+        const tag = (arr) => (arr || []).map((o) => Object.assign({}, o, { sm: true }));
+        const st = res.state;
+        this.setState((s) => ({
+          travel: { row: v.row, at: v.at, sense: true }, hist: null,
+          cards: s.cards.filter((c) => !c.sm).concat(tag(st.cards)),
+          notes: (s.notes || []).filter((n) => !n.sm).concat(tag(st.notes)),
+          arrows: (s.arrows || []).filter((a) => !a.sm).concat(tag(st.arrows)),
+          strokes: (s.strokes || []).filter((k) => !k.sm).concat(tag(st.strokes))
+        }));
+        return;
+      }
       this.setState({ travel: { row: v.row, at: v.at }, hist: null });
       this.applyState(res.state);
     });
@@ -1233,14 +1297,37 @@ class Component extends DCLogic {
   // 이 버전을 현재 상태로 채택 / adopt it as current. History is append-only, so this
   // adds a new row rather than rewriting anything.
   restoreTravel() {
+    // 해석 판본 되돌리기 / adopting an older ANALYSIS version. Append-only, like everything
+    // else here: this writes the old content as a new record rather than erasing what came
+    // after it, so the version you restored FROM is still in the history.
+    if (this.state.travel && this.state.travel.sense) {
+      this.setState({ travel: null }, () => {
+        this._ssig = undefined;
+        this._txSaved = '{}';
+        this.pushSense();
+        this.refreshHead();
+      });
+      return;
+    }
     if (this.isView()) return;
     this.setState({ travel: null }, () => { this.seedSig(); this.scheduleAutosave(); });
   }
 
   cancelTravel() {
     const pid = this.state.viewPid || this.state.pid;
+    const wasSense = !!(this.state.travel && this.state.travel.sense);
     this.setState({ travel: null });
     if (!pid) return;
+    if (wasSense) {
+      // 해석만 되돌린다 / put the latest analysis back over the untouched board
+      this.setState((s) => ({
+        cards: s.cards.filter((c) => !c.sm),
+        notes: (s.notes || []).filter((n) => !n.sm),
+        arrows: (s.arrows || []).filter((a) => !a.sm),
+        strokes: (s.strokes || []).filter((k) => !k.sm)
+      }), () => this.loadSense(pid));
+      return;
+    }
     this.loadRemote(pid).then((st) => { if (st) this.applyState(st); });
   }
 
@@ -1388,24 +1475,33 @@ class Component extends DCLogic {
   }
 
   // 반드시 'sm:' 키로만 저장한다 / writes ONLY ever to the 'sm:' key, never a bare id
-  pushSense() {
-    const pid = this.state.viewPid, url = this.syncUrl();
-    if (!this.isView() || !pid || !url || this.state.travel) return;
-    const key = 'sm:' + pid;
-    if (key.indexOf('sm:') !== 0) return;                 // assertion, not decoration
-    const state = {
+  // 저장되는 해석 상태 / the analysis state as it goes to the sheet. Shared with the
+  // checkpoint, so a marked version is the same shape as an autosave and reads back the
+  // same way — one of them being subtly different is the kind of thing found much later.
+  senseState() {
+    const key = 'sm:' + this.state.viewPid;
+    return {
       savedAt: Date.now(), pid: key, step: 2, lang: this.state.lang, rules: [],
       cards: this.state.cards.filter((c) => c.sm),
       // 전사 본문은 여기 담지 않는다 / the transcript bodies are not in here; they go to the
       // tx: record and are merged back in on load
       notes: (this.state.notes || []).filter((n) => n.sm).map((n) => (n.kind === 'tx' ? Object.assign({}, n, { text: '' }) : n)),
       arrows: (this.state.arrows || []).filter((a) => a.sm),
-      // 관리자 필기도 해석 결과다 / the admin's ink is analysis too. The pen has been on
-      // offer in this layer while its strokes were saved nowhere and vanished on the
-      // next load — the one thing on the board that did not come back.
+      // 관리자 필기도 해석 결과다 / the admin's ink is analysis too
       strokes: (this.state.strokes || []).filter((k) => k.sm),
       seq: this.state.seq, panelW: this.state.panelW
     };
+  }
+
+  pushSense() {
+    const pid = this.state.viewPid, url = this.syncUrl();
+    if (!this.isView() || !pid || !url || this.state.travel) return;
+    // 충돌 중에는 쓰지 않는다 / never write while a conflict is unresolved: that is the whole
+    // point of noticing one
+    if (this.state.conflict) return;
+    const key = 'sm:' + pid;
+    if (key.indexOf('sm:') !== 0) return;                 // assertion, not decoration
+    const state = this.senseState();
     // 본문을 빼기 전에 본문을 먼저 저장한다 / write the bodies BEFORE writing the record that
     // omits them. This is the migration path: a record saved by an older build keeps its
     // transcript inside the note, and the moment this build saves the board it strips that
@@ -1418,6 +1514,7 @@ class Component extends DCLogic {
     const slices = this.sliceState(json, key, stamp, at);
     if (!slices) { this.setState({ senseBig: true }); return; }
     this.setState({ senseBig: false, senseParts: slices.length });
+    this._head = stamp;      // 방금 쓴 것이 head / what we just wrote IS the head now
     // 조각은 순서대로, 그러나 기다리지 않는다 / the slices go in order and are not awaited:
     // the response is unreadable under no-cors anyway. A group is only READ once every
     // slice of it has arrived, so one that gets cut off leaves the last complete record
@@ -1463,6 +1560,85 @@ class Component extends DCLogic {
     } catch (e) {}
   }
 
+  /* 저장점 / a checkpoint: the current analysis, stamped with a name you typed.
+     자동 저장은 촘촘하지만 이름이 없다. 어느 순간이 의미 있었는지는 사람만 안다.
+     Autosaves are dense and anonymous; only a person knows which moment meant something.
+     A checkpoint is written as its own kind so the version list never thins it away. */
+  saveCheckpoint() {
+    const pid = this.state.viewPid, url = this.syncUrl();
+    if (!this.isView() || !pid || !url || this.state.travel) return;
+    const L = I18N[this.state.lang] || I18N.ko;
+    const label = (window.prompt(L.ui.markPrompt) || '').trim();
+    if (!label) return;
+    const key = 'sm:' + pid;
+    const state = this.senseState();
+    const stamp = Date.now(), at = new Date().toISOString();
+    if (JSON.stringify(this.txMap()) !== this._txSaved) this.pushTx();
+    const slices = this.sliceState(JSON.stringify(state), key, stamp, at, 'checkpoint', label);
+    if (!slices) { this.setState({ senseBig: true }); return; }
+    try {
+      slices.forEach((b) => fetch(url, {
+        method: 'POST', mode: 'no-cors',
+        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+        body: b
+      }));
+    } catch (e) {}
+    this._head = stamp;
+    this.setState({ marked: label });
+    setTimeout(() => this.setState({ marked: '' }), 2600);
+  }
+
+  /* 다른 사람이 같은 기록을 건드렸는지 / has anyone else written to this record since we
+     loaded it? Two people on one participant is last-write-wins otherwise, and the loser
+     finds out only by noticing their work missing later. Poll the head; if it moved and it
+     was not us, stop saving and say so. */
+  refreshHead() {
+    const pid = this.state.viewPid;
+    if (!this.isView() || !pid || !this.syncUrl()) return Promise.resolve(null);
+    return this.jsonp('head=' + encodeURIComponent('sm:' + pid)).then((res) => {
+      const h = res && res.ok && res.head ? res.head : null;
+      if (h) this._head = h.stamp;
+      return h;
+    });
+  }
+
+  watchHead() {
+    clearInterval(this._hw);
+    this._hw = setInterval(() => {
+      const pid = this.state.viewPid;
+      if (!this.isView() || !pid || this.state.travel || this.state.conflict) return;
+      this.jsonp('head=' + encodeURIComponent('sm:' + pid)).then((res) => {
+        const h = res && res.ok && res.head ? res.head : null;
+        if (!h || !this._head) return;
+        // 우리가 쓴 것보다 최신이면 남이 쓴 것 / newer than anything we wrote means somebody
+        // else did. Freeze saving rather than racing them for the last word.
+        if (String(h.stamp) !== String(this._head) && Number(h.stamp) > Number(this._head)) {
+          this.setState({ conflict: { at: h.at } });
+        }
+      });
+    }, 20000);
+  }
+
+  takeTheirs() {
+    const pid = this.state.viewPid;
+    this.setState({ conflict: null }, () => {
+      this.setState((s) => ({
+        cards: s.cards.filter((c) => !c.sm),
+        notes: (s.notes || []).filter((n) => !n.sm),
+        arrows: (s.arrows || []).filter((a) => !a.sm),
+        strokes: (s.strokes || []).filter((k) => !k.sm)
+      }), () => { this.loadSense(pid); this.refreshHead(); });
+    });
+  }
+
+  keepMine() {
+    this.setState({ conflict: null }, () => {
+      this._ssig = undefined;
+      this._txSaved = '{}';
+      this.pushSense();
+    });
+  }
+
   /* 한 줄에 담기지 않는 기록 / a record that does not fit in one row.
      조각 크기는 재서 정한다 — JSON 안에 다시 JSON 을 넣으면 따옴표와 줄바꿈이 이스케이프되어
      길이가 늘어나는데, 얼마나 늘어나는지는 글에 달렸다.
@@ -1470,7 +1646,7 @@ class Component extends DCLogic {
      document grows by its escapes, and by how much depends entirely on the text — a
      transcript full of quotation marks inflates far more than one without. So build the
      rows, look at them, and halve until they fit. */
-  sliceState(json, key, stamp, at, kind) {
+  sliceState(json, key, stamp, at, kind, label) {
     let size = CELL_SAFE;
     for (let attempt = 0; attempt < 8; attempt++) {
       const n = Math.max(1, Math.ceil(json.length / size));
@@ -1480,7 +1656,7 @@ class Component extends DCLogic {
       for (let i = 0; i < n; i++) {
         const body = JSON.stringify({
           participant: key, kind: kind || 'sensemaking', queuedAt: at,
-          stamp: stamp, part: i, parts: n,
+          stamp: stamp, part: i, parts: n, label: label || '',
           payload: { participant: key, chunk: json.slice(i * size, (i + 1) * size) }
         });
         if (body.length > CELL_MAX) { ok = false; break; }
@@ -1562,11 +1738,14 @@ class Component extends DCLogic {
       // sets this again, but it also returns early when there is no analysis record yet.
       this._txSaved = '{}';
       this.loadSense(pid);
+      this.refreshHead().then(() => this.watchHead());
     });
   }
 
   backToRoster() {
-    this.setState({ viewPid: '', step: 0, cards: [], notes: [], arrows: [], rosterMsg: '' },
+    clearInterval(this._hw);
+    this._head = null;
+    this.setState({ viewPid: '', step: 0, cards: [], notes: [], arrows: [], strokes: [], travel: null, conflict: null, rosterMsg: '' },
       () => this.refreshRoster());
   }
 
@@ -3164,6 +3343,19 @@ class Component extends DCLogic {
       doLogout: () => this.logout(),
       doFinish: () => this.finish(),
       onHistory: () => this.openHistory(),
+      onMark: () => this.saveCheckpoint(),
+      markLabel: this.state.marked ? (t.markedPre + this.state.marked) : t.markBtn,
+      onHistWho: () => this.openHistory('board'),
+      onHistMine: () => this.openHistory('sense'),
+      histTheirsBg: this.state.histWho === 'sense' ? '#fff' : '#1b1a17',
+      histTheirsFg: this.state.histWho === 'sense' ? '#1b1a17' : '#faf8f3',
+      histMineBg: this.state.histWho === 'sense' ? '#1b1a17' : '#fff',
+      histMineFg: this.state.histWho === 'sense' ? '#faf8f3' : '#1b1a17',
+      histSub: this.state.histWho === 'sense' ? t.histSubMine : t.histSubTheirs,
+      conflict: !!this.state.conflict,
+      conflictBody: t.conflictBody2,
+      onTakeTheirs: () => this.takeTheirs(),
+      onKeepMine: () => this.keepMine(),
       onUndo: () => this.undo(),
       undoOpacity: this.state.undoDepth ? 1 : 0.35,
       histOpen: !!this.state.hist,
@@ -3176,8 +3368,10 @@ class Component extends DCLogic {
       versions: (this.state.histList || []).map((v) => ({
         key: 'v' + v.row,
         when: v.at ? new Date(v.at).toLocaleString() : '-',
-        tag: v.kind === 'submit' ? t.submittedTag : t.autoTag,
-        tagColor: v.kind === 'submit' ? 'oklch(0.51 0.08 253)' : '#a7a49b',
+        hasLabel: !!v.label,
+        label: v.label || '',
+        tag: v.kind === 'submit' ? t.submittedTag : v.kind === 'checkpoint' ? t.markBtn : t.autoTag,
+        tagColor: v.kind === 'submit' ? 'oklch(0.51 0.08 253)' : v.kind === 'checkpoint' ? '#7a5a1f' : '#a7a49b',
         onOpen: () => this.travelTo(v)
       })),
       oldServer: !!this.state.oldServer && !!this.state.admin,
@@ -3190,7 +3384,7 @@ class Component extends DCLogic {
       travelling: !!this.state.travel,
       travelLabel: this.state.travel && this.state.travel.at
         ? new Date(this.state.travel.at).toLocaleString() : '',
-      canRestore: !!this.state.travel && !RO,
+      canRestore: !!this.state.travel && (!RO || !!(this.state.travel && this.state.travel.sense)),
       onRestore: () => this.restoreTravel(),
       onCancelTravel: () => this.cancelTravel(),
       finishOpen: !!this.state.finish,

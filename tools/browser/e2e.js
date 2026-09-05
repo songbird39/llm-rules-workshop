@@ -4,7 +4,9 @@
  *   node tools/browser/e2e.js            # both halves in one process
  *   PART=1 node tools/browser/e2e.js     # first third only  (tools/browser/part1.js)
  *   PART=2 node tools/browser/e2e.js     # middle third only (tools/browser/part2.js)
- *   PART=3 node tools/browser/e2e.js     # final third only  (tools/browser/part3.js)
+ *   PART=3 node tools/browser/e2e.js     # third quarter only (tools/browser/part3.js)
+ *   PART=4 node tools/browser/e2e.js     # persistence only    (tools/browser/part4.js)
+ *   PART=5 node tools/browser/e2e.js     # submit/history/admin (tools/browser/part5.js)
  *   SHOTS=1 node tools/browser/e2e.js    # also write screenshots to /tmp/ws-shots
  *
  * SETUP (this sandbox, once per session):
@@ -36,7 +38,7 @@
  *  - Attribute selectors like [style*="width:168px"] do NOT match: the browser
  *    re-serialises the style attribute with spaces. Query the live layer instead.
  */
-const { chromium, tally } = require("./harness");
+const { chromium, tally, say } = require("./harness");
 
 const only = process.env.PART || "";
 
@@ -45,8 +47,10 @@ const only = process.env.PART || "";
   if (!only || only === "1") await require("./part1")(browser);
   if (!only || only === "2") await require("./part2")(browser);
   if (!only || only === "3") await require("./part3")(browser);
+  if (!only || only === "4") await require("./part4")(browser);
+  if (!only || only === "5") await require("./part5")(browser);
   await browser.close();
-  console.log(tally.failures ? `\n${tally.failures} FAILURE(S)` : "\nall passed");
+  say(tally.failures ? `\n${tally.failures} FAILURE(S)` : "\nall passed");
   process.exit(tally.failures ? 1 : 0);
 })().catch((e) => {
   console.error("HARNESS ERROR:", e.message.split("\n").slice(0, 6).join("\n"));

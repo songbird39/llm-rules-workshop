@@ -1,259 +1,10 @@
-// 스위트 3/3 / final third of the browser suite. Run it through e2e.js, not directly.
+// 스위트 3/4 of the browser suite. Run it through e2e.js, not directly.
 const { APP, SHOTS, check, near, boardCards, boardTransform, uiScale,
-        boot, toStep1, toBoard, dragTileToBoard, realServer } = require("./harness");
+        boot, toStep1, toBoard, dragTileToBoard, realServer, say } = require("./harness");
 
 module.exports = async function (browser) {
-  // ------------------------------------------------- analysis, against the REAL server
-  // 스텁이 아니라 진짜 Code.gs 를 뒤에 둔다 / the endpoint here is server/Code.gs itself,
-  // running in node over a simulated sheet. This is the check that answers "I made changes,
-  // left, came back, and they were gone": a stub would have happily handed back whatever
-  // the test handed it, and said nothing about whether the sheet-backed scan finds it.
-  console.log("\nanalysis edits survive leaving and coming back (real Code.gs behind the page)");
-  {
-    const EP = "https://script.google.com/macros/s/FAKE/exec";
-    const page = await browser.newPage({ viewport: { width: 1700, height: 1000 } });
-    const errors = [];
-    page.on("pageerror", (e) => errors.push(e.message));
-    const board = {
-      savedAt: Date.now(), pid: "P9", step: 2, lang: "ko", rules: [],
-      cards: [{ id: "c1", type: "act", title: "학습 계획", desc: "", dia: null, collapsed: false, w: 352, x: 300, y: 400 }],
-      notes: [{ id: "n1", x: 300, y: 700, text: "참여자 메모" }], arrows: [], seq: 5, panelW: 566,
-    };
-    const { srv, posts } = await realServer(page, {
-      seed: (s) => s.post({ participant: "P9", kind: "autosave", payload: { participant: "P9", state: board } }),
-    });
-    const enter = async () => {
-      await page.goto(APP + "?sync=" + encodeURIComponent(EP), { waitUntil: "load", timeout: 120000 });
-      await page.waitForSelector('input[placeholder="P0000"]', { timeout: 120000 });
-      await page.fill('input[placeholder="P0000"]', "admin");
-      await page.getByText("시작하기", { exact: false }).click();
-      await page.waitForTimeout(900);
-      await page.getByText("P9", { exact: true }).first().click();
-      await page.waitForTimeout(1600);
-    };
-    await enter();
-    const cb = await (await page.$('div[style*="radial-gradient"]')).boundingBox();
-
-    // 분석 작업을 한다 / do a session's worth of analysis
-    await page.getByText("전체 복제", { exact: true }).click();
-    await page.waitForTimeout(700);
-    await page.getByText("✎ 전사", { exact: true }).click();
-    await page.waitForTimeout(150);
-    await page.mouse.click(cb.x + cb.width * 0.55, cb.y + cb.height * 0.35);
-    await page.waitForTimeout(400);
-    // 실제 전사 분량 / a real transcript, far past what one cell holds
-    const transcript = "\"먼저 스스로 써 보고 나서 확인만 받으려고 했어요.\" 라고 말했다.\n".repeat(2000);
-    await page.evaluate((t) => {
-      const L = [...document.querySelectorAll("div")].find((d) => d.style.width === "5000px");
-      const ta = [...L.querySelectorAll(':scope > [data-obj="note"] textarea')].pop();
-      const set = Object.getOwnPropertyDescriptor(window.HTMLTextAreaElement.prototype, "value").set;
-      set.call(ta, t);
-      ta.dispatchEvent(new Event("change", { bubbles: true }));
-      ta.dispatchEvent(new Event("input", { bubbles: true }));
-    }, transcript);
-    await page.waitForTimeout(600);
-    await page.getByRole("button", { name: "펜", exact: true }).click();
-    await page.waitForTimeout(150);
-    await page.mouse.move(cb.x + 140, cb.y + cb.height * 0.8);
-    await page.mouse.down();
-    for (let i = 1; i <= 6; i++) { await page.mouse.move(cb.x + 140 + i * 24, cb.y + cb.height * 0.8 + i * 8); await page.waitForTimeout(30); }
-    await page.mouse.up();
-    await page.getByRole("button", { name: "펜", exact: true }).click();
-    await page.waitForTimeout(6500);          // 큰 기록은 5초 간격 / a big record waits 5s
-
-    const shape = () => page.evaluate(() => {
-      const L = [...document.querySelectorAll("div")].find((d) => d.style.width === "5000px");
-      const ns = [...L.querySelectorAll(':scope > [data-obj="note"]')];
-      return {
-        cards: [...L.querySelectorAll(':scope > [data-obj="card"]')].length,
-        notes: ns.length,
-        ink: document.querySelectorAll("polyline").length,
-        chars: ns.reduce((a, n) => a + (n.querySelector("textarea") || { value: "" }).value.length, 0),
-      };
-    });
-    const left = await shape();
-    check(left.cards === 2 && left.notes === 3, "the analysis is on the board before leaving",
-      ` (${JSON.stringify(left)})`);
-    check(posts.some((b) => b.kind === "sensemaking"), "a board record was written");
-    check(posts.some((b) => b.kind === "transcript"), "and the transcript went to its own record");
-    check(srv.get({ participant: "sm:P9" }).state !== null, "the server can find the board record");
-    check((srv.get({ participant: "tx:P9" }).state || {}).texts !== undefined,
-      "and the transcript record");
-
-    // 나갔다가 다시 들어온다 / leave, and come back — the exact thing that was broken
-    await page.getByText("← 목록", { exact: false }).click();
-    await page.waitForTimeout(600);
-    await page.getByText("P9", { exact: true }).first().click();
-    await page.waitForTimeout(2200);
-    const back = await shape();
-    check(back.cards === left.cards && back.notes === left.notes,
-      "everything is still there on re-entry", ` (${JSON.stringify(back)})`);
-    check(back.ink === left.ink && back.ink > 0, "the ink came back too");
-    check(back.chars === left.chars && back.chars > 60000,
-      "and the whole transcript, not a truncated one",
-      ` (${back.chars} of ${left.chars})`);
-
-    // 그리고 완전히 새로 열어도 / and again from a cold load, not just a re-render
-    await enter();
-    const cold = await shape();
-    check(JSON.stringify(cold) === JSON.stringify(left), "a fresh page load finds it all as well",
-      ` (${JSON.stringify(cold)})`);
-    check(!(await page.evaluate(() => document.body.innerText.includes("오래되었습니다"))),
-      "and a current deployment says nothing about being out of date");
-    check(errors.length === 0, "no console errors", errors.length ? ` (${errors[0]})` : "");
-    await page.close();
-  }
-
-  // ------------------------------------------------- work saved by the older build
-  // 공동연구자가 이미 해 둔 분석 / a coauthor's analysis, saved by the build before any of
-  // this: one row, whole state, transcript text sitting inside the note. Opening it must
-  // show that text, and — the part that could quietly destroy it — saving the board
-  // afterwards must not strip the text out before the transcript record exists.
-  console.log("\nanalysis saved by the older build opens, and survives being edited");
-  {
-    const EP = "https://script.google.com/macros/s/FAKE/exec";
-    const page = await browser.newPage({ viewport: { width: 1700, height: 1000 } });
-    const errors = [];
-    page.on("pageerror", (e) => errors.push(e.message));
-    const transcript = "예전 빌드에서 붙여넣은 전사입니다.\n두 번째 줄\n세 번째 줄";
-    const board = {
-      savedAt: Date.now(), pid: "P9", step: 2, lang: "ko", rules: [],
-      cards: [{ id: "c1", type: "act", title: "학습 계획", desc: "", dia: null, collapsed: false, w: 352, x: 300, y: 400 }],
-      notes: [], arrows: [], seq: 5, panelW: 566,
-    };
-    // 예전 모양 그대로 / exactly the old shape: no src, no strokes, text inside the note
-    const legacyAnalysis = {
-      savedAt: Date.now(), pid: "sm:P9", step: 2, lang: "ko", rules: [],
-      cards: [{ id: "s5", type: "act", title: "학습 계획", desc: "", sm: true, x: 900, y: 400, w: 352 }],
-      notes: [{ id: "n7", x: 900, y: 250, text: transcript, kind: "tx", sm: true }],
-      arrows: [], seq: 9, panelW: 566,
-    };
-    const { srv } = await realServer(page, {
-      seed: (s) => {
-        s.post({ participant: "P9", kind: "autosave", payload: { participant: "P9", state: board } });
-        s.post({ participant: "sm:P9", kind: "sensemaking", payload: { participant: "sm:P9", state: legacyAnalysis } });
-      },
-    });
-    const enter = async () => {
-      await page.goto(APP + "?sync=" + encodeURIComponent(EP), { waitUntil: "load", timeout: 120000 });
-      await page.waitForSelector('input[placeholder="P0000"]', { timeout: 120000 });
-      await page.fill('input[placeholder="P0000"]', "admin");
-      await page.getByText("시작하기", { exact: false }).click();
-      await page.waitForTimeout(900);
-      await page.getByText("P9", { exact: true }).first().click();
-      await page.waitForTimeout(1800);
-    };
-    const texts = () => page.evaluate(() => {
-      const L = [...document.querySelectorAll("div")].find((d) => d.style.width === "5000px");
-      return [...L.querySelectorAll(':scope > [data-obj="note"] textarea')].map((t) => t.value);
-    });
-    await enter();
-    check((await texts()).includes(transcript), "the old record's transcript is there on opening",
-      ` (${JSON.stringify(await texts())})`);
-
-    // 보드만 건드린다 — 전사는 손대지 않는다 / touch the BOARD only, not the transcript: this is
-    // the dangerous case, because the board save is what drops the text from the note
-    const cardBox = await page.evaluate(() => {
-      const L = [...document.querySelectorAll("div")].find((d) => d.style.width === "5000px");
-      const el = [...L.querySelectorAll(':scope > [data-obj="card"]')].pop();
-      const r = el.getBoundingClientRect();
-      return { x: r.x + 120, y: r.y + 8 };
-    });
-    await page.mouse.move(cardBox.x, cardBox.y);
-    await page.mouse.down();
-    for (let i = 1; i <= 4; i++) { await page.mouse.move(cardBox.x + i * 14, cardBox.y + i * 9); await page.waitForTimeout(50); }
-    await page.mouse.up();
-    await page.waitForTimeout(3000);
-
-    const saved = srv.get({ participant: "sm:P9" }).state;
-    const txRec = srv.get({ participant: "tx:P9" }).state;
-    check(saved && saved.notes.every((n) => !n.text), "the new board record carries no transcript text");
-    check(txRec && txRec.texts && txRec.texts.n7 === transcript,
-      "because it was moved into the transcript record FIRST",
-      txRec ? "" : " (no transcript record was written at all)");
-
-    await enter();
-    check((await texts()).includes(transcript), "so it is still there after a reload",
-      ` (${JSON.stringify(await texts())})`);
-    check(errors.length === 0, "no console errors", errors.length ? ` (${errors[0]})` : "");
-    await page.close();
-  }
-
-  // ------------------------------------------------- the older build against this server
-  // 서버만 먼저 배포했을 때 / the coauthor keeps working in a tab loaded from the previous
-  // build while the new Code.gs is already deployed. Their client knows nothing about
-  // slices or tx: records, so the new server has to keep answering them in the old shape.
-  console.log("\nthe previous build still works against the new server");
-  {
-    const { loadServer } = require("../gasnode");
-    const srv = loadServer();
-    const legacy = {
-      savedAt: Date.now(), pid: "sm:P9", step: 2, lang: "ko", rules: [],
-      cards: [{ id: "s5", type: "when", title: "예전", desc: "", sm: true, x: 900, y: 400 }],
-      notes: [{ id: "n7", x: 900, y: 250, text: "예전 전사", kind: "tx", sm: true }],
-      arrows: [], seq: 9,
-    };
-    // 예전 클라이언트가 보내는 그대로 / exactly what the older client posts
-    srv.post({ participant: "sm:P9", kind: "sensemaking", queuedAt: new Date().toISOString(),
-               payload: { participant: "sm:P9", state: legacy } });
-    const back = srv.get({ participant: "sm:P9" });
-    check(back.state && back.state.notes[0].text === "예전 전사",
-      "the new server stores and returns an old-shape save unchanged");
-    check(back.version === "2026-09-05", "and reports its version, which the old client ignores");
-    // 그리고 새 클라이언트가 저장한 것을 예전 클라이언트가 읽어도 / and a record this build
-    // sliced across rows still comes back as one plain state, which is all the old client
-    // knows how to read
-    const big = JSON.parse(JSON.stringify(legacy));
-    big.notes[0].text = "긴".repeat(40000);
-    const json = JSON.stringify(big);
-    const size = 30000, n = Math.ceil(json.length / size);
-    for (let i = 0; i < n; i++) {
-      srv.post({ participant: "sm:P9", kind: "sensemaking", stamp: 7, part: i, parts: n,
-                 payload: { participant: "sm:P9", chunk: json.slice(i * size, (i + 1) * size) } });
-    }
-    const reassembled = srv.get({ participant: "sm:P9" });
-    check(reassembled.state && reassembled.state.notes[0].text.length === 40000,
-      "a sliced record reads back as one whole state", ` (${(reassembled.state.notes[0].text || "").length})`);
-  }
-
-  // ------------------------------------------------- an out-of-date deployment says so
-  // 배포를 미루면 조용히 어긋난다 / a deferred redeploy fails silently: the new client slices a
-  // record across rows, an old server cannot reassemble them, and the analysis saves and
-  // then will not load — with nothing anywhere saying why. That is not a state to leave
-  // anyone guessing in.
-  console.log("\nan out-of-date Apps Script is named as the problem");
-  {
-    const EP = "https://script.google.com/macros/s/FAKE/exec";
-    const page = await browser.newPage({ viewport: { width: 1500, height: 950 } });
-    const errors = [];
-    page.on("pageerror", (e) => errors.push(e.message));
-    // 옛 배포 흉내 / an old deployment: answers the roster, but reports no version
-    await page.route("**/macros/s/**", async (route) => {
-      const u = new URL(route.request().url());
-      if (route.request().method() === "POST") return route.fulfill({ status: 200, body: "{}" });
-      const cb = u.searchParams.get("callback");
-      const out = u.searchParams.get("list")
-        ? { ok: true, participants: [{ participant: "P9", rows: 3, submits: 1, lastAt: "2026-08-29T10:00:00Z" }] }
-        : { ok: true, state: null };
-      return route.fulfill({ status: 200, contentType: "application/javascript", body: cb + "(" + JSON.stringify(out) + ");" });
-    });
-    await page.goto(APP + "?sync=" + encodeURIComponent(EP), { waitUntil: "load", timeout: 120000 });
-    await page.waitForSelector('input[placeholder="P0000"]', { timeout: 120000 });
-    await page.fill('input[placeholder="P0000"]', "admin");
-    await page.getByText("시작하기", { exact: false }).click();
-    await page.waitForTimeout(1200);
-    check(await page.evaluate(() => document.body.innerText.includes("Apps Script가 오래되었습니다")),
-      "the admin is told the deployment is old");
-    check(await page.evaluate(() => document.body.innerText.includes("버전: 새 버전")),
-      "and told exactly what to do about it");
-    check(await page.evaluate(() => document.body.innerText.includes("P9")),
-      "while the roster still works, since reading mostly does");
-    check(errors.length === 0, "no console errors", errors.length ? ` (${errors[0]})` : "");
-    await page.close();
-  }
-
   // ------------------------------------------------- sizing
-  console.log("\ntags run longer rather than wrapping; the board reads bigger than the library");
+  say("\ntags run longer rather than wrapping; the board reads bigger than the library");
   {
     const { page, errors } = await boot(browser, { width: 1700, height: 1000 });
     await toStep1(page, "SZ1");
@@ -306,7 +57,7 @@ module.exports = async function (browser) {
   }
 
   // ------------------------------------------------- undo
-  console.log("\nundo steps back five changes; 기록 is admin-only now");
+  say("\nundo steps back five changes; 기록 is admin-only now");
   {
     const { page, errors } = await boot(browser, { width: 1700, height: 1000 });
     await toStep1(page, "UND");
@@ -355,7 +106,7 @@ module.exports = async function (browser) {
   // ------------------------------------------------- a session starts blank
   // 다음 참여자가 앞사람 보드를 보면 안 된다 / the next participant must not open onto the
   // previous one's board. Per-code storage makes that true; this keeps it true.
-  console.log("\nevery new participant starts on an empty board");
+  say("\nevery new participant starts on an empty board");
   {
     const { page, errors } = await boot(browser, { width: 1500, height: 950 });
     const count = () => page.evaluate(() => {
@@ -393,7 +144,7 @@ module.exports = async function (browser) {
   // ------------------------------------------------- demo sessions
   // 데모는 리허설이지 데이터가 아니다 / a demo is a rehearsal, not data: nothing may reach
   // the sheet and nothing may be left in this browser for the next participant to find.
-  console.log("\na demo id saves nothing, anywhere");
+  say("\na demo id saves nothing, anywhere");
   {
     const page = await browser.newPage({ viewport: { width: 1600, height: 1000 } });
     const errors = [], posts = [];
@@ -456,7 +207,7 @@ module.exports = async function (browser) {
   }
 
   // ------------------------------------------------- language switch
-  console.log("\nswitching language translates the board and survives old records");
+  say("\nswitching language translates the board and survives old records");
   {
     const { page, errors } = await boot(browser, { width: 1600, height: 1000 });
     await toStep1(page, "LNG");
@@ -526,7 +277,7 @@ module.exports = async function (browser) {
   }
 
   // ------------------------------------------------- consent document
-  console.log("\nconsent document reads and downloads from the sign-in screen");
+  say("\nconsent document reads and downloads from the sign-in screen");
   {
     const page = await browser.newPage({ viewport: { width: 1500, height: 950 } });
     const errors = [], failed = [];
@@ -584,7 +335,7 @@ module.exports = async function (browser) {
   // 활동 태그와 수단 포스트잇에는 아이콘이 없다 / activity tags and 수단 post-its carry no icon.
   // The description textarea was once nested inside the icon's sc-if, so those two types
   // rendered a title and nothing else: they looked right and could not be typed into.
-  console.log("\nevery board object can be edited, icon or not");
+  say("\nevery board object can be edited, icon or not");
   {
     const { page, errors } = await boot(browser);
     await toStep1(page, "ED1");
@@ -635,7 +386,7 @@ module.exports = async function (browser) {
   }
 
   // ------------------------------------------------- 4. ?ui=1 escape hatch
-  console.log("\n?ui=1 escape hatch");
+  say("\n?ui=1 escape hatch");
   {
     const { page } = await boot(browser, { query: "?ui=1" });
     check(near(await uiScale(page), 1, 0.001), "?ui=1 restores unscaled rendering");

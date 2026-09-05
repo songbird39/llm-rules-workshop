@@ -171,6 +171,48 @@ console.log("\na half-written record never replaces a whole one");
     ` (${back.state && back.state.cards.length} cards)`);
 }
 
+console.log("\nthe analysis has a history, and checkpoints are never thinned away");
+{
+  const { post, get } = loadServer();
+  const mk = (n, t) => ({ savedAt: Date.now(), pid: "sm:P9", step: 2, lang: "ko", rules: [],
+    cards: Array.from({ length: n }, (_, i) => ({ id: "s" + i, type: "when", title: t, sm: true, src: "a", x: 100, y: 100 })),
+    notes: [], arrows: [], strokes: [], seq: 9 });
+  post({ participant: "sm:P9", kind: "sensemaking", payload: { participant: "sm:P9", state: mk(1, "a") } });
+  post({ participant: "sm:P9", kind: "checkpoint", label: "1차 코딩 완료",
+         payload: { participant: "sm:P9", state: mk(2, "b") } });
+  // 그 뒤로 자동저장이 쏟아진다 / a flood of autosaves afterwards, all within the thinning window
+  for (let i = 0; i < 6; i++) {
+    post({ participant: "sm:P9", kind: "sensemaking", payload: { participant: "sm:P9", state: mk(3, "c") } });
+  }
+  const vs = get({ versions: "sm:P9", every: "120000" }).versions;
+  const marks = vs.filter((v) => v.kind === "checkpoint");
+  check(marks.length === 1, "the checkpoint survives a flood of autosaves around it", ` (${vs.length} versions)`);
+  check(marks[0].label === "1차 코딩 완료", "with its name intact");
+  const at = get({ row: String(marks[0].row) }).state;
+  check(at && at.cards.length === 2, "and opening it gives that moment, not the newest one",
+    ` (${at && at.cards.length})`);
+
+  // 조각난 판본도 목록에 한 번만 / a sliced version appears ONCE and opens whole
+  const big = mk(4, "d");
+  const json = JSON.stringify(big), size = Math.ceil(json.length / 3);
+  for (let i = 0; i < 3; i++) {
+    post({ participant: "sm:P9", kind: "sensemaking", stamp: 77, part: i, parts: 3,
+           payload: { participant: "sm:P9", chunk: json.slice(i * size, (i + 1) * size) } });
+  }
+  // 목록은 최신이 먼저 / newest first, so the slice group we just wrote heads the list.
+  // Filtering by row number instead depended on the thinning window falling a particular
+  // way, and these posts all land in the same millisecond.
+  const vs2 = get({ versions: "sm:P9", every: "1" }).versions;
+  check(vs2.length >= 1 && vs2[0].kind === "sensemaking", "a sliced save heads the list",
+    ` (${vs2.length}, ${vs2[0] && vs2[0].kind})`);
+  const opened = get({ row: String(vs2[0].row) }).state;
+  check(opened && opened.cards.length === 4, "and opens reassembled", ` (${opened && opened.cards.length})`);
+
+  // head / 누가 마지막으로 썼는지
+  const h = get({ head: "sm:P9" }).head;
+  check(h && String(h.stamp) === "77", "head reports the newest write", h ? ` (${h.stamp})` : "");
+}
+
 console.log("\nrecords written before any of this still open");
 {
   const { post, get } = loadServer();
