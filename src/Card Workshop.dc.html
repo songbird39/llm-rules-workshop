@@ -1352,7 +1352,16 @@ class Component extends DCLogic {
         arrows: (s.arrows || []).concat(tag(st.arrows)),
         strokes: (s.strokes || []).concat(tag(st.strokes)),
         seq: Math.max(s.seq || 1, st.seq || 1)
-      }), () => { this._ssig = this.senseSig(); this._tsig = JSON.stringify(this.txMap()); });
+      }), () => {
+        this._ssig = this.senseSig();
+        this._tsig = JSON.stringify(this.txMap());
+        // "아직 아무것도 저장돼 있지 않다" 로 둔다 / treat the transcript store as EMPTY, not as
+        // matching what just loaded: the text may have come from inside the notes of an
+        // older record, which is not in a tx: record at all. An analysis with no transcript
+        // then matches and costs nothing; one with transcript gets migrated on the next
+        // save. Seeding it with the loaded map instead would skip the migration entirely.
+        this._txSaved = '{}';
+      });
     });
   }
 
@@ -1397,6 +1406,12 @@ class Component extends DCLogic {
       strokes: (this.state.strokes || []).filter((k) => k.sm),
       seq: this.state.seq, panelW: this.state.panelW
     };
+    // 본문을 빼기 전에 본문을 먼저 저장한다 / write the bodies BEFORE writing the record that
+    // omits them. This is the migration path: a record saved by an older build keeps its
+    // transcript inside the note, and the moment this build saves the board it strips that
+    // text out. If the tx: record were not already written, a reload would find the text
+    // gone from both places — so never post the board record ahead of the transcript.
+    if (JSON.stringify(this.txMap()) !== this._txSaved) this.pushTx();
     const json = JSON.stringify(state);
     const stamp = Date.now();
     const at = new Date().toISOString();
@@ -1434,6 +1449,7 @@ class Component extends DCLogic {
   pushTx() {
     const pid = this.state.viewPid, url = this.syncUrl();
     if (!this.isView() || !pid || !url || this.state.travel) return;
+    this._txSaved = JSON.stringify(this.txMap());
     const key = TX_PREFIX + pid;
     const stamp = Date.now(), at = new Date().toISOString();
     const slices = this.sliceState(JSON.stringify({ texts: this.txMap(), cards: [] }), key, stamp, at, 'transcript');
@@ -1541,6 +1557,10 @@ class Component extends DCLogic {
       this.setState({ rosterMsg: '' });
       this.applyState(remote);
       this._ssig = undefined;
+      // 전사 저장소는 비어 있다고 보고 시작한다 / start from "nothing stored", so a record whose
+      // transcript still lives inside its notes gets migrated on the next save. loadSense
+      // sets this again, but it also returns early when there is no analysis record yet.
+      this._txSaved = '{}';
       this.loadSense(pid);
     });
   }

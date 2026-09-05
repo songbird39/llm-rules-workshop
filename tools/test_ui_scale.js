@@ -856,6 +856,14 @@ console.log("\nview mode cannot write");
   // transcript where it used to be — inside the note
   check(/texts\[n\.id\] !== undefined && !n\.text/.test(doc),
     "a note that already has its text keeps it, so older records still open");
+  // 마이그레이션이 순서에 달렸다 / the migration hangs on the ORDER. An older record keeps its
+  // transcript inside the note; the first board save of this build strips that out. If the
+  // transcript record were not written first, a reload would find the text gone from both
+  // places — the coauthor's work, destroyed by opening it.
+  check(/if \(JSON\.stringify\(this\.txMap\(\)\) !== this\._txSaved\) this\.pushTx\(\);/.test(doc),
+    "the transcript is written before the record that omits it");
+  check(/this\._txSaved = '\{\}';/.test(doc),
+    "and loading treats the transcript store as empty, so a migration is never skipped");
 
   // 7g. hiding a record, and saying whose it is — there is no delete any more
   check(!/action: 'delete'/.test(doc), "the client has no delete path at all");

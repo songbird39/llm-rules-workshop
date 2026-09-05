@@ -104,6 +104,118 @@ module.exports = async function (browser) {
     await page.close();
   }
 
+  // ------------------------------------------------- work saved by the older build
+  // 공동연구자가 이미 해 둔 분석 / a coauthor's analysis, saved by the build before any of
+  // this: one row, whole state, transcript text sitting inside the note. Opening it must
+  // show that text, and — the part that could quietly destroy it — saving the board
+  // afterwards must not strip the text out before the transcript record exists.
+  console.log("\nanalysis saved by the older build opens, and survives being edited");
+  {
+    const EP = "https://script.google.com/macros/s/FAKE/exec";
+    const page = await browser.newPage({ viewport: { width: 1700, height: 1000 } });
+    const errors = [];
+    page.on("pageerror", (e) => errors.push(e.message));
+    const transcript = "예전 빌드에서 붙여넣은 전사입니다.\n두 번째 줄\n세 번째 줄";
+    const board = {
+      savedAt: Date.now(), pid: "P9", step: 2, lang: "ko", rules: [],
+      cards: [{ id: "c1", type: "act", title: "학습 계획", desc: "", dia: null, collapsed: false, w: 352, x: 300, y: 400 }],
+      notes: [], arrows: [], seq: 5, panelW: 566,
+    };
+    // 예전 모양 그대로 / exactly the old shape: no src, no strokes, text inside the note
+    const legacyAnalysis = {
+      savedAt: Date.now(), pid: "sm:P9", step: 2, lang: "ko", rules: [],
+      cards: [{ id: "s5", type: "act", title: "학습 계획", desc: "", sm: true, x: 900, y: 400, w: 352 }],
+      notes: [{ id: "n7", x: 900, y: 250, text: transcript, kind: "tx", sm: true }],
+      arrows: [], seq: 9, panelW: 566,
+    };
+    const { srv } = await realServer(page, {
+      seed: (s) => {
+        s.post({ participant: "P9", kind: "autosave", payload: { participant: "P9", state: board } });
+        s.post({ participant: "sm:P9", kind: "sensemaking", payload: { participant: "sm:P9", state: legacyAnalysis } });
+      },
+    });
+    const enter = async () => {
+      await page.goto(APP + "?sync=" + encodeURIComponent(EP), { waitUntil: "load", timeout: 120000 });
+      await page.waitForSelector('input[placeholder="P0000"]', { timeout: 120000 });
+      await page.fill('input[placeholder="P0000"]', "admin");
+      await page.getByText("시작하기", { exact: false }).click();
+      await page.waitForTimeout(900);
+      await page.getByText("P9", { exact: true }).first().click();
+      await page.waitForTimeout(1800);
+    };
+    const texts = () => page.evaluate(() => {
+      const L = [...document.querySelectorAll("div")].find((d) => d.style.width === "5000px");
+      return [...L.querySelectorAll(':scope > [data-obj="note"] textarea')].map((t) => t.value);
+    });
+    await enter();
+    check((await texts()).includes(transcript), "the old record's transcript is there on opening",
+      ` (${JSON.stringify(await texts())})`);
+
+    // 보드만 건드린다 — 전사는 손대지 않는다 / touch the BOARD only, not the transcript: this is
+    // the dangerous case, because the board save is what drops the text from the note
+    const cardBox = await page.evaluate(() => {
+      const L = [...document.querySelectorAll("div")].find((d) => d.style.width === "5000px");
+      const el = [...L.querySelectorAll(':scope > [data-obj="card"]')].pop();
+      const r = el.getBoundingClientRect();
+      return { x: r.x + 120, y: r.y + 8 };
+    });
+    await page.mouse.move(cardBox.x, cardBox.y);
+    await page.mouse.down();
+    for (let i = 1; i <= 4; i++) { await page.mouse.move(cardBox.x + i * 14, cardBox.y + i * 9); await page.waitForTimeout(50); }
+    await page.mouse.up();
+    await page.waitForTimeout(3000);
+
+    const saved = srv.get({ participant: "sm:P9" }).state;
+    const txRec = srv.get({ participant: "tx:P9" }).state;
+    check(saved && saved.notes.every((n) => !n.text), "the new board record carries no transcript text");
+    check(txRec && txRec.texts && txRec.texts.n7 === transcript,
+      "because it was moved into the transcript record FIRST",
+      txRec ? "" : " (no transcript record was written at all)");
+
+    await enter();
+    check((await texts()).includes(transcript), "so it is still there after a reload",
+      ` (${JSON.stringify(await texts())})`);
+    check(errors.length === 0, "no console errors", errors.length ? ` (${errors[0]})` : "");
+    await page.close();
+  }
+
+  // ------------------------------------------------- the older build against this server
+  // 서버만 먼저 배포했을 때 / the coauthor keeps working in a tab loaded from the previous
+  // build while the new Code.gs is already deployed. Their client knows nothing about
+  // slices or tx: records, so the new server has to keep answering them in the old shape.
+  console.log("\nthe previous build still works against the new server");
+  {
+    const { loadServer } = require("../gasnode");
+    const srv = loadServer();
+    const legacy = {
+      savedAt: Date.now(), pid: "sm:P9", step: 2, lang: "ko", rules: [],
+      cards: [{ id: "s5", type: "when", title: "예전", desc: "", sm: true, x: 900, y: 400 }],
+      notes: [{ id: "n7", x: 900, y: 250, text: "예전 전사", kind: "tx", sm: true }],
+      arrows: [], seq: 9,
+    };
+    // 예전 클라이언트가 보내는 그대로 / exactly what the older client posts
+    srv.post({ participant: "sm:P9", kind: "sensemaking", queuedAt: new Date().toISOString(),
+               payload: { participant: "sm:P9", state: legacy } });
+    const back = srv.get({ participant: "sm:P9" });
+    check(back.state && back.state.notes[0].text === "예전 전사",
+      "the new server stores and returns an old-shape save unchanged");
+    check(back.version === "2026-09-05", "and reports its version, which the old client ignores");
+    // 그리고 새 클라이언트가 저장한 것을 예전 클라이언트가 읽어도 / and a record this build
+    // sliced across rows still comes back as one plain state, which is all the old client
+    // knows how to read
+    const big = JSON.parse(JSON.stringify(legacy));
+    big.notes[0].text = "긴".repeat(40000);
+    const json = JSON.stringify(big);
+    const size = 30000, n = Math.ceil(json.length / size);
+    for (let i = 0; i < n; i++) {
+      srv.post({ participant: "sm:P9", kind: "sensemaking", stamp: 7, part: i, parts: n,
+                 payload: { participant: "sm:P9", chunk: json.slice(i * size, (i + 1) * size) } });
+    }
+    const reassembled = srv.get({ participant: "sm:P9" });
+    check(reassembled.state && reassembled.state.notes[0].text.length === 40000,
+      "a sliced record reads back as one whole state", ` (${(reassembled.state.notes[0].text || "").length})`);
+  }
+
   // ------------------------------------------------- an out-of-date deployment says so
   // 배포를 미루면 조용히 어긋난다 / a deferred redeploy fails silently: the new client slices a
   // record across rows, an old server cannot reassemble them, and the analysis saves and

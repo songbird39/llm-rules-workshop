@@ -233,7 +233,18 @@ with something unreadable.
 
 Records written before this still open: a single row with the whole state, transcript text
 inside the note. `loadSense` merges the `tx:` texts in only where a note does not already
-have its own.
+have its own, and does **not** seed `_txSaved` — so the next save writes a `tx:` record and
+migrates it.
+
+⚠ **That migration hangs on the order.** The first board save of this build strips the
+transcript out of the note. `pushSense` therefore pushes the transcript first whenever the
+map differs from what was last written. Reverse those two and opening an old record, then
+nudging one card, would destroy the transcript in both places.
+
+Compatibility, both directions, checked in part3 against the real server: an old-shape save
+is stored and returned unchanged (so a colleague still working in a tab from the previous
+build is unaffected by deploying this), and a record this build sliced across rows reads
+back as one plain state (so that colleague can also open what this build wrote).
 
 ⚠ **The client checks the deployment's `VERSION` and says so when it is old.** This is the
 failure that prompted it: a new client slices a record across rows, an old deployment cannot
