@@ -511,7 +511,10 @@ module.exports = async function (browser) {
         return route.fulfill({ status: 200, body: "{}" });
       }
       const cbn = u.searchParams.get("callback");
-      const reply = (o) => route.fulfill({ status: 200, contentType: "application/javascript", body: cbn + "(" + JSON.stringify(o) + ");" });
+      // 스텁도 버전을 밝힌다 / the stub reports a version too, or the page would think the
+      // deployment is old and put a banner across the top of every one of these checks
+      const reply = (o) => route.fulfill({ status: 200, contentType: "application/javascript",
+        body: cbn + "(" + JSON.stringify(Object.assign({ version: "2026-09-05" }, o)) + ");" });
       if (u.searchParams.get("list")) return reply({ ok: true, participants: [{ participant: "P9", rows: 3, submits: 1, lastAt: "2026-08-29T10:00:00Z" }] });
       const who = u.searchParams.get("participant");
       if (who === "P9") return reply({ ok: true, state: board });
@@ -737,7 +740,23 @@ module.exports = async function (browser) {
     const sm = posted.filter((b) => b.kind === "sensemaking");
     check(sm.length > 0 && sm.every((b) => b.participant === "sm:P9"),
       "every write goes to sm:P9", ` (${JSON.stringify(sm.map((b) => b.participant).slice(0, 3))})`);
-    const state = sm[sm.length - 1].payload.state;
+    // 조각을 다시 붙여서 본다 / reassemble the slices the way the server does before looking
+    const assemble = (list) => {
+      const groups = {};
+      list.forEach((b) => {
+        if (!b.parts) return;
+        (groups[b.stamp] = groups[b.stamp] || { parts: b.parts, s: {} }).s[b.part] = b.payload.chunk;
+      });
+      const stamps = Object.keys(groups).sort((x, y) => Number(y) - Number(x));
+      for (const st of stamps) {
+        const g = groups[st];
+        let joined = "", whole = true;
+        for (let i = 0; i < g.parts; i++) { if (g.s[i] === undefined) { whole = false; break; } joined += g.s[i]; }
+        if (whole) return JSON.parse(joined);
+      }
+      return null;
+    };
+    const state = assemble(sm);
     const linked = state.notes.find((n) => n.link);
     check(!!linked, "the link is saved");
     check(linked && linked.kind === "tx", "as a transcription note");
@@ -757,55 +776,38 @@ module.exports = async function (browser) {
     await page.mouse.up();
     await page.getByRole("button", { name: "펜", exact: true }).click();
     await page.waitForTimeout(2600);
-    const withInk = posted.filter((b) => b.kind === "sensemaking").pop().payload.state;
+    const withInk = assemble(posted.filter((b) => b.kind === "sensemaking"));
     check((withInk.strokes || []).length === 1, "a pen stroke reaches the record",
       ` (${(withInk.strokes || []).length})`);
     check((withInk.strokes || []).every((k) => k.sm), "flagged as analysis ink");
 
-    // 10. 다시 열면 전부 돌아온다 / everything comes back on the next visit
-    const shape = () => page.evaluate(() => {
-      const L = [...document.querySelectorAll("div")].find((d) => d.style.width === "5000px");
-      const ns = [...L.querySelectorAll(':scope > [data-obj="note"]')];
-      return {
-        cards: [...L.querySelectorAll(':scope > [data-obj="card"]')].length,
-        notes: ns.length,
-        ink: document.querySelectorAll("polyline").length,
-        leaders: [...document.querySelectorAll("line")].filter((l) => /oklch\(0\.52/.test(l.getAttribute("stroke") || "")).length,
-        italic: [...L.querySelectorAll('[data-obj="card"] input, [data-obj="card"] textarea')]
-          .filter((e) => getComputedStyle(e).fontStyle === "italic").length,
-        mono: [...L.querySelectorAll(':scope > [data-obj="note"] textarea')]
-          .filter((t) => /mono/.test(getComputedStyle(t).fontFamily)).length,
-        widest: Math.max(...ns.map((n) => Math.round(n.getBoundingClientRect().width))),
-      };
-    });
-    const beforeReload = await shape();
-    await login();
-    const afterReload = await shape();
-    check(JSON.stringify(afterReload) === JSON.stringify(beforeReload),
-      "the board comes back exactly as it was left",
-      ` (${JSON.stringify(beforeReload)} vs ${JSON.stringify(afterReload)})`);
-    check(afterReload.ink === beforeReload.ink && afterReload.ink > 0, "including the ink");
-    check(afterReload.leaders === 1, "including the leader line");
-    check(afterReload.widest > 250, "and the hand-set note size");
+    // 10. 다시 열었을 때 돌아오는지는 part3 이 본다 / whether it all comes BACK is checked in
+    // part3, against the real Code.gs. A stub written here would only ever hand back what
+    // this file told it to — which is exactly how a record that saved and would not load
+    // could pass every check in this section.
 
-    // 11. 한도를 넘으면 조용히 실패하지 않는다 / past the cell ceiling it must SAY so. The POST
-    // is no-cors, so nothing else would ever tell the admin their transcript stopped
-    // being saved.
-    const nPosts = posted.filter((b) => b.kind === "sensemaking").length;
+    // 긴 전사는 거절이 아니라 분할 / a long transcript is SLICED, not refused, and it goes to
+    // its own record so the board record stays one small row
     await page.evaluate(() => {
       const L = [...document.querySelectorAll("div")].find((d) => d.style.width === "5000px");
       const ta = [...L.querySelectorAll(':scope > [data-obj="note"] textarea')].pop();
       const set = Object.getOwnPropertyDescriptor(window.HTMLTextAreaElement.prototype, "value").set;
-      set.call(ta, "가".repeat(60000));
+      set.call(ta, "가".repeat(120000));
       ta.dispatchEvent(new Event("change", { bubbles: true }));
       ta.dispatchEvent(new Event("input", { bubbles: true }));
     });
-    await page.waitForTimeout(2600);
-    check(posted.filter((b) => b.kind === "sensemaking").length === nPosts,
-      "an oversized record is not posted at all",
-      ` (${posted.filter((b) => b.kind === "sensemaking").length - nPosts} extra)`);
-    check(await page.evaluate(() => document.body.innerText.includes("저장되지 않았습니다")),
-      "and the admin is told so, in a banner they cannot miss");
+    await page.waitForTimeout(6000);
+    const txRows = posted.filter((b) => b.kind === "transcript");
+    check(txRows.length >= 2, "a long transcript is written across several rows", ` (${txRows.length})`);
+    check(txRows.every((b) => JSON.stringify(b).length <= 50000), "each of them inside one cell");
+    check(txRows.every((b) => b.parts === txRows.filter((o) => o.stamp === b.stamp).length),
+      "and every slice of a group is sent");
+    const boardRows = posted.filter((b) => b.kind === "sensemaking");
+    check(boardRows[boardRows.length - 1].parts === 1,
+      "while the board record itself stays a single row",
+      ` (${boardRows[boardRows.length - 1].parts} parts)`);
+    check(!(await page.evaluate(() => document.body.innerText.includes("저장되지 않았습니다"))),
+      "and nothing is refused");
     check(errors.length === 0, "no console errors", errors.length ? ` (${errors[0]})` : "");
     await page.close();
   }

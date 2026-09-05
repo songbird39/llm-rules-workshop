@@ -203,19 +203,42 @@ notes rather than leaving them pointing at nothing.
 
 ## Does the analysis record actually come back?
 
-`tools/test_server.js` runs **server/Code.gs itself** against a simulated sheet: it posts
-exactly what the client posts and gets it back the way the client asks. The browser suite
+`tools/test_server.js` runs **server/Code.gs itself** against a simulated sheet
+(`tools/gasnode.js`): it posts exactly what the client posts and gets it back the way the
+client asks. The browser suite uses the same module — `realServer(page)` in the harness
+routes the page's own requests into Code.gs, so part3's round trip is the real thing:
+analyse, leave, come back, cold-load. The browser suite
 stubs the endpoint, so on its own it only ever proves the client reads back what the client
 wrote — a scan that skipped the wrong row would look fine in every browser check and lose
 an analysis record silently. Run all three: `test_ui_scale.js`, `test_server.js`,
 `browser/e2e.js`.
 
-⚠ **A Sheets cell holds 50,000 characters and the whole board rides in one cell.** With
-transcription notes that ceiling is reachable, and the client posts `no-cors` so it cannot
-see Apps Script throw — the record would simply stop being saved with the UI still reading
-"saved". `pushSense` therefore refuses to post past `CELL_MAX` and shows a banner, with a
-warning band from `CELL_WARN`. If you hit it, split the transcript across notes you keep
-elsewhere rather than making the record bigger.
+### Three records, not one
+
+A Sheets cell holds 50,000 characters, so a board with real transcript pasted into it does
+not fit in a row. The analysis layer is therefore stored as:
+
+- `sm:<pid>` — the board: cards, notes, arrows, ink. Rewritten on every drag and keystroke,
+  so it is kept small: transcription notes are saved here with their **text stripped**.
+- `tx:<pid>` — the transcript bodies, `{ noteId: text }`. Pasted once and then mostly read,
+  so it saves on a slower schedule (3s vs 1.5s) and costs the sheet almost nothing.
+- `mt:<pid>` — the hidden flag and the description.
+
+Any of them too big for one row is written as **several rows sharing a `stamp`**, each with
+`part`/`parts` and a slice of the same JSON. The slice size is measured, not assumed: a JSON
+string nested inside another grows by its escapes, and by how much depends on the text.
+`latestState_` reassembles, and uses a group **only when every slice is present** — so a
+save cut off halfway leaves the previous complete record standing rather than replacing it
+with something unreadable.
+
+Records written before this still open: a single row with the whole state, transcript text
+inside the note. `loadSense` merges the `tx:` texts in only where a note does not already
+have its own.
+
+⚠ **The client checks the deployment's `VERSION` and says so when it is old.** This is the
+failure that prompted it: a new client slices a record across rows, an old deployment cannot
+reassemble them, and analysis work saves and then will not load — silently, since the POST
+is `no-cors`. When `VERSION` in Code.gs moves, bump `SERVER_MIN` in the source to match.
 
 **Nothing pairs a DOM element to a state object by position.** `byId('card' | 'note')`
 returns a map keyed by the id each element carries in a **class** (`cd-…`, `nt-…`) — a

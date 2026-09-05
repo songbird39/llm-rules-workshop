@@ -14,6 +14,15 @@
  *  5. Any time you change this script you must Deploy ▸ Manage deployments ▸ Edit ▸ Version: New.
  */
 
+// 배포된 버전을 스스로 밝힌다 / the deployment says which version it is, in every reply.
+// 배포를 미루면 조용히 어긋난다: 새 클라이언트는 여러 줄로 나눠 저장하는데 옛 서버는 그걸
+// 다시 붙이지 못해, 저장은 되는데 열리지 않는 상태가 된다.
+// A deferred redeploy fails SILENTLY and confusingly: the new client writes a record
+// across several rows and an old deployment cannot reassemble them, so analysis saves
+// appear to work and then will not load. The client compares this against what it needs
+// and says so plainly instead of leaving you to guess.
+var VERSION = '2026-09-05';
+
 var SHEET_NAME = 'responses';
 // 관리자 해석(sensemaking) 레코드는 'sm:' 접두어가 붙은 별도 키로 저장한다.
 // Admin sensemaking records live under a separate key, 'sm:' + participant. They are
@@ -27,6 +36,16 @@ var SENSE_PREFIX = 'sm:';
 // normal appended row, so nothing is ever rewritten or destroyed: hiding is reversible
 // by construction, which is the whole point of not having a delete any more.
 var META_PREFIX = 'mt:';
+// 전사 본문은 'tx:' 키로 따로 산다 / transcript bodies live under 'tx:' + participant, apart
+// from the board they belong to. The board record is rewritten constantly; a transcript is
+// pasted once, so keeping them in separate records keeps the frequent write small.
+var TX_PREFIX = 'tx:';
+// 긴 전사 때문에 한 칸에 담기지 않는다 / a whole analysis board no longer fits in one cell
+// once real transcripts are pasted into it — a Sheets cell holds 50,000 characters. A
+// record too big for one row is therefore written as several rows that share a stamp,
+// each carrying one slice of the same JSON, and reassembled on the way out. A group is
+// only used once every slice of it is present, so a half-written record can never be
+// served: the previous complete one is returned instead.
 var HEADERS = ['receivedAt', 'participant', 'kind', 'queuedAt', 'step', 'selectedRules', 'combinations', 'annotations', 'arrows', 'json'];
 
 function doPost(e) {
@@ -84,6 +103,7 @@ function doGet(e) {
   } else {
     out = { ok: true, rows: Math.max(0, sheet_().getLastRow() - 1) };
   }
+  out.version = VERSION;
   if (p.callback) {
     return ContentService
       .createTextOutput(p.callback + '(' + JSON.stringify(out) + ');')
@@ -112,6 +132,7 @@ function roster_() {
     // 숨김·설명은 마지막 mt: 행만 유효하다 / only the LAST mt: row counts, so the loop
     // just remembers where it was and the json is read once, after the scan
     if (pid.indexOf(META_PREFIX) === 0) { metaRow[pid.slice(META_PREFIX.length)] = i + 2; continue; }
+    if (pid.indexOf(TX_PREFIX) === 0) continue;   // 전사 기록도 참여자가 아니다 / not a participant
     // 관리자 해석용 레코드는 참여자 목록에 넣지 않는다 / admin sensemaking records are
     // stored under a "sm:" key and are not participants
     if (pid.indexOf(SENSE_PREFIX) === 0) continue;
@@ -195,7 +216,12 @@ function stateAtRow_(row) {
   }
 }
 
-/** Newest saved board state for a participant, or null. */
+/** Newest saved board state for a participant, or null.
+ *  Handles both shapes: a whole state in one row, and a state sliced across several rows
+ *  that share a stamp. Scans newest-first and returns the first COMPLETE record found, so
+ *  a save that was cut off halfway leaves the previous one standing rather than replacing
+ *  it with something unreadable.
+ */
 function latestState_(pid) {
   var sh = sheet_();
   var last = sh.getLastRow();
@@ -203,16 +229,48 @@ function latestState_(pid) {
   var pidCol = sh.getRange(2, 2, last - 1, 1).getValues();   // participant
   var jsonCol = sh.getRange(2, 10, last - 1, 1).getValues(); // json
   var kindCol = sh.getRange(2, 3, last - 1, 1).getValues();   // kind
+
+  // 조각들을 스탬프별로 모은다 / gather the slices by stamp in one pass, so a group whose
+  // rows are interleaved with other participants' autosaves still comes back whole
+  var groups = {};
+  for (var g = 0; g < pidCol.length; g++) {
+    if (String(pidCol[g][0]) !== String(pid)) continue;
+    try {
+      var b = JSON.parse(jsonCol[g][0]);
+      if (!b || !b.parts) continue;
+      var key = String(b.stamp);
+      if (!groups[key]) groups[key] = { parts: b.parts, slices: {}, at: g };
+      groups[key].slices[b.part] = (b.payload && b.payload.chunk) || '';
+      groups[key].at = g;
+    } catch (err2) {}
+  }
+
   for (var i = pidCol.length - 1; i >= 0; i--) {             // newest first
     if (String(pidCol[i][0]) !== String(pid)) continue;
     // 이중 안전장치 / belt and braces: even if a sensemaking row were somehow written
     // under a bare participant id, never hand it back as that participant's board.
     if (String(kindCol[i][0]) === 'sensemaking' && String(pid).indexOf(SENSE_PREFIX) !== 0) continue;
     if (String(kindCol[i][0]) === 'meta') continue;   // 메타 행은 보드가 아니다 / not a board
+    // 전사 기록은 보드가 아니다 / a transcript record is not a board either, and must never
+    // come back as one for a bare participant id
+    if (String(kindCol[i][0]) === 'transcript' && String(pid).indexOf(TX_PREFIX) !== 0) continue;
     try {
       var body = JSON.parse(jsonCol[i][0]);
+      if (body && body.parts) {
+        var grp = groups[String(body.stamp)];
+        if (!grp) continue;
+        var joined = '', whole = true;
+        for (var k = 0; k < grp.parts; k++) {
+          if (grp.slices[k] === undefined) { whole = false; break; }
+          joined += grp.slices[k];
+        }
+        if (!whole) continue;                      // 조각이 빈다 / an incomplete save, skip it
+        var st2 = JSON.parse(joined);
+        if (st2 && (st2.cards || st2.texts)) return st2;
+        continue;
+      }
       var st = body && body.payload && body.payload.state;
-      if (st && st.cards) return st;
+      if (st && (st.cards || st.texts)) return st;
     } catch (err) {}
   }
   return null;

@@ -1,8 +1,145 @@
 // 스위트 3/3 / final third of the browser suite. Run it through e2e.js, not directly.
 const { APP, SHOTS, check, near, boardCards, boardTransform, uiScale,
-        boot, toStep1, toBoard, dragTileToBoard } = require("./harness");
+        boot, toStep1, toBoard, dragTileToBoard, realServer } = require("./harness");
 
 module.exports = async function (browser) {
+  // ------------------------------------------------- analysis, against the REAL server
+  // 스텁이 아니라 진짜 Code.gs 를 뒤에 둔다 / the endpoint here is server/Code.gs itself,
+  // running in node over a simulated sheet. This is the check that answers "I made changes,
+  // left, came back, and they were gone": a stub would have happily handed back whatever
+  // the test handed it, and said nothing about whether the sheet-backed scan finds it.
+  console.log("\nanalysis edits survive leaving and coming back (real Code.gs behind the page)");
+  {
+    const EP = "https://script.google.com/macros/s/FAKE/exec";
+    const page = await browser.newPage({ viewport: { width: 1700, height: 1000 } });
+    const errors = [];
+    page.on("pageerror", (e) => errors.push(e.message));
+    const board = {
+      savedAt: Date.now(), pid: "P9", step: 2, lang: "ko", rules: [],
+      cards: [{ id: "c1", type: "act", title: "학습 계획", desc: "", dia: null, collapsed: false, w: 352, x: 300, y: 400 }],
+      notes: [{ id: "n1", x: 300, y: 700, text: "참여자 메모" }], arrows: [], seq: 5, panelW: 566,
+    };
+    const { srv, posts } = await realServer(page, {
+      seed: (s) => s.post({ participant: "P9", kind: "autosave", payload: { participant: "P9", state: board } }),
+    });
+    const enter = async () => {
+      await page.goto(APP + "?sync=" + encodeURIComponent(EP), { waitUntil: "load", timeout: 120000 });
+      await page.waitForSelector('input[placeholder="P0000"]', { timeout: 120000 });
+      await page.fill('input[placeholder="P0000"]', "admin");
+      await page.getByText("시작하기", { exact: false }).click();
+      await page.waitForTimeout(900);
+      await page.getByText("P9", { exact: true }).first().click();
+      await page.waitForTimeout(1600);
+    };
+    await enter();
+    const cb = await (await page.$('div[style*="radial-gradient"]')).boundingBox();
+
+    // 분석 작업을 한다 / do a session's worth of analysis
+    await page.getByText("전체 복제", { exact: true }).click();
+    await page.waitForTimeout(700);
+    await page.getByText("✎ 전사", { exact: true }).click();
+    await page.waitForTimeout(150);
+    await page.mouse.click(cb.x + cb.width * 0.55, cb.y + cb.height * 0.35);
+    await page.waitForTimeout(400);
+    // 실제 전사 분량 / a real transcript, far past what one cell holds
+    const transcript = "\"먼저 스스로 써 보고 나서 확인만 받으려고 했어요.\" 라고 말했다.\n".repeat(2000);
+    await page.evaluate((t) => {
+      const L = [...document.querySelectorAll("div")].find((d) => d.style.width === "5000px");
+      const ta = [...L.querySelectorAll(':scope > [data-obj="note"] textarea')].pop();
+      const set = Object.getOwnPropertyDescriptor(window.HTMLTextAreaElement.prototype, "value").set;
+      set.call(ta, t);
+      ta.dispatchEvent(new Event("change", { bubbles: true }));
+      ta.dispatchEvent(new Event("input", { bubbles: true }));
+    }, transcript);
+    await page.waitForTimeout(600);
+    await page.getByRole("button", { name: "펜", exact: true }).click();
+    await page.waitForTimeout(150);
+    await page.mouse.move(cb.x + 140, cb.y + cb.height * 0.8);
+    await page.mouse.down();
+    for (let i = 1; i <= 6; i++) { await page.mouse.move(cb.x + 140 + i * 24, cb.y + cb.height * 0.8 + i * 8); await page.waitForTimeout(30); }
+    await page.mouse.up();
+    await page.getByRole("button", { name: "펜", exact: true }).click();
+    await page.waitForTimeout(6500);          // 큰 기록은 5초 간격 / a big record waits 5s
+
+    const shape = () => page.evaluate(() => {
+      const L = [...document.querySelectorAll("div")].find((d) => d.style.width === "5000px");
+      const ns = [...L.querySelectorAll(':scope > [data-obj="note"]')];
+      return {
+        cards: [...L.querySelectorAll(':scope > [data-obj="card"]')].length,
+        notes: ns.length,
+        ink: document.querySelectorAll("polyline").length,
+        chars: ns.reduce((a, n) => a + (n.querySelector("textarea") || { value: "" }).value.length, 0),
+      };
+    });
+    const left = await shape();
+    check(left.cards === 2 && left.notes === 3, "the analysis is on the board before leaving",
+      ` (${JSON.stringify(left)})`);
+    check(posts.some((b) => b.kind === "sensemaking"), "a board record was written");
+    check(posts.some((b) => b.kind === "transcript"), "and the transcript went to its own record");
+    check(srv.get({ participant: "sm:P9" }).state !== null, "the server can find the board record");
+    check((srv.get({ participant: "tx:P9" }).state || {}).texts !== undefined,
+      "and the transcript record");
+
+    // 나갔다가 다시 들어온다 / leave, and come back — the exact thing that was broken
+    await page.getByText("← 목록", { exact: false }).click();
+    await page.waitForTimeout(600);
+    await page.getByText("P9", { exact: true }).first().click();
+    await page.waitForTimeout(2200);
+    const back = await shape();
+    check(back.cards === left.cards && back.notes === left.notes,
+      "everything is still there on re-entry", ` (${JSON.stringify(back)})`);
+    check(back.ink === left.ink && back.ink > 0, "the ink came back too");
+    check(back.chars === left.chars && back.chars > 60000,
+      "and the whole transcript, not a truncated one",
+      ` (${back.chars} of ${left.chars})`);
+
+    // 그리고 완전히 새로 열어도 / and again from a cold load, not just a re-render
+    await enter();
+    const cold = await shape();
+    check(JSON.stringify(cold) === JSON.stringify(left), "a fresh page load finds it all as well",
+      ` (${JSON.stringify(cold)})`);
+    check(!(await page.evaluate(() => document.body.innerText.includes("오래되었습니다"))),
+      "and a current deployment says nothing about being out of date");
+    check(errors.length === 0, "no console errors", errors.length ? ` (${errors[0]})` : "");
+    await page.close();
+  }
+
+  // ------------------------------------------------- an out-of-date deployment says so
+  // 배포를 미루면 조용히 어긋난다 / a deferred redeploy fails silently: the new client slices a
+  // record across rows, an old server cannot reassemble them, and the analysis saves and
+  // then will not load — with nothing anywhere saying why. That is not a state to leave
+  // anyone guessing in.
+  console.log("\nan out-of-date Apps Script is named as the problem");
+  {
+    const EP = "https://script.google.com/macros/s/FAKE/exec";
+    const page = await browser.newPage({ viewport: { width: 1500, height: 950 } });
+    const errors = [];
+    page.on("pageerror", (e) => errors.push(e.message));
+    // 옛 배포 흉내 / an old deployment: answers the roster, but reports no version
+    await page.route("**/macros/s/**", async (route) => {
+      const u = new URL(route.request().url());
+      if (route.request().method() === "POST") return route.fulfill({ status: 200, body: "{}" });
+      const cb = u.searchParams.get("callback");
+      const out = u.searchParams.get("list")
+        ? { ok: true, participants: [{ participant: "P9", rows: 3, submits: 1, lastAt: "2026-08-29T10:00:00Z" }] }
+        : { ok: true, state: null };
+      return route.fulfill({ status: 200, contentType: "application/javascript", body: cb + "(" + JSON.stringify(out) + ");" });
+    });
+    await page.goto(APP + "?sync=" + encodeURIComponent(EP), { waitUntil: "load", timeout: 120000 });
+    await page.waitForSelector('input[placeholder="P0000"]', { timeout: 120000 });
+    await page.fill('input[placeholder="P0000"]', "admin");
+    await page.getByText("시작하기", { exact: false }).click();
+    await page.waitForTimeout(1200);
+    check(await page.evaluate(() => document.body.innerText.includes("Apps Script가 오래되었습니다")),
+      "the admin is told the deployment is old");
+    check(await page.evaluate(() => document.body.innerText.includes("버전: 새 버전")),
+      "and told exactly what to do about it");
+    check(await page.evaluate(() => document.body.innerText.includes("P9")),
+      "while the roster still works, since reading mostly does");
+    check(errors.length === 0, "no console errors", errors.length ? ` (${errors[0]})` : "");
+    await page.close();
+  }
+
   // ------------------------------------------------- sizing
   console.log("\ntags run longer rather than wrapping; the board reads bigger than the library");
   {

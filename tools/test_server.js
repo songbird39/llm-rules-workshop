@@ -10,87 +10,13 @@
  * and look fine in every browser check. So: load Code.gs with the Apps Script globals
  * faked, POST exactly what the client posts, and GET it back the way the client asks.
  */
-const fs = require("fs");
-const path = require("path");
-const vm = require("vm");
+const { loadServer } = require("./gasnode");
 
 let failures = 0;
 const check = (ok, label, extra = "") => {
   if (!ok) failures++;
   console.log(`  ${ok ? "OK  " : "FAIL"} ${label}${extra}`);
 };
-
-// ── 시트 흉내 / the thinnest sheet that Code.gs actually uses ────────────────
-function makeSheet() {
-  const rows = [];   // rows[0] is the header once appendRow puts it there
-  const sh = {
-    appendRow(v) {
-      // 셀 상한 / a Sheets cell holds 50,000 characters. The whole board rides in one
-      // cell, so this is a real ceiling for a transcript-heavy analysis record.
-      v.forEach((cell) => {
-        if (typeof cell === "string" && cell.length > 50000) throw new Error("cell over 50000 chars");
-      });
-      rows.push(v.slice());
-    },
-    getLastRow: () => rows.length,
-    setFrozenRows() {},
-    getRange(r, c, nr, nc) {
-      return {
-        getValues() {
-          const out = [];
-          for (let i = 0; i < (nr || 1); i++) {
-            const row = rows[r - 1 + i] || [];
-            const line = [];
-            for (let j = 0; j < (nc || 1); j++) line.push(row[c - 1 + j] === undefined ? "" : row[c - 1 + j]);
-            out.push(line);
-          }
-          return out;
-        },
-        getValue() {
-          const row = rows[r - 1] || [];
-          return row[c - 1] === undefined ? "" : row[c - 1];
-        },
-      };
-    },
-    deleteRow(r) { rows.splice(r - 1, 1); },
-    _rows: rows,
-  };
-  return sh;
-}
-
-function loadServer() {
-  const sh = makeSheet();
-  // 첫 호출에서는 시트가 없다 / the sheet does not exist on the first call, which is what
-  // makes sheet_() create it and write the header. Handing back a ready-made sheet skips
-  // that, every data row shifts up by one, and roster_ eats the first participant as if
-  // it were the header — which is exactly the false alarm this harness first raised.
-  let created = false;
-  const sandbox = {
-    SpreadsheetApp: {
-      getActiveSpreadsheet: () => ({
-        getSheetByName: () => (created ? sh : null),
-        insertSheet: () => { created = true; return sh; },
-      }),
-    },
-    LockService: { getScriptLock: () => ({ waitLock() {}, releaseLock() {} }) },
-    ContentService: {
-      MimeType: { JSON: "json", JAVASCRIPT: "js" },
-      createTextOutput: (t) => ({ _t: t, setMimeType() { return this; }, getContent: () => t }),
-    },
-    Date, JSON, String, Number, RegExp, Math, console,
-  };
-  sandbox.ContentService.createTextOutput = (t) => {
-    const o = { _t: t };
-    o.setMimeType = () => o;
-    o.getContent = () => t;
-    return o;
-  };
-  vm.createContext(sandbox);
-  vm.runInContext(fs.readFileSync(path.join(__dirname, "../server/Code.gs"), "utf8"), sandbox);
-  const post = (body) => JSON.parse(sandbox.doPost({ postData: { contents: JSON.stringify(body) } }).getContent());
-  const get = (params) => JSON.parse(sandbox.doGet({ parameter: params }).getContent());
-  return { sh, post, get, ctx: sandbox };
-}
 
 // ── 클라이언트가 실제로 보내는 것 / exactly what the client posts ──────────────
 const analysis = {
@@ -184,21 +110,84 @@ console.log("\nthe roster still reads the meta rows correctly");
     "and the list comes back oldest first");
 }
 
-console.log("\nthe cell ceiling is real, and worth knowing about");
+console.log("\na transcript far too big for one cell still round-trips");
 {
-  const { post } = loadServer();
-  const big = JSON.parse(JSON.stringify(analysis));
-  big.notes[0].text = "가".repeat(30000);
-  const r1 = post({ participant: "sm:P9", kind: "sensemaking", payload: { participant: "sm:P9", state: big } });
-  check(r1.ok === true, "30k characters of transcript still saves");
-  const huge = JSON.parse(JSON.stringify(analysis));
-  huge.notes[0].text = "가".repeat(60000);
-  const r2 = post({ participant: "sm:P9", kind: "sensemaking", payload: { participant: "sm:P9", state: huge } });
-  // 한 칸에 5만 자 / one cell holds 50,000 characters and the whole board rides in one.
-  // The client posts no-cors and cannot read this failure, so it is silent: a long enough
-  // transcript stops being saved and nothing says so.
-  check(r2.ok === false, "but 60k does not — the sheet cell caps at 50,000 characters",
-    ` (${r2.error || "saved anyway"})`);
+  const { post, get, sh } = loadServer();
+  // 실제 전사 분량 / an hour of interview: a quarter of a million characters, quotation
+  // marks and newlines and all — five times what a single cell holds, and the escaping of
+  // those quotes is exactly what makes a guessed slice size wrong
+  const transcript = ("\"그래서 저는 챗지피티한테 먼저 물어보지 않고, 제 나름대로 " +
+    "먼저 써 본 다음에 확인만 받으려고 했어요.\" 라고 말했다.\n").repeat(3700);
+  const texts = { n8: transcript };
+  const json = JSON.stringify({ texts: texts, cards: [] });
+  // 클라이언트가 자르는 방식 그대로 / sliced the way the client slices it, measured not assumed
+  const CELL_MAX = 50000;
+  let size = 34000, slices = null;
+  for (let a = 0; a < 8 && !slices; a++) {
+    const n = Math.max(1, Math.ceil(json.length / size));
+    const out = [];
+    let ok = true;
+    for (let i = 0; i < n; i++) {
+      const body = {
+        participant: "tx:P9", kind: "transcript", queuedAt: new Date().toISOString(),
+        stamp: 1, part: i, parts: n,
+        payload: { participant: "tx:P9", chunk: json.slice(i * size, (i + 1) * size) },
+      };
+      if (JSON.stringify(body).length > CELL_MAX) { ok = false; break; }
+      out.push(body);
+    }
+    if (ok) slices = out; else size = Math.floor(size / 2);
+  }
+  check(slices !== null, "the client can slice it at all", ` (${slices && slices.length} rows)`);
+  check(slices.every((b) => JSON.stringify(b).length <= CELL_MAX), "and every slice fits in a cell");
+  let threw = null;
+  try { slices.forEach((b) => post(b)); } catch (e) { threw = e.message; }
+  check(threw === null, "the sheet accepts every one of them", threw ? ` (${threw})` : "");
+
+  const back = get({ participant: "tx:P9" });
+  check(back.state && back.state.texts, "the transcript record comes back");
+  check(back.state.texts.n8 === transcript, "byte for byte, every character of it",
+    ` (${(back.state.texts.n8 || "").length} of ${transcript.length})`);
+
+  // 그리고 이것은 보드가 아니다 / and none of it can pass for a participant's board
+  check(get({ participant: "P9" }).state === null, "a bare id never resolves to a transcript");
+  check(get({ list: "1" }).participants.every((r) => !/^tx:/.test(r.participant)),
+    "and tx: never appears in the roster");
+  void sh;
+}
+
+console.log("\na half-written record never replaces a whole one");
+{
+  const { post, get } = loadServer();
+  post({ participant: "sm:P9", kind: "sensemaking", payload: { participant: "sm:P9", state: analysis } });
+  // 조각 하나가 빠진 채로 도착 / one slice never arrives — a closed laptop mid-save
+  post({ participant: "sm:P9", kind: "sensemaking", stamp: 99, part: 0, parts: 3,
+         payload: { participant: "sm:P9", chunk: '{"cards":[' } });
+  post({ participant: "sm:P9", kind: "sensemaking", stamp: 99, part: 2, parts: 3,
+         payload: { participant: "sm:P9", chunk: ']}' } });
+  const back = get({ participant: "sm:P9" });
+  check(back.state && back.state.cards.length === 3,
+    "the last COMPLETE record is served, not the broken newer one",
+    ` (${back.state && back.state.cards.length} cards)`);
+}
+
+console.log("\nrecords written before any of this still open");
+{
+  const { post, get } = loadServer();
+  // 예전 모양 그대로 / the old shape exactly: one row, whole state, transcript text sitting
+  // inside the note where it used to live
+  const legacy = JSON.parse(JSON.stringify(analysis));
+  legacy.notes[0].text = "예전 방식으로 저장된 전사";
+  delete legacy.strokes;                      // 예전 기록엔 필기가 없었다 / no ink back then
+  legacy.cards.forEach((c) => { delete c.src; delete c.of; delete c.edited; });
+  post({ participant: "sm:P9", kind: "sensemaking", payload: { participant: "sm:P9", state: legacy } });
+  const back = get({ participant: "sm:P9" });
+  check(back.state && back.state.cards.length === 3, "an old single-row record still loads");
+  check(back.state.notes[0].text === "예전 방식으로 저장된 전사",
+    "with its transcript still inside the note, where it used to be");
+  check(back.state.strokes === undefined, "and no ink, which is what it had");
+  check(get({ participant: "tx:P9" }).state === null,
+    "there is no transcript record for it, and asking for one is not an error");
 }
 
 console.log(failures ? `\n${failures} FAILURE(S)` : "\nall passed");

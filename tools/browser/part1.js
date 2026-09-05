@@ -543,7 +543,10 @@ module.exports = async function (browser) {
       const u = new URL(route.request().url());
       if (route.request().method() === "POST") { posts++; return route.fulfill({ status: 200, body: "{}" }); }
       const cbn = u.searchParams.get("callback");
-      const reply = (o) => route.fulfill({ status: 200, contentType: "application/javascript", body: cbn + "(" + JSON.stringify(o) + ");" });
+      // 스텁도 버전을 밝힌다 / the stub reports a version too, or the page would think the
+      // deployment is old and put a banner across the top of every one of these checks
+      const reply = (o) => route.fulfill({ status: 200, contentType: "application/javascript",
+        body: cbn + "(" + JSON.stringify(Object.assign({ version: "2026-09-05" }, o)) + ");" });
       if (u.searchParams.get("versions")) return reply({ ok: true, versions: V });
       if (u.searchParams.get("row")) return reply({ ok: true, row: +u.searchParams.get("row"), state: mk(u.searchParams.get("row") === "9" ? 2 : 1) });
       if (u.searchParams.get("list")) return reply({ ok: true, participants: [
@@ -649,7 +652,10 @@ module.exports = async function (browser) {
         return route.fulfill({ status: 200, body: "{}" });
       }
       const cbn = u.searchParams.get("callback");
-      const reply = (o) => route.fulfill({ status: 200, contentType: "application/javascript", body: cbn + "(" + JSON.stringify(o) + ");" });
+      // 스텁도 버전을 밝힌다 / the stub reports a version too, or the page would think the
+      // deployment is old and put a banner across the top of every one of these checks
+      const reply = (o) => route.fulfill({ status: 200, contentType: "application/javascript",
+        body: cbn + "(" + JSON.stringify(Object.assign({ version: "2026-09-05" }, o)) + ");" });
       if (u.searchParams.get("list")) return reply({ ok: true, participants: [{ participant: "P9", rows: 3, submits: 1, lastAt: "2026-08-29T10:00:00Z" }] });
       const who = u.searchParams.get("participant");
       if (who === "P9") return reply({ ok: true, state: board });
@@ -699,7 +705,25 @@ module.exports = async function (browser) {
     check(keys.every((k) => k === "sm:P9"), "every POST targets sm:P9", ` (${JSON.stringify(keys)})`);
     check(!keys.some((k) => k === "P9"), "NO POST targets the participant's own record");
     check(posted.every((x) => x.kind === "sensemaking"), "every POST is kind sensemaking");
-    const sent = posted[posted.length - 1].payload.state;
+    // 기록은 이제 조각으로 온다 / the record arrives in slices now, so reassemble it the way
+    // the server does — newest stamp, parts in order — before looking inside
+    const assemble = (list) => {
+      const groups = {};
+      list.forEach((b) => {
+        if (!b.parts) return;
+        (groups[b.stamp] = groups[b.stamp] || { parts: b.parts, s: {} }).s[b.part] = b.payload.chunk;
+      });
+      const stamps = Object.keys(groups).sort((x, y) => Number(y) - Number(x));
+      for (const st of stamps) {
+        const g = groups[st];
+        let joined = "", whole = true;
+        for (let i = 0; i < g.parts; i++) { if (g.s[i] === undefined) { whole = false; break; } joined += g.s[i]; }
+        if (whole) return JSON.parse(joined);
+      }
+      const legacy = list.filter((b) => b.payload && b.payload.state).pop();
+      return legacy ? legacy.payload.state : null;
+    };
+    const sent = assemble(posted.filter((b) => b.kind === "sensemaking"));
     check(sent.cards.every((c) => c.sm) && sent.notes.every((n) => n.sm),
       "payload contains only sm-flagged objects");
     check(sent.cards.every((c) => c.src === "p" && c.of) && sent.notes.every((n) => n.src === "p" && n.of),
@@ -803,7 +827,10 @@ module.exports = async function (browser) {
       const u = new URL(route.request().url());
       if (route.request().method() === "POST") return route.fulfill({ status: 200, body: "{}" });
       const cbn = u.searchParams.get("callback");
-      const reply = (o) => route.fulfill({ status: 200, contentType: "application/javascript", body: cbn + "(" + JSON.stringify(o) + ");" });
+      // 스텁도 버전을 밝힌다 / the stub reports a version too, or the page would think the
+      // deployment is old and put a banner across the top of every one of these checks
+      const reply = (o) => route.fulfill({ status: 200, contentType: "application/javascript",
+        body: cbn + "(" + JSON.stringify(Object.assign({ version: "2026-09-05" }, o)) + ");" });
       if (u.searchParams.get("list")) return reply({ ok: true, participants: [{ participant: "IMG", rows: 2, submits: 1, lastAt: "2026-08-29T10:00:00Z" }] });
       const who = u.searchParams.get("participant");
       if (who === "IMG") return reply({ ok: true, state: board });
@@ -878,7 +905,10 @@ module.exports = async function (browser) {
         return route.fulfill({ status: 200, body: "{}" });
       }
       const cbn = u.searchParams.get("callback");
-      const reply = (o) => route.fulfill({ status: 200, contentType: "application/javascript", body: cbn + "(" + JSON.stringify(o) + ");" });
+      // 스텁도 버전을 밝힌다 / the stub reports a version too, or the page would think the
+      // deployment is old and put a banner across the top of every one of these checks
+      const reply = (o) => route.fulfill({ status: 200, contentType: "application/javascript",
+        body: cbn + "(" + JSON.stringify(Object.assign({ version: "2026-09-05" }, o)) + ");" });
       if (u.searchParams.get("list")) return reply({ ok: true, participants: people });
       return reply({ ok: true, state: null });
     });

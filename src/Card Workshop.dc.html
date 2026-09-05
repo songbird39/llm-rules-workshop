@@ -111,6 +111,13 @@
     </sc-if>
   </div>
 
+  <sc-if value="{{ oldServer }}" hint-placeholder-val="{{ false }}">
+    <div style="flex:0 0 auto;display:flex;flex-wrap:wrap;align-items:center;gap:10px;padding:8px 18px;background:#f7e6e3;border-bottom:1px solid #e8cdc7">
+      <span style="font-size:12.5px;font-weight:600;color:#8f342a">{{ t.oldSrvTitle }}</span>
+      <span style="font-size:12.5px;color:#8f342a">{{ t.oldSrvBody }}</span>
+    </div>
+  </sc-if>
+
   <sc-if value="{{ senseBig }}" hint-placeholder-val="{{ false }}">
     <div style="flex:0 0 auto;display:flex;flex-wrap:wrap;align-items:center;gap:10px;padding:8px 18px;background:{{ senseBigBg }};border-bottom:1px solid {{ senseBigBd }}">
       <span style="font-size:12.5px;font-weight:600;color:{{ senseBigFg }}">{{ senseBigLabel }}</span>
@@ -572,11 +579,22 @@ const PEN_W = 6, PEN_A = 0.55;
 // minima are what a resized analysis note may not go below, small enough to park a
 // one-line remark and large enough that the controls still fit.
 const NOTE_W = 168, NOTE_MIN_W = 132, NOTE_MIN_H = 64, NOTE_FOLD_H = 30;
-// 시트 한 칸은 5만 자 / a Sheets cell holds 50,000 characters, and the whole board rides in
-// ONE cell. Transcription notes make that a reachable ceiling rather than a theoretical
-// one. The client posts no-cors and cannot read the failure, so without this check a long
-// enough transcript would simply stop being saved and nothing would say so.
-const CELL_MAX = 50000, CELL_WARN = 44000;
+// 시트 한 칸은 5만 자 / a Sheets cell holds 50,000 characters. A board with real transcript
+// pasted into it does not fit, so a record too big for one row is written as several rows
+// sharing a stamp and reassembled on read. CELL_SAFE leaves room for the envelope around
+// each slice and for JSON escaping inside it; the actual size is measured, not assumed.
+// SENSE_PARTS_MAX is a backstop, not a target: past it something has gone wrong.
+const CELL_MAX = 50000, CELL_SAFE = 34000, SENSE_PARTS_MAX = 40;
+// 전사는 따로 산다 / transcript lives in its own record, keyed 'tx:' + participant. The
+// board record is rewritten on every drag and every keystroke in a memo; transcript is
+// pasted once and then mostly read. Keeping the two apart means the frequent save stays
+// one small row instead of a fistful of slices, which is the difference between a sheet
+// that stays quick to scan and one that does not.
+const TX_PREFIX = 'tx:';
+// 이 클라이언트가 요구하는 서버 버전 / the deployment this client needs. An older one cannot
+// reassemble a sliced record, so analysis work would save and then fail to load — with no
+// error anywhere, because the POST is no-cors. Check it and say so.
+const SERVER_MIN = '2026-09-05';
 // 분석 메모는 두 종류 / two kinds of note in analysis mode, told apart by colour: the
 // gold one is the admin's own remark and matches the rest of the sensemaking layer;
 // the slate one holds transcript, which is somebody else's words, not the admin's.
@@ -779,8 +797,8 @@ const I18N = {
       hiddenNote: '기록은 지워지지 않았습니다. 목록에서만 빠져 있습니다.',
       metaPh: '설명 (누구의 기록인지 적어 두세요)',
       panelHide: '덱 접기', panelShow: '덱 펼치기',
-      tooBigTitle: '저장되지 않았습니다 ·', tooBigBody: '해석 기록이 한 셀 한도(5만 자)를 넘었습니다. 전사 메모를 나누거나 줄여 주세요. 마지막으로 저장된 내용은 그대로 있습니다.',
-      nearBigTitle: '한도에 가까움 ·', nearBigBody: '해석 기록이 한 셀 한도(5만 자)에 가까워지고 있습니다. 전사를 여러 참여자 기록으로 나누는 편이 안전합니다.',
+      oldSrvTitle: 'Apps Script가 오래되었습니다 ·', oldSrvBody: '해석 작업이 저장은 되어도 다시 열리지 않습니다. 배포 관리 ▸ 편집 ▸ 버전: 새 버전으로 다시 배포해 주세요.',
+      tooBigTitle: '저장되지 않았습니다 ·', tooBigBody: '해석 기록이 너무 큽니다. 전사 메모를 나누거나 줄여 주세요. 마지막으로 저장된 내용은 그대로 있습니다.',
       descMode: '설명 편집', hideMode: '숨기기',
       descBanner: '설명 편집 중입니다. 코드가 누구의 기록인지 적어 두세요.',
       hideBanner: '숨기기 모드입니다. 목록에서 뺄 항목을 고르세요. 기록은 지워지지 않습니다.',
@@ -892,8 +910,8 @@ const I18N = {
       hiddenNote: 'Nothing was deleted. These are only out of the list.',
       metaPh: 'Description (who this code belongs to)',
       panelHide: 'Fold the deck away', panelShow: 'Bring the deck back',
-      tooBigTitle: 'Not saved ·', tooBigBody: 'This analysis record is over the 50,000-character limit of a single sheet cell. Shorten or split the transcription notes. What was saved before is still there.',
-      nearBigTitle: 'Close to the limit ·', nearBigBody: 'This analysis record is approaching the 50,000-character limit of a single sheet cell.',
+      oldSrvTitle: 'The Apps Script is out of date ·', oldSrvBody: 'Analysis work will save but will not load again. Redeploy it: Manage deployments ▸ Edit ▸ Version: New.',
+      tooBigTitle: 'Not saved ·', tooBigBody: 'This analysis record is too large to store. Shorten or split the transcription notes. What was saved before is still there.',
       descMode: 'Descriptions', hideMode: 'Hide',
       descBanner: 'Editing descriptions. Note whose record each code is.',
       hideBanner: 'Hiding. Choose what to take out of the list; nothing is deleted.',
@@ -1104,6 +1122,9 @@ class Component extends DCLogic {
     this._order = this.orderSig();
     // 해석 레이어만 따로 저장 / persist the sensemaking layer on its own key
     if (this.isView() && this.state.viewPid) {
+      const tg = JSON.stringify(this.txMap());
+      if (this._tsig === undefined) this._tsig = tg;
+      else if (tg !== this._tsig) { this._tsig = tg; this.scheduleTx(); }
       const sg = this.senseSig();
       if (this._ssig === undefined) this._ssig = sg;
       else if (sg !== this._ssig) { this._ssig = sg; this.scheduleSense(); }
@@ -1310,18 +1331,28 @@ class Component extends DCLogic {
     }));
   }
 
+  // 보드와 전사를 같이 불러온다 / the board and the transcript are fetched together and
+  // merged. A note whose text already came back inside the board record keeps it: that is
+  // what an analysis record saved before this split looks like, and it must still open.
   loadSense(pid) {
-    this.jsonp('participant=' + encodeURIComponent('sm:' + pid)).then((res) => {
+    Promise.all([
+      this.jsonp('participant=' + encodeURIComponent('sm:' + pid)),
+      this.jsonp('participant=' + encodeURIComponent(TX_PREFIX + pid))
+    ]).then((both) => {
+      const res = both[0], txr = both[1];
       const st = res && res.ok && res.state;
       if (!st || this.state.viewPid !== pid) return;
+      const texts = (txr && txr.ok && txr.state && txr.state.texts) || {};
       const tag = (arr) => (arr || []).map((o) => Object.assign({}, o, { sm: true }));
+      const notes = tag(st.notes).map((n) => (texts[n.id] !== undefined && !n.text
+        ? Object.assign({}, n, { text: texts[n.id] }) : n));
       this.setState((s) => ({
         cards: s.cards.concat(tag(st.cards)),
-        notes: (s.notes || []).concat(tag(st.notes)),
+        notes: (s.notes || []).concat(notes),
         arrows: (s.arrows || []).concat(tag(st.arrows)),
         strokes: (s.strokes || []).concat(tag(st.strokes)),
         seq: Math.max(s.seq || 1, st.seq || 1)
-      }), () => { this._ssig = this.senseSig(); });
+      }), () => { this._ssig = this.senseSig(); this._tsig = JSON.stringify(this.txMap()); });
     });
   }
 
@@ -1340,7 +1371,11 @@ class Component extends DCLogic {
     // sensemaking record with a snapshot they were only looking at.
     if (!this.isView() || !this.state.viewPid || this.state.travel) return;
     if (this._st) clearTimeout(this._st);
-    this._st = setTimeout(() => { this._st = null; this.pushSense(); }, 1500);
+    // 큰 기록은 덜 자주 / a big record saves less often. Each save of a sliced record is
+    // several rows, and typing into a long transcript would otherwise add a handful of
+    // rows every second and a half for as long as the typing goes on.
+    const wait = (this.state.senseParts || 1) > 1 ? 5000 : 1500;
+    this._st = setTimeout(() => { this._st = null; this.pushSense(); }, wait);
   }
 
   // 반드시 'sm:' 키로만 저장한다 / writes ONLY ever to the 'sm:' key, never a bare id
@@ -1352,7 +1387,9 @@ class Component extends DCLogic {
     const state = {
       savedAt: Date.now(), pid: key, step: 2, lang: this.state.lang, rules: [],
       cards: this.state.cards.filter((c) => c.sm),
-      notes: (this.state.notes || []).filter((n) => n.sm),
+      // 전사 본문은 여기 담지 않는다 / the transcript bodies are not in here; they go to the
+      // tx: record and are merged back in on load
+      notes: (this.state.notes || []).filter((n) => n.sm).map((n) => (n.kind === 'tx' ? Object.assign({}, n, { text: '' }) : n)),
       arrows: (this.state.arrows || []).filter((a) => a.sm),
       // 관리자 필기도 해석 결과다 / the admin's ink is analysis too. The pen has been on
       // offer in this layer while its strokes were saved nowhere and vanished on the
@@ -1360,23 +1397,83 @@ class Component extends DCLogic {
       strokes: (this.state.strokes || []).filter((k) => k.sm),
       seq: this.state.seq, panelW: this.state.panelW
     };
-    const body = JSON.stringify({
-      participant: key, kind: 'sensemaking',
-      queuedAt: new Date().toISOString(),
-      payload: { participant: key, state: state }
-    });
-    // 넘치면 보내지 않고 말한다 / over the cap, say so instead of posting into the void.
-    // Apps Script would throw on appendRow, the response is unreadable under no-cors, and
-    // the analysis would look saved while nothing had been written.
-    if (body.length > CELL_MAX) { this.setState({ senseBig: 'over' }); return; }
-    this.setState({ senseBig: body.length > CELL_WARN ? 'near' : '' });
+    const json = JSON.stringify(state);
+    const stamp = Date.now();
+    const at = new Date().toISOString();
+    const slices = this.sliceState(json, key, stamp, at);
+    if (!slices) { this.setState({ senseBig: true }); return; }
+    this.setState({ senseBig: false, senseParts: slices.length });
+    // 조각은 순서대로, 그러나 기다리지 않는다 / the slices go in order and are not awaited:
+    // the response is unreadable under no-cors anyway. A group is only READ once every
+    // slice of it has arrived, so one that gets cut off leaves the last complete record
+    // standing rather than replacing it with something unreadable.
     try {
-      fetch(url, {
+      slices.forEach((b) => fetch(url, {
         method: 'POST', mode: 'no-cors',
         headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-        body: body
-      });
+        body: b
+      }));
     } catch (e) {}
+  }
+
+  // 전사 본문만 모은 것 / just the transcript bodies, by note id
+  txMap() {
+    const out = {};
+    (this.state.notes || []).forEach((n) => { if (n.sm && n.kind === 'tx' && n.text) out[n.id] = n.text; });
+    return out;
+  }
+
+  scheduleTx() {
+    if (!this.isView() || !this.state.viewPid || this.state.travel) return;
+    clearTimeout(this._tt);
+    // 전사는 붙여넣고 나면 거의 바뀌지 않는다 / transcript barely changes once pasted, so it
+    // waits longer than the board does and costs the sheet almost nothing
+    this._tt = setTimeout(() => { this._tt = null; this.pushTx(); }, 3000);
+  }
+
+  pushTx() {
+    const pid = this.state.viewPid, url = this.syncUrl();
+    if (!this.isView() || !pid || !url || this.state.travel) return;
+    const key = TX_PREFIX + pid;
+    const stamp = Date.now(), at = new Date().toISOString();
+    const slices = this.sliceState(JSON.stringify({ texts: this.txMap(), cards: [] }), key, stamp, at, 'transcript');
+    if (!slices) { this.setState({ senseBig: true }); return; }
+    try {
+      slices.forEach((b) => fetch(url, {
+        method: 'POST', mode: 'no-cors',
+        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+        body: b
+      }));
+    } catch (e) {}
+  }
+
+  /* 한 줄에 담기지 않는 기록 / a record that does not fit in one row.
+     조각 크기는 재서 정한다 — JSON 안에 다시 JSON 을 넣으면 따옴표와 줄바꿈이 이스케이프되어
+     길이가 늘어나는데, 얼마나 늘어나는지는 글에 달렸다.
+     The slice size is MEASURED, not assumed: a JSON string nested inside another JSON
+     document grows by its escapes, and by how much depends entirely on the text — a
+     transcript full of quotation marks inflates far more than one without. So build the
+     rows, look at them, and halve until they fit. */
+  sliceState(json, key, stamp, at, kind) {
+    let size = CELL_SAFE;
+    for (let attempt = 0; attempt < 8; attempt++) {
+      const n = Math.max(1, Math.ceil(json.length / size));
+      if (n > SENSE_PARTS_MAX) return null;
+      const out = [];
+      let ok = true;
+      for (let i = 0; i < n; i++) {
+        const body = JSON.stringify({
+          participant: key, kind: kind || 'sensemaking', queuedAt: at,
+          stamp: stamp, part: i, parts: n,
+          payload: { participant: key, chunk: json.slice(i * size, (i + 1) * size) }
+        });
+        if (body.length > CELL_MAX) { ok = false; break; }
+        out.push(body);
+      }
+      if (ok) return out;
+      size = Math.floor(size / 2);
+    }
+    return null;
   }
 
   // ── 참여자 항목 숨김 · 설명 / hide a record, and say whose it is ──────────
@@ -1420,6 +1517,8 @@ class Component extends DCLogic {
     this.setState({ rosterMsg: 'loading' });
     this.jsonp('list=1').then((res) => {
       if (!this.state.admin) return;
+      const ver = (res && res.version) || '';
+      this.setState({ oldServer: !ver || ver < SERVER_MIN });
       if (res && res.ok && res.participants) {
         // 배포가 밀린 백엔드 대비 / a backend that has not been redeployed yet does not know
         // about mt: rows and hands them back as if they were participants. Filter them
@@ -3061,12 +3160,13 @@ class Component extends DCLogic {
         tagColor: v.kind === 'submit' ? 'oklch(0.51 0.08 253)' : '#a7a49b',
         onOpen: () => this.travelTo(v)
       })),
+      oldServer: !!this.state.oldServer && !!this.state.admin,
       senseBig: !!this.state.senseBig,
-      senseBigLabel: this.state.senseBig === 'over' ? t.tooBigTitle : t.nearBigTitle,
-      senseBigBody: this.state.senseBig === 'over' ? t.tooBigBody : t.nearBigBody,
-      senseBigBg: this.state.senseBig === 'over' ? '#f7e6e3' : '#f7f0dc',
-      senseBigBd: this.state.senseBig === 'over' ? '#e8cdc7' : '#e6dcc0',
-      senseBigFg: this.state.senseBig === 'over' ? '#8f342a' : '#8a6a1f',
+      senseBigLabel: t.tooBigTitle,
+      senseBigBody: t.tooBigBody,
+      senseBigBg: '#f7e6e3',
+      senseBigBd: '#e8cdc7',
+      senseBigFg: '#8f342a',
       travelling: !!this.state.travel,
       travelLabel: this.state.travel && this.state.travel.at
         ? new Date(this.state.travel.at).toLocaleString() : '',

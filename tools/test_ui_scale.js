@@ -817,7 +817,8 @@ console.log("\nview mode cannot write");
   // 7f. the sensemaking layer must never write to a participant's own record
   check(/const key = 'sm:' \+ pid;/.test(doc), "sensemaking writes build an sm: key");
   check(/if \(key\.indexOf\('sm:'\) !== 0\) return;/.test(doc), "and assert the prefix before sending");
-  check(/participant: key, kind: 'sensemaking'/.test(doc), "posted as kind sensemaking under that key");
+  check(/participant: key, kind: kind \|\| 'sensemaking'/.test(doc),
+    "posted under that key, as sensemaking unless it is the transcript record");
   check(/if \(!this\.isView\(\) \|\| !pid \|\| !url \|\| this\.state\.travel\) return;/.test(doc),
     "pushSense refuses outside admin view mode, and while browsing history");
   check(/if \(!this\.isView\(\) \|\| !this\.state\.viewPid \|\| this\.state\.travel\) return;/.test(doc),
@@ -837,10 +838,24 @@ console.log("\nview mode cannot write");
   // the client never sees Apps Script throw on a cell over 50,000 characters — and a long
   // transcript would otherwise stop being saved with the UI still reading "saved".
   check(/const CELL_MAX = 50000/.test(src), "the sheet's cell ceiling is written down");
-  check(/if \(body\.length > CELL_MAX\) \{ this\.setState\(\{ senseBig: 'over' \}\); return; \}/.test(doc),
-    "an oversized analysis record is refused rather than posted into the void");
-  check(/senseBig: body\.length > CELL_WARN \? 'near' : ''/.test(doc), "and there is a warning before the wall");
-  check(/senseBigLabel: this\.state\.senseBig === 'over'/.test(doc), "both states reach the banner");
+  // 한 칸에 안 들어가면 여러 줄로 / a record too big for one cell is written as several rows
+  // sharing a stamp, and only read back once every slice of it has arrived
+  check(/stamp: stamp, part: i, parts: n/.test(doc), "an oversized record is sliced across rows");
+  check(/if \(body\.length > CELL_MAX\) \{ ok = false; break; \}/.test(doc),
+    "and the slice size is measured against the real cell limit, not guessed");
+  check(/size = Math\.floor\(size \/ 2\)/.test(doc), "halving until it fits");
+  check(/if \(!slices\) \{ this\.setState\(\{ senseBig: true \}\); return; \}/.test(doc),
+    "and if even that fails, it says so instead of posting into the void");
+  // 전사는 따로 / transcript lives in its own record, so the frequent save stays small
+  check(/const TX_PREFIX = 'tx:'/.test(src), "transcript has a key of its own");
+  check(/n\.kind === 'tx' \? Object\.assign\(\{\}, n, \{ text: '' \}\) : n/.test(doc),
+    "the board record carries no transcript text");
+  check(/this\._tt = setTimeout\(\(\) => \{ this\._tt = null; this\.pushTx\(\); \}, 3000\)/.test(doc),
+    "and transcript saves on its own, slower schedule");
+  // 예전 기록도 열려야 한다 / a record written before the split must still open, with its
+  // transcript where it used to be — inside the note
+  check(/texts\[n\.id\] !== undefined && !n\.text/.test(doc),
+    "a note that already has its text keeps it, so older records still open");
 
   // 7g. hiding a record, and saying whose it is — there is no delete any more
   check(!/action: 'delete'/.test(doc), "the client has no delete path at all");

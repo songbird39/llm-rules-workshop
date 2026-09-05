@@ -122,5 +122,41 @@ async function dragTileToBoard(page, title, fx = 0.45, fy = 0.4) {
   await page.mouse.up();
   await page.waitForTimeout(250);
 }
-module.exports = { APP, SHOTS, chromium, tally, check, near, boardCards,
+// 진짜 서버를 페이지 뒤에 붙인다 / put the REAL server behind the page. A hand-written stub
+// answers whatever the test wants it to; Code.gs answers what the deployment will. Every
+// route that matters — save, list, load, reload — goes through the actual scan-and-
+// reassemble logic this way.
+async function realServer(page, { seed } = {}) {
+  const { loadServer } = require("../gasnode");
+  const srv = loadServer();
+  if (seed) seed(srv);
+  const posts = [];
+  // route() 는 기다려야 한다 / await it: an unawaited route can miss the first navigation,
+  // and the page then talks to nothing at all
+  await page.route("**/macros/s/**", async (route) => {
+    const u = new URL(route.request().url());
+    if (route.request().method() === "POST") {
+      let body = {};
+      try { body = JSON.parse(route.request().postData() || "{}"); } catch (e) {}
+      posts.push(body);
+      let out = { ok: false };
+      try { out = srv.post(body); } catch (e) { out = { ok: false, error: String(e) }; }
+      return route.fulfill({ status: 200, body: JSON.stringify(out) });
+    }
+    const params = {};
+    u.searchParams.forEach((v, k) => { params[k] = v; });
+    // 서버가 JSONP 를 만들게 둔다 / let the server build the JSONP itself, callback and all —
+    // wrapping it here would skip the very code the browser depends on
+    let body, ok = true;
+    try { body = srv.getText(params); } catch (e) { ok = false; body = String(e); }
+    return route.fulfill({
+      status: 200,
+      contentType: params.callback ? "application/javascript" : "application/json",
+      body: ok ? body : JSON.stringify({ ok: false, error: body }),
+    });
+  });
+  return { srv, posts };
+}
+
+module.exports = { realServer, APP, SHOTS, chromium, tally, check, near, boardCards,
   boardTransform, uiScale, boot, toStep1, toBoard, dragTileToBoard };
