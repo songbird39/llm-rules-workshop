@@ -201,6 +201,19 @@ an arrow, which is what makes it slide around the tag as the note moves. Several
 step stack downward; the link can be broken from the note, and deleting a step unties its
 notes rather than leaving them pointing at nothing.
 
+**Nothing pairs a DOM element to a state object by position.** `byId('card' | 'note')`
+returns a map keyed by the id each element carries in a **class** (`cd-…`, `nt-…`) — a
+class because the template engine drops interpolated `data-*`. Position pairing was a live
+bug: picking anything up raises it to the end of its array, the engine re-uses the nodes in
+place, and every measured height then landed on whichever object had slid into that slot.
+For the same reason `componentDidUpdate` re-runs `autoGrow` on any frame where the order
+changed, even mid-drag — once per reorder, not once per pointermove, so the main-thread
+starvation that guard was written for does not come back.
+
+The analysis record carries the ink as well as the cards, notes and arrows. It did not
+until 2026-09-05, so anything drawn with the pen in analysis mode vanished on the next
+visit while everything else came back.
+
 The board's ink and arrow layers are drawn in one 5000×5000 SVG each, anchored at board
 (0,0), with `overflow: visible`. That last part is load-bearing: board coordinates go
 negative as soon as anyone pans right, and an SVG clips whatever falls outside its own

@@ -200,7 +200,7 @@ console.log("\nrule card keeps its size on drop");
   check(/white-space:nowrap/.test(doc), "and neither ever wraps");
   check(/const over = input \? input\.scrollWidth - input\.clientWidth : 0;/.test(doc),
     "a tag grows by exactly the overflow instead");
-  check(/ws\.push\(Math\.min\(TAG_MAX, want\)\)/.test(doc), "up to the width cap");
+  check(/return Math\.min\(TAG_MAX, want\);/.test(doc), "up to the width cap");
   check(/cw: c\.type === 'means' \? 'auto'/.test(doc), "and a 수단 pill hugs its own text");
   check((doc.match(/clip-path:polygon\(0 0, calc\(100% - 17px\) 0, 100% 50%/g) || []).length === 6,
     "both ends are pointed on the panel tile, the board tag and the drag ghost",
@@ -443,8 +443,17 @@ console.log("\nboard objects are identified explicitly");
   const markers = (doc.match(/<div data-obj="(card|note)"/g) || []).length;
   check(markers === 4, "every board object carries a static marker",
     ` (${markers}: note, chevron, chip, card)`);
+  // 이제 순회는 한 군데 / the walking is done in ONE place now, byId, and everything that
+  // needs an element asks it by id. Position pairing was a live bug: raiseCard/raiseNote
+  // reorder the arrays at drag start, so measured heights landed on the wrong objects and
+  // every note on the board flickered to somebody else's size.
   const walkers = (doc.match(/querySelectorAll\(':scope > \[data-obj=/g) || []).length;
-  check(walkers === 5, "and all three walkers select by it", ` (${walkers} selectors)`);
+  check(walkers === 1, "and one walker selects by it", ` (${walkers} selectors)`);
+  check(/byId\(sel\) \{/.test(doc), "the walker hands back a map keyed by id");
+  check(/ncls: 'nt-' \+ n\.id/.test(doc) && /ccls: 'cd-' \+ c\.id/.test(doc),
+    "and every board object carries its id in a class");
+  const positional = (doc.match(/(els|noteEls|cardEls)\[i\]/g) || []).length;
+  check(positional === 0, "nothing pairs DOM to state by position any more", ` (${positional})`);
   // 정적이어야 한다 / it must be static: the engine drops interpolated data-* attributes
   check(!/data-obj="\{\{/.test(doc), "the marker is literal, since interpolated data-* is dropped");
 }
@@ -596,14 +605,16 @@ console.log("\ntwo kinds of analysis note, sized by hand and tied to a step");
   check(/canSize: RO && n\.sm/.test(doc), "and only an analysis note has a grip to stop short of");
   check(/w: Math\.max\(NOTE_MIN_W/.test(doc) && /h: Math\.max\(NOTE_MIN_H/.test(doc),
     "and it resizes in both directions, with a floor");
-  check(/!n\.manual && !n\.collapsed && nhs\[i\]/.test(doc),
-    "the height measurer leaves hand-sized and folded notes alone");
+  check(/const grew = \(n\) => !n\.manual && !n\.collapsed && nh\[n\.id\]/.test(doc),
+    "the height measurer leaves hand-sized and folded notes alone, and works by id");
 
   // 단계에 매다는 선 / the leader line
   check(/canNote: RO && c\.sm && c\.type === 'act'/.test(doc),
     "the note button sits only on an activity tag in the analysis layer");
-  check(/y: Math\.round\(r\.y \+ mine\.length \* 96\)/.test(doc),
-    "several notes per step stack instead of landing on each other");
+  // 태그 위로 쌓는다 / stacked above the tag, because a participant's guardrail cards hang
+  // below their activity and transcript there would bury the chain
+  check(/y: Math\.round\(r\.y - 24 - \(mine\.length \+ 1\) \* 118\)/.test(doc),
+    "step notes stack upward from the tag instead of landing on each other");
   // 태그 쪽 끝이 메모 위치에 따라 움직여야 한다 / the tag-side end must move with the note,
   // which is precisely what arrowEnds' border-meeting maths already does
   check(/return this\.arrowEnds\(\{ from: \{ k: 'card', id: n\.link \}, to: \{ k: 'note', id: n\.id \} \}\)/.test(doc),
@@ -615,7 +626,7 @@ console.log("\ntwo kinds of analysis note, sized by hand and tied to a step");
   // link and the size ride along, but only if the note is flagged sm in the first place
   check(/notes: \(this\.state\.notes \|\| \[\]\)\.filter\(\(n\) => n\.sm\)/.test(doc),
     "analysis notes are what gets written to the sm: record");
-  check(/concat\(\[this\.mine\(\{\s*id: id, x: Math\.round\(r\.x \+ r\.w \+ 56\)/.test(doc),
+  check(/concat\(\[this\.mine\(\{\s*id: id, x: Math\.round\(r\.x\)/.test(doc),
     "and a step note is flagged sm when it is made");
 }
 
@@ -813,6 +824,15 @@ console.log("\nview mode cannot write");
     "and it is never even scheduled from an old version");
   check(/cards: this\.state\.cards\.filter\(\(c\) => c\.sm\)/.test(doc),
     "only sm-flagged objects are sent, participant objects are filtered out");
+  // 펜도 해석이다 / the ink belongs to the analysis record as much as the notes do. It was
+  // written nowhere while the pen sat in the analysis toolbar, so it was the one thing on
+  // the board that did not survive a reload.
+  check(/strokes: \(this\.state\.strokes \|\| \[\]\)\.filter\(\(k\) => k\.sm\)/.test(doc),
+    "analysis ink is written to the record");
+  check(/\(this\.state\.strokes \|\| \[\]\)\.filter\(\(k\) => k\.sm\)\n\s*\]\);/.test(doc),
+    "and a new stroke counts as a change worth saving");
+  check(/strokes: \(s\.strokes \|\| \[\]\)\.concat\(tag\(st\.strokes\)\)/.test(doc),
+    "and it is read back when the record is opened again");
 
   // 7g. hiding a record, and saying whose it is — there is no delete any more
   check(!/action: 'delete'/.test(doc), "the client has no delete path at all");

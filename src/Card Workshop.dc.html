@@ -183,9 +183,11 @@
         </sc-if>
         <div style="display:flex;flex-direction:column;gap:8px">
           <sc-for list="{{ rosterList }}" as="r" hint-placeholder-count="0">
-            <div style="display:flex;align-items:center;gap:12px;padding:12px 15px;border:1px solid #e2dfd7;border-radius:10px;background:#fffefb" style-hover="border-color:oklch(0.51 0.08 253);box-shadow:0 3px 12px rgba(0,0,0,0.07)">
+            <!-- 줄 전체가 버튼 / the whole row opens the record. Aiming at the code was a
+                 target the width of four characters in a row 700px wide. -->
+            <div onClick="{{ r.onOpen }}" style="display:flex;align-items:center;gap:12px;padding:12px 15px;border:1px solid #e2dfd7;border-radius:10px;background:#fffefb;cursor:pointer" style-hover="border-color:oklch(0.51 0.08 253);box-shadow:0 3px 12px rgba(0,0,0,0.07)">
               <div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:5px">
-                <div onClick="{{ r.onOpen }}" style="min-width:0;display:flex;align-items:baseline;gap:12px;text-align:left;cursor:pointer">
+                <div style="min-width:0;display:flex;align-items:baseline;gap:12px;text-align:left">
                   <span style="font-size:14px;font-weight:700;letter-spacing:-0.01em;min-width:64px">{{ r.label }}</span>
                   <span style="font-size:12px;color:#7a776f">{{ r.meta }}</span>
                   <span style="flex:1"></span>
@@ -195,7 +197,7 @@
                      thread between a code and a real person. It always READS in the row;
                      it only becomes typeable in description mode. -->
                 <sc-if value="{{ r.editing }}" hint-placeholder-val="{{ false }}">
-                  <input value="{{ r.desc }}" onChange="{{ r.onDesc }}" placeholder="{{ t.metaPh }}" autoFocus="{{ r.focus }}" style="width:100%;border:none;border-bottom:1px dashed #c9c6bd;background:transparent;font-size:12.5px;color:#5c5950;outline:none;padding:2px 0;font-family:inherit" style-focus="border-bottom-color:oklch(0.51 0.08 253)" />
+                  <input value="{{ r.desc }}" onChange="{{ r.onDesc }}" onClick="{{ r.stop }}" placeholder="{{ t.metaPh }}" autoFocus="{{ r.focus }}" style="width:100%;border:none;border-bottom:1px dashed #c9c6bd;background:transparent;font-size:12.5px;color:#5c5950;outline:none;padding:2px 0;font-family:inherit" style-focus="border-bottom-color:oklch(0.51 0.08 253)" />
                 </sc-if>
                 <sc-if value="{{ r.showDesc }}" hint-placeholder-val="{{ false }}">
                   <div style="font-size:12.5px;color:#7a776f;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ r.desc }}</div>
@@ -350,7 +352,7 @@
           <button onPointerDown="{{ delSelArrow }}" title="{{ t.arrowDelTip }}" style="position:absolute;left:{{ selArrowX }}px;top:{{ selArrowY }}px;transform:translate(-50%,-50%);width:22px;height:22px;border:1px solid #d6d3ca;border-radius:50%;background:#fffefb;color:#b03f34;font-size:11px;line-height:1;cursor:pointer;box-shadow:0 2px 8px rgba(0,0,0,0.12);z-index:5">✕</button>
         </sc-if>
         <sc-for list="{{ notes }}" as="n" hint-placeholder-count="0">
-          <div data-obj="note" onPointerDown="{{ n.onDown }}" style="position:absolute;left:{{ n.x }}px;top:{{ n.y }}px;width:{{ n.w }}px;height:{{ n.boxH }};padding:0 8px 8px;display:flex;flex-direction:column;gap:2px;border-radius:10px;background:{{ n.bg }};box-shadow:{{ n.ring }};outline:{{ n.outline }};outline-offset:2px;pointer-events:{{ n.pe }};cursor:{{ n.cursor }}">
+          <div data-obj="note" class="{{ n.ncls }}" onPointerDown="{{ n.onDown }}" style="position:absolute;left:{{ n.x }}px;top:{{ n.y }}px;width:{{ n.w }}px;height:{{ n.boxH }};padding:0 8px 8px;display:flex;flex-direction:column;gap:2px;border-radius:10px;background:{{ n.bg }};box-shadow:{{ n.ring }};outline:{{ n.outline }};outline-offset:2px;pointer-events:{{ n.pe }};cursor:{{ n.cursor }}">
             <!-- 접힌 전사 메모는 첫 줄만 / a folded transcription shows its first line only,
                  so a step with a dozen of them is still a board and not a wall of text -->
             <sc-if value="{{ n.folded }}" hint-placeholder-val="{{ false }}">
@@ -381,7 +383,7 @@
         </sc-for>
         <sc-for list="{{ cards }}" as="c" hint-placeholder-count="0">
           <sc-if value="{{ c.isTag }}" hint-placeholder-val="{{ false }}">
-          <div data-obj="card" onPointerDown="{{ c.onDown }}" style="position:absolute;left:{{ c.x }}px;top:{{ c.y }}px;width:{{ c.w }}px;height:62px;display:flex;align-items:center;gap:12px;padding:0 28px 0 38px;outline:{{ c.outline }};outline-offset:2px;pointer-events:{{ c.pe }};cursor:{{ c.cursor }}">
+          <div data-obj="card" class="{{ c.ccls }}" onPointerDown="{{ c.onDown }}" style="position:absolute;left:{{ c.x }}px;top:{{ c.y }}px;width:{{ c.w }}px;height:62px;display:flex;align-items:center;gap:12px;padding:0 28px 0 38px;outline:{{ c.outline }};outline-offset:2px;pointer-events:{{ c.pe }};cursor:{{ c.cursor }}">
             <!-- 코 끝 실선 / the nose keyline: two identically clipped layers, the upper one
                  shifted 1.6px left, so only the nose edge shows pale. Without it two tags
                  snapped nose-to-notch merge into one silhouette. -->
@@ -404,7 +406,7 @@
           </div>
           </sc-if>
           <sc-if value="{{ c.isMeans }}" hint-placeholder-val="{{ false }}">
-          <div data-obj="card" onPointerDown="{{ c.onDown }}" style="position:absolute;left:{{ c.x }}px;top:{{ c.y }}px;height:38px;display:inline-flex;align-items:stretch;background:#fffefb;border:2px solid {{ c.chipInk }};border-radius:3px;box-sizing:border-box;overflow:hidden;outline:{{ c.outline }};outline-offset:2px;pointer-events:{{ c.pe }};cursor:{{ c.cursor }}">
+          <div data-obj="card" class="{{ c.ccls }}" onPointerDown="{{ c.onDown }}" style="position:absolute;left:{{ c.x }}px;top:{{ c.y }}px;height:38px;display:inline-flex;align-items:stretch;background:#fffefb;border:2px solid {{ c.chipInk }};border-radius:3px;box-sizing:border-box;overflow:hidden;outline:{{ c.outline }};outline-offset:2px;pointer-events:{{ c.pe }};cursor:{{ c.cursor }}">
             <span style="width:9px;background:{{ c.chipInk }};flex:none"></span>
             <span style="display:inline-flex;align-items:center;gap:6px;padding:0 8px 0 12px">
               <input value="{{ c.title }}" onChange="{{ c.onTitle }}" placeholder="{{ c.titlePlaceholder }}" style="width:{{ c.tw }}px;flex:none;border:none;background:transparent;font-size:13px;font-weight:700;font-style:{{ c.slant }};color:#3a382f;letter-spacing:-0.01em;white-space:nowrap;outline:none;padding:0;pointer-events:{{ c.tpe }}" />
@@ -416,7 +418,7 @@
           </div>
           </sc-if>
           <sc-if value="{{ c.isPlainCard }}" hint-placeholder-val="{{ true }}">
-          <div data-obj="card" onPointerDown="{{ c.onDown }}" style="position:absolute;left:{{ c.x }}px;top:{{ c.y }}px;width:{{ c.cw }};display:flex;flex-direction:column;gap:5px;background:{{ c.bg }};border:1px {{ c.bstyle }} {{ c.bd }};border-radius:{{ c.radius }}px;padding:7px;box-shadow:{{ c.shadow }};outline:{{ c.outline }};outline-offset:2px;pointer-events:{{ c.pe }};cursor:{{ c.cursor }}">
+          <div data-obj="card" class="{{ c.ccls }}" onPointerDown="{{ c.onDown }}" style="position:absolute;left:{{ c.x }}px;top:{{ c.y }}px;width:{{ c.cw }};display:flex;flex-direction:column;gap:5px;background:{{ c.bg }};border:1px {{ c.bstyle }} {{ c.bd }};border-radius:{{ c.radius }}px;padding:7px;box-shadow:{{ c.shadow }};outline:{{ c.outline }};outline-offset:2px;pointer-events:{{ c.pe }};cursor:{{ c.cursor }}">
             <div style="display:flex;align-items:center;gap:{{ c.headGap }};background:{{ c.tint }};border-radius:{{ c.headRadius }};padding:{{ c.headPad }}">
               <sc-if value="{{ c.isMeans }}" hint-placeholder-val="{{ false }}">
                 <span style="flex:none;width:6px;height:6px;border-radius:50%;background:#8f8b81"></span>
@@ -1076,6 +1078,14 @@ class Component extends DCLogic {
     // forced layout on every pointermove starves the main thread — pointer events stop
     // being delivered mid-drag and the drag dies after one step.
     if (this.state.step >= 1 && !this.drag) { this.autoGrow(); this.measureCards(); }
+    // 다만 순서가 바뀐 프레임에서는 한 번 다시 잰다 / but re-run it once on the frame the
+    // order changes. Picking an object up raises it to the end of the list, the engine
+    // re-uses the DOM nodes in place, and the inline heights autoGrow had written stay
+    // behind on whatever node is now showing a different note — every note on the board
+    // takes somebody else's size until the drag ends. One extra pass per REORDER is not
+    // one per pointermove, so the starvation this guard was added for does not return.
+    else if (this.state.step >= 1 && this.orderSig() !== this._order) this.autoGrow();
+    this._order = this.orderSig();
     // 해석 레이어만 따로 저장 / persist the sensemaking layer on its own key
     if (this.isView() && this.state.viewPid) {
       const sg = this.senseSig();
@@ -1293,6 +1303,7 @@ class Component extends DCLogic {
         cards: s.cards.concat(tag(st.cards)),
         notes: (s.notes || []).concat(tag(st.notes)),
         arrows: (s.arrows || []).concat(tag(st.arrows)),
+        strokes: (s.strokes || []).concat(tag(st.strokes)),
         seq: Math.max(s.seq || 1, st.seq || 1)
       }), () => { this._ssig = this.senseSig(); });
     });
@@ -1302,7 +1313,8 @@ class Component extends DCLogic {
     return JSON.stringify([
       this.state.cards.filter((c) => c.sm),
       (this.state.notes || []).filter((n) => n.sm),
-      (this.state.arrows || []).filter((a) => a.sm)
+      (this.state.arrows || []).filter((a) => a.sm),
+      (this.state.strokes || []).filter((k) => k.sm)
     ]);
   }
 
@@ -1326,6 +1338,10 @@ class Component extends DCLogic {
       cards: this.state.cards.filter((c) => c.sm),
       notes: (this.state.notes || []).filter((n) => n.sm),
       arrows: (this.state.arrows || []).filter((a) => a.sm),
+      // 관리자 필기도 해석 결과다 / the admin's ink is analysis too. The pen has been on
+      // offer in this layer while its strokes were saved nowhere and vanished on the
+      // next load — the one thing on the board that did not come back.
+      strokes: (this.state.strokes || []).filter((k) => k.sm),
       seq: this.state.seq, panelW: this.state.panelW
     };
     try {
@@ -1811,14 +1827,13 @@ class Component extends DCLogic {
   boardRects() {
     const layer = this.cardsLayer();
     if (!layer) return [];
-    const noteEls = [...layer.querySelectorAll(':scope > [data-obj="note"]')];
-    const cardEls = [...layer.querySelectorAll(':scope > [data-obj="card"]')];
+    const noteEls = this.byId('note'), cardEls = this.byId('card');
     const out = [];
     const add = (el, item) => {
       if (el) out.push({ id: item.id, x: el.offsetLeft, y: el.offsetTop, w: el.offsetWidth, h: el.offsetHeight });
     };
-    (this.state.notes || []).forEach((n, i) => add(noteEls[i], n));
-    this.state.cards.forEach((c, i) => add(cardEls[i], c));
+    (this.state.notes || []).forEach((n) => add(noteEls[n.id], n));
+    this.state.cards.forEach((c) => add(cardEls[c.id], c));
     return out;
   }
 
@@ -1868,9 +1883,12 @@ class Component extends DCLogic {
     const r = this.cardRect(c);
     const mine = (this.state.notes || []).filter((n) => n.link === tagId);
     const id = 'n' + this.state.seq;
+    // 단계 위쪽에 쌓는다 / stacked ABOVE the tag: the guardrail cards a participant placed
+    // hang BELOW their activity, so putting transcript there would bury the chain. Each
+    // further note goes one step higher, so the column grows away from the board.
     this.setState((st) => ({
       notes: (st.notes || []).concat([this.mine({
-        id: id, x: Math.round(r.x + r.w + 56), y: Math.round(r.y + mine.length * 96),
+        id: id, x: Math.round(r.x), y: Math.round(r.y - 24 - (mine.length + 1) * 118),
         text: '', kind: 'tx', link: tagId
       })]),
       seq: st.seq + 1, focusNote: id, sel: [id]
@@ -2009,6 +2027,11 @@ class Component extends DCLogic {
 
   // 글이 넘치지 않도록 textarea 높이를 내용에 맞춘다 / size every growable textarea to
   // its content, so a card never needs an inner scrollbar
+  orderSig() {
+    return (this.state.notes || []).map((n) => n.id).join(',') + '|' +
+      this.state.cards.map((c) => c.id).join(',');
+  }
+
   autoGrow() {
     // 손으로 크기를 잡은 메모는 건드리지 않는다 / a note the admin sized by hand keeps that
     // size and scrolls instead. The flag rides on a CLASS, not a data- attribute: the
@@ -2028,29 +2051,23 @@ class Component extends DCLogic {
   measureCards() {
     const layer = this.cardsLayer();
     if (!layer) return;
-    // 카드 DOM은 state.cards 와 같은 순서로 그려진다. 템플릿 엔진이 보간된 data-* 속성을
-    // 내보내지 않아서 id 대신 순서로 맞춘다. 메모는 title <input> 이 없어서 걸러진다.
-    // Card elements render in state.cards order. The template engine drops interpolated
-    // data-* attributes, so match by position rather than id. Notes are excluded because
-    // only cards carry a title <input>.
-    const els = [...layer.querySelectorAll(':scope > [data-obj="card"]')];
-    const noteEls = [...layer.querySelectorAll(':scope > [data-obj="note"]')];
-    if (els.length !== this.state.cards.length) return;   // mid-render, try again next pass
-    const hs = [];
-    for (let i = 0; i < els.length; i++) hs.push(els[i].offsetHeight);
+    // id 로 짝짓는다 / paired by id, never by position: raiseCard and raiseNote reorder
+    // the arrays as soon as a drag begins, and a positional pairing then writes each
+    // measured height onto whichever object has slid into that slot. Every note on the
+    // board took somebody else's height for a frame or two before settling back.
+    const byCard = this.byId('card'), byNote = this.byId('note');
+    if (this.state.cards.some((c) => !byCard[c.id])) return;   // mid-render, try again next pass
+    const hs = this.state.cards.map((c) => byCard[c.id].offsetHeight);
     // 메모 높이도 기록 — 화살표 끝점이 메모 테두리에 붙으려면 필요하다
     // Note heights too: an arrow ending on a note needs its rect.
-    const nhs = [];
-    for (let i = 0; i < noteEls.length; i++) nhs.push(noteEls[i].offsetHeight);
     const notesNow = this.state.notes || [];
-    const noteChanged = nhs.length === notesNow.length &&
-      notesNow.some((n, i) => !n.manual && !n.collapsed && nhs[i] && Math.abs((n.h || 0) - nhs[i]) > 1);
-    if (noteChanged) {
-      this.setState((s) => {
-        const list = s.notes || [];
-        if (list.length !== nhs.length) return null;
-        return { notes: list.map((n, i) => (!n.manual && !n.collapsed && nhs[i] && Math.abs((n.h || 0) - nhs[i]) > 1 ? Object.assign({}, n, { h: nhs[i] }) : n)) };
-      });
+    const nh = {};
+    notesNow.forEach((n) => { if (byNote[n.id]) nh[n.id] = byNote[n.id].offsetHeight; });
+    const grew = (n) => !n.manual && !n.collapsed && nh[n.id] && Math.abs((n.h || 0) - nh[n.id]) > 1;
+    if (notesNow.some(grew)) {
+      this.setState((s) => ({
+        notes: (s.notes || []).map((n) => (grew(n) ? Object.assign({}, n, { h: nh[n.id] }) : n))
+      }));
     }
     /* 폭 / WIDTHS.
        활동 태그: 글자가 넘치면 넘친 만큼 늘린다. 줄바꿈은 하지 않는다 — 타임라인의 한 칸은
@@ -2063,16 +2080,15 @@ class Component extends DCLogic {
        and shrinking automatically would fight a width someone set by hand. A 수단 pill is
        already auto-width; this only copies the measured value back into state, because the
        arrow endpoints, the marquee and the export all read c.w. */
-    const ws = [];
-    for (let i = 0; i < els.length; i++) {
-      const c = this.state.cards[i];
-      if (c.type === 'means') { ws.push(els[i].offsetWidth); continue; }
-      if (c.type !== 'act') { ws.push(c.w || CARD); continue; }
-      const input = els[i].querySelector('input');
+    const ws = this.state.cards.map((c) => {
+      const el = byCard[c.id];
+      if (c.type === 'means') return el.offsetWidth;
+      if (c.type !== 'act') return c.w || CARD;
+      const input = el.querySelector('input');
       const over = input ? input.scrollWidth - input.clientWidth : 0;
       const want = (c.w || TAG_W) + (over > 1 ? over + 2 : 0);
-      ws.push(Math.min(TAG_MAX, want));
-    }
+      return Math.min(TAG_MAX, want);
+    });
     if (this.state.cards.some((c, i) => ws[i] && Math.abs((c.w || (c.type === 'act' ? TAG_W : CARD)) - ws[i]) > 1)) {
       this.setState((st) => {
         if (st.cards.length !== ws.length) return null;
@@ -2111,13 +2127,28 @@ class Component extends DCLogic {
   focusTitle(id) {
     const layer = this.cardsLayer();
     if (!layer) return;
-    const cardEls = [...layer.querySelectorAll(':scope > [data-obj="card"]')];
-    const i = this.state.cards.findIndex((c) => c.id === id);
-    const el = i >= 0 ? cardEls[i] : null;
+    const el = this.byId('card')[id];
     const input = el ? el.querySelector('input') : null;
     if (!input) return;
     input.focus();
     if (input.select) input.select();
+  }
+
+  // 순서로 짝지으면 안 된다 / never pair DOM to state by POSITION. raiseCard/raiseNote
+  // reorder the arrays the moment a drag starts, and for a frame or two the measured
+  // heights land on whichever object now sits at that index — every note on the board
+  // jumps to somebody else's height and then settles. The engine drops interpolated
+  // data-* attributes, so the id travels in a CLASS instead.
+  byId(sel) {
+    const layer = this.cardsLayer();
+    const out = {};
+    if (!layer) return out;
+    const found = layer.querySelectorAll(':scope > [data-obj="' + sel + '"]');
+    for (let i = 0; i < found.length; i++) {
+      const m = /(?:^|\s)(?:nt|cd)-([A-Za-z0-9_-]+)/.exec(found[i].className || '');
+      if (m) out[m[1]] = found[i];
+    }
+    return out;
   }
 
   cardsLayer() {
@@ -2598,15 +2629,11 @@ class Component extends DCLogic {
     const layer = this.cardsLayer();
     const out = {};
     if (!layer) return Promise.resolve(out);
-    const els = [];
-    for (let i = 0; i < layer.children.length; i++) {
-      const el = layer.children[i];
-      if (el.tagName === 'DIV' && el.querySelector('input')) els.push(el);
-    }
+    const els = this.byId('card');
     const jobs = [];
-    this.state.cards.forEach((c, i) => {
-      if (!c.dia || out[c.dia] || !els[i]) return;
-      const svg = els[i].querySelector('svg');
+    this.state.cards.forEach((c) => {
+      if (!c.dia || out[c.dia] || !els[c.id]) return;
+      const svg = els[c.id].querySelector('svg');
       if (!svg) return;
       out[c.dia] = null;
       const clone = svg.cloneNode(true);
@@ -2917,6 +2944,9 @@ class Component extends DCLogic {
           showDesc: this.state.rosterMode !== 'desc' && !!r.desc,
           hiding: this.state.rosterMode === 'hide' || this.state.rosterMode === 'hidden',
           onDesc: (e) => this.setDesc(r.participant, e.target.value),
+          // 설명칸과 숨기기 버튼은 줄을 열지 않는다 / neither the field nor the hide control
+          // opens the record: they sit inside the row that now IS the button
+          stop: (e) => e.stopPropagation(),
           hideLabel: r.hidden ? t.restoreRecTip : t.hideRecTip,
           hideTip: r.hidden ? t.restoreRecTip : t.hideRecTip,
           onOpen: () => this.openParticipant(r.participant),
@@ -3100,6 +3130,10 @@ class Component extends DCLogic {
           taMin: n.manual ? '0' : '62px',
           ov: n.manual ? 'auto' : 'hidden',
           cls: n.manual ? 'nogrow' : '',
+          // id 를 클래스로 실어 보낸다 / the id travels in a class, because the engine drops
+          // interpolated data-* attributes and everything that measures needs to know
+          // WHICH object it is looking at, not merely where it sits
+          ncls: 'nt-' + n.id,
           outline: this.isSel(n.id) ? '2px solid oklch(0.51 0.08 253)' : 'none',
           pe: PEN ? 'none' : 'auto',
           tpe: (PEN || !own) ? 'none' : 'auto',
@@ -3165,6 +3199,7 @@ class Component extends DCLogic {
           onEditDown: (!RO || c.sm) ? (e) => { e.stopPropagation(); e.preventDefault(); this.focusTitle(c.id); } : NOOP,
           onDupDown: (!RO || c.sm) ? (e) => { e.stopPropagation(); e.preventDefault(); this.dup(c.id); } : NOOP,
           // 분석 모드의 활동 태그에만 / only on an activity tag in the analysis layer
+          ccls: 'cd-' + c.id,
           canNote: RO && c.sm && c.type === 'act',
           onNoteDown: (e) => { e.stopPropagation(); e.preventDefault(); this.addStepNote(c.id); },
           onDelDown: (!RO || c.sm) ? (e) => { e.stopPropagation(); e.preventDefault(); this.del(c.id); } : NOOP,
