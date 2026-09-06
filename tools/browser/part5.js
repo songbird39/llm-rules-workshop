@@ -150,7 +150,10 @@ module.exports = async function (browser) {
     await page.waitForTimeout(3500);
     check(posts === 0, "no POST while browsing history", ` (${posts})`);
     const kept = await page.evaluate(() => {
-      const k = Object.keys(localStorage).find((x) => x.includes("llm-guardrail") && x.endsWith(":H1"));
+      // 해석 사본도 ":H1" 로 끝난다 / the analysis mirror ends with ":H1" too, under a
+      // different shape — match the participant's own board only
+      const k = Object.keys(localStorage).find((x) => x.includes("llm-guardrail")
+        && x.endsWith(":H1") && !x.includes(":sm:"));
       return k ? JSON.parse(localStorage.getItem(k)).cards.length : null;
     });
     check(kept === null || kept === 2, "localStorage still holds the NEWEST board", ` (${kept})`);

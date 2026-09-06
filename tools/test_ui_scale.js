@@ -672,6 +672,65 @@ console.log("\nanalysis versions, checkpoints, and a second editor");
     "stateAtRow_ reassembles a version that spans rows");
 }
 
+// ---- 6o. the analysis must not be able to vanish ----
+console.log("\nthe analysis has a copy, a signal, and a way back");
+{
+  // 해석은 시트에만 있었다 / the analysis lived ONLY on the sheet. A save that failed — an old
+  // deployment, a dead network, a refused row — left the work in the open tab and nowhere
+  // else, and closing the tab was the end of it. The participant's board always had a local
+  // mirror; the analysis had nothing.
+  check(/localStorage\.setItem\(STORE \+ ':sm:' \+ this\.state\.viewPid/.test(doc),
+    "the analysis is mirrored to this device on every change");
+  check(/state: this\.senseState\(\), texts: this\.txMap\(\)/.test(doc),
+    "with the transcripts, not just the board");
+  check(/if \(this\.isView\(\) && this\.state\.viewPid && !this\.state\.travel\)/.test(doc),
+    "and never while browsing an old version, which is not the current work");
+  // 빈 것으로 덮어쓰면 사본이 아니다 / a copy that can be overwritten by nothing is not a copy.
+  // Opening a record is empty for a moment while the layer loads, and writing that moment
+  // through destroyed the copy — the recovery worked until you reopened the page to use it.
+  check(/if \(!this\.state\.recover && !\(empty && priorHas\)\)/.test(doc),
+    "an empty board never overwrites a stored copy that has something in it");
+
+  // 서버보다 새로우면 돌려준다 / newer than the server means a save did not land
+  check(/if \(d\.savedAt <= \(remoteAt \|\| 0\) \+ 30000\) return;/.test(doc),
+    "a local copy is only offered when it is genuinely ahead, not merely fresher");
+  // 빈 배열은 참이다 / `[]` is truthy, so an empty stored state read as recoverable: every
+  // open raised an offer for nothing, and the offer froze the mirror, so the real copy was
+  // never written. The emptiness check is what keeps both from happening.
+  check(/const any = \(st\.cards \|\| \[\]\)\.length \+ \(st\.notes \|\| \[\]\)\.length/.test(doc),
+    "an empty stored copy is not treated as something to recover");
+  // 같은 접두어를 쓴다 / it shares the participant prefix, so the local participant list has
+  // to exclude it or it shows up as a code called "sm:P01"
+  check(/k\.indexOf\(STORE \+ ':sm:'\) !== 0\)/.test(doc),
+    "and the analysis mirror is never listed as a participant");
+  check(/this\.offerLocal\(pid, st\.savedAt \|\| 0\)/.test(doc), "the check runs on opening a record");
+  // 서버에 아무것도 없을 때가 가장 중요한 경우 / the case it exists for is the server having
+  // NOTHING — a run of failed saves — and that is the path an early return skipped
+  check(/if \(!st\) \{ this\.offerLocal\(pid, 0\); return; \}/.test(doc),
+    "and also when the server has no analysis at all, which is the whole point");
+  check(/restoreLocal\(\)/.test(doc) && /this\.pushSense\(\);/.test(doc),
+    "and restoring it pushes straight back, so the recovery is not itself one tab from gone");
+
+  // 저장 상태가 보여야 한다 / the signal. It was hidden for the whole of analysis mode.
+  check(/showSync: \(this\.state\.step > 0 && !RO\) \|\| viewing/.test(doc),
+    "the save indicator is visible during analysis");
+  check(/this\.state\.conflict \? t\.syncPaused : this\.state\.senseBig \? t\.syncFailed/.test(doc),
+    "and reports paused and failed distinctly, not just saved");
+  check(/senseDirty: true/.test(doc) && /senseDirty: false/.test(doc),
+    "with a dirty flag that is set on change and cleared on write");
+
+  // 닫기 전에 붙잡는다 / and the tab does not close on unsaved analysis
+  check(/window\.addEventListener\('beforeunload', this\._beforeUnload\)/.test(doc),
+    "closing the tab on unsaved analysis is interrupted");
+  check(/if \(!this\.state\.senseDirty && !this\.state\.conflict && !this\.state\.senseBig\) return;/.test(doc),
+    "but never when there is nothing outstanding");
+
+  // 그리고 본인이 가지는 사본 / a copy she owns, depending on nothing
+  check(/downloadSense\(\)/.test(doc), "the analysis can be downloaded as a file");
+  check(/state: this\.senseState\(\), texts: this\.txMap\(\)\s*\}, null, 2\)/.test(doc),
+    "transcripts included");
+}
+
 // ---- 7. view mode must not be able to write ----
 // The whole point: viewing P01 must never produce a localStorage write or a sheet
 // POST, because latestState_() takes the newest row and would adopt the accident.

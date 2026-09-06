@@ -217,6 +217,82 @@ module.exports = async function (browser) {
     await page.close();
   }
 
+  // ------------------------------------------------- a save that never lands
+  // 이게 실제로 일어난 일이다 / this is the failure that actually happened: the server refuses
+  // or cannot store the analysis, the POST is no-cors so nothing says so, and the work
+  // exists only in the open tab. Closing it was the end of it.
+  say("\nanalysis survives a server that is not accepting it");
+  {
+    const EP = "https://script.google.com/macros/s/FAKE/exec";
+    const page = await browser.newPage({ viewport: { width: 1700, height: 1000 } });
+    const errors = [];
+    page.on("pageerror", (e) => errors.push(e.message));
+    const board = {
+      savedAt: Date.now(), pid: "P9", step: 2, lang: "ko", rules: [],
+      cards: [{ id: "c1", type: "act", title: "학습 계획", desc: "", dia: null, collapsed: false, w: 352, x: 300, y: 400 }],
+      notes: [], arrows: [], seq: 5, panelW: 566,
+    };
+    // 저장은 전부 삼켜진다 / every write is swallowed, exactly as an old deployment swallows
+    // a sliced record: 200 OK, nothing stored
+    let swallow = true;
+    const { srv } = await realServer(page, {
+      seed: (s) => s.post({ participant: "P9", kind: "autosave", payload: { participant: "P9", state: board } }),
+    });
+    await page.route("**/macros/s/**", async (route) => {
+      if (swallow && route.request().method() === "POST") return route.fulfill({ status: 200, body: "{}" });
+      return route.fallback();
+    });
+    const enter = async () => {
+      await page.goto(APP + "?sync=" + encodeURIComponent(EP), { waitUntil: "load", timeout: 120000 });
+      await page.waitForSelector('input[placeholder="P0000"]', { timeout: 120000 });
+      await page.fill('input[placeholder="P0000"]', "admin");
+      await page.getByText("시작하기", { exact: false }).click();
+      await page.waitForTimeout(900);
+      await page.getByText("P9", { exact: true }).first().click();
+      await page.waitForTimeout(1800);
+    };
+    const nCards = () => page.evaluate(() => {
+      const L = [...document.querySelectorAll("div")].find((d) => d.style.width === "5000px");
+      return [...L.querySelectorAll(':scope > [data-obj="card"]')].length;
+    });
+    await enter();
+    await page.getByText("전체 복제", { exact: true }).click();
+    await page.waitForTimeout(3000);
+    check(await nCards() === 2, "an hour's work, so to speak, is on the board", ` (${await nCards()})`);
+    check(srv.get({ participant: "sm:P9" }).state === null,
+      "and none of it reached the server, which said 200 to every write");
+
+    // 그런데 이 기기에는 남아 있다 / but this device kept a copy
+    const local = await page.evaluate(() =>
+      Object.keys(localStorage).filter((k) => k.indexOf(":sm:") > 0).map((k) => {
+        const d = JSON.parse(localStorage.getItem(k));
+        return { pid: d.pid, cards: (d.state.cards || []).length };
+      }));
+    check(local.length === 1 && local[0].cards === 1,
+      "this device kept a copy of it anyway", ` (${JSON.stringify(local)})`);
+
+    // 저장 안 됨이 보인다 / and it is not silent about it
+    check(await page.evaluate(() => document.body.innerText.includes("저장 중")
+      || document.body.innerText.includes("저장됨") || document.body.innerText.includes("저장 실패")),
+      "the analysis reports a save state at all, which it never used to");
+
+    // 다시 열면 되살릴지 묻는다 / reopening offers it back
+    await enter();
+    check(await page.evaluate(() => document.body.innerText.includes("이 기기에 더 새로운 해석이 있습니다")),
+      "reopening notices the device holds newer work and offers it back");
+    check(await nCards() === 1, "the board shows the server's older state until asked", ` (${await nCards()})`);
+    swallow = false;                                     // 서버가 정상으로 돌아온다 / server recovers
+    await page.getByText("이 기기 것으로 되살리기", { exact: false }).click();
+    await page.waitForTimeout(3000);
+    check(await nCards() === 2, "restoring brings the work back", ` (${await nCards()})`);
+    const saved = srv.get({ participant: "sm:P9" }).state;
+    check(saved && saved.cards.length === 1,
+      "and pushes it to the server, so the recovery is not one tab from being lost again",
+      saved ? ` (${saved.cards.length} sm cards)` : " (nothing was pushed)");
+    check(errors.length === 0, "no console errors", errors.length ? ` (${errors[0]})` : "");
+    await page.close();
+  }
+
   // ------------------------------------------------- work saved by the older build
   // 공동연구자가 이미 해 둔 분석 / a coauthor's analysis, saved by the build before any of
   // this: one row, whole state, transcript text sitting inside the note. Opening it must

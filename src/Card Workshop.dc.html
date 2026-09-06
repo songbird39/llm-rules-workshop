@@ -77,6 +77,7 @@
           <button onClick="{{ onImg }}" style="padding:5px 9px;border:1px solid #d6d3ca;border-radius:6px;background:#fff;font-size:12.5px;cursor:pointer" style-hover="background:#f1efe8">{{ t.imgBtn }}</button>
           <button onClick="{{ onImgSense }}" style="padding:5px 9px;border:1px dashed oklch(0.62 0.11 62);border-radius:6px;background:#fdfbf5;color:#7a5a1f;font-size:12.5px;cursor:pointer">{{ t.imgSenseBtn }}</button>
           <button onClick="{{ onClearSense }}" style="padding:5px 8px;border:1px solid #e2dfd7;border-radius:6px;background:transparent;color:#98958c;font-size:12.5px;cursor:pointer" style-hover="color:#b03f34">{{ t.clearSenseBtn }}</button>
+          <button onClick="{{ onDownSense }}" title="{{ t.downSenseTip }}" style="padding:5px 9px;border:1px solid #d6d3ca;border-radius:6px;background:#fff;font-size:12.5px;cursor:pointer" style-hover="background:#f1efe8">{{ t.downSense }}</button>
           <button onClick="{{ onMark }}" title="{{ t.markTip }}" style="padding:5px 9px;border:1px dashed oklch(0.62 0.11 62);border-radius:6px;background:#fdfbf5;color:#7a5a1f;font-size:12.5px;cursor:pointer">{{ markLabel }}</button>
           <button onClick="{{ onHistory }}" style="padding:5px 9px;border:1px solid #d6d3ca;border-radius:6px;background:#fff;font-size:12.5px;cursor:pointer" style-hover="background:#f1efe8">{{ t.histBtn }}</button>
         </sc-if>
@@ -114,6 +115,19 @@
 
   <!-- 남이 같은 기록을 건드렸다 / somebody else has written to this record. Saving stops
        until it is settled: racing them would just mean whoever typed last wins. -->
+  <!-- 이 기기에 더 새로운 해석이 있다 / this device holds analysis newer than the server's.
+       That gap is what a failed save looks like from here, so it is offered back rather
+       than quietly discarded. -->
+  <sc-if value="{{ recover }}" hint-placeholder-val="{{ false }}">
+    <div style="flex:0 0 auto;display:flex;flex-wrap:wrap;align-items:center;gap:10px;padding:8px 18px;background:#f7f0dc;border-bottom:1px solid #e6dcc0">
+      <span style="font-size:12.5px;font-weight:600;color:#8a6a1f">{{ t.recoverTitle }}</span>
+      <span style="font-size:12.5px;color:#8a6a1f">{{ recoverBody }}</span>
+      <div style="flex:1"></div>
+      <button onClick="{{ onRecover }}" style="padding:6px 12px;border:1px solid transparent;border-radius:7px;background:#1b1a17;color:#faf8f3;font-size:12.5px;cursor:pointer">{{ t.recoverBtn }}</button>
+      <button onClick="{{ onDropRecover }}" style="padding:6px 12px;border:1px solid #d6d3ca;border-radius:7px;background:#fff;font-size:12.5px;cursor:pointer">{{ t.recoverNo }}</button>
+    </div>
+  </sc-if>
+
   <sc-if value="{{ conflict }}" hint-placeholder-val="{{ false }}">
     <div style="flex:0 0 auto;display:flex;flex-wrap:wrap;align-items:center;gap:10px;padding:8px 18px;background:#f7e6e3;border-bottom:1px solid #e8cdc7">
       <span style="font-size:12.5px;font-weight:600;color:#8f342a">{{ t.conflictTitle }}</span>
@@ -821,6 +835,11 @@ const I18N = {
       hiddenNote: '기록은 지워지지 않았습니다. 목록에서만 빠져 있습니다.',
       metaPh: '설명 (누구의 기록인지 적어 두세요)',
       panelHide: '덱 접기', panelShow: '덱 펼치기',
+      downSense: '↓ 해석 파일', downSenseTip: '지금 해석을 JSON 파일로 내려받기 (전사 포함)',
+      syncPaused: '저장 멈춤', syncFailed: '저장 실패',
+      recoverTitle: '이 기기에 더 새로운 해석이 있습니다 ·',
+      recoverMid: '에 저장된 것으로, 카드 ', recoverEnd: '개가 들어 있습니다. 서버에는 이보다 예전 것만 있습니다.',
+      recoverBtn: '이 기기 것으로 되살리기', recoverNo: '서버 것 그대로 두기',
       markBtn: '저장점', markTip: '지금 해석에 이름을 붙여 기록에 남기기', markPrompt: '저장점 이름 (예: 1차 코딩 완료)',
       markedPre: '저장됨 · ',
       histTheirs: '참여자 보드', histMine: '해석 기록',
@@ -942,6 +961,11 @@ const I18N = {
       hiddenNote: 'Nothing was deleted. These are only out of the list.',
       metaPh: 'Description (who this code belongs to)',
       panelHide: 'Fold the deck away', panelShow: 'Bring the deck back',
+      downSense: '↓ Analysis file', downSenseTip: 'Download the analysis as JSON, transcripts included',
+      syncPaused: 'paused', syncFailed: 'not saved',
+      recoverTitle: 'This device holds newer analysis ·',
+      recoverMid: ', with ', recoverEnd: ' cards. The server only has something older.',
+      recoverBtn: 'Restore from this device', recoverNo: 'Keep the server version',
       markBtn: 'Checkpoint', markTip: 'Name this moment in the analysis history', markPrompt: 'Checkpoint name (e.g. first coding pass)',
       markedPre: 'Saved · ',
       histTheirs: "Participant's board", histMine: 'Analysis',
@@ -984,7 +1008,7 @@ const I18N = {
 class Component extends DCLogic {
   constructor(props) {
     super(props);
-    this.state = { sync: '', step: 0, lang: 'ko', rules: [], pid: '', loginPid: '', cards: [], notes: [], arrows: [], arrowMode: false, pendingArrow: null, pen: null, strokes: [], selArrow: null, noteMode: false, noteKind: 'memo', panelOff: false, rosterMode: '', histWho: 'board', conflict: null, marked: '', undoDepth: 0, focusNote: null, pan: { x: 0, y: 0 }, zoom: 1, ghost: null, seq: 1, panelW: panelCap(), sel: [], marquee: null, finish: null, tab: 'flow', hist: null, histList: [], travel: null, senseOn: true, admin: false, viewPid: '', roster: [], rosterMsg: '' };
+    this.state = { sync: '', step: 0, lang: 'ko', rules: [], pid: '', loginPid: '', cards: [], notes: [], arrows: [], arrowMode: false, pendingArrow: null, pen: null, strokes: [], selArrow: null, noteMode: false, noteKind: 'memo', panelOff: false, rosterMode: '', histWho: 'board', conflict: null, marked: '', senseDirty: false, recover: null, undoDepth: 0, focusNote: null, pan: { x: 0, y: 0 }, zoom: 1, ghost: null, seq: 1, panelW: panelCap(), sel: [], marquee: null, finish: null, tab: 'flow', hist: null, histList: [], travel: null, senseOn: true, admin: false, viewPid: '', roster: [], rosterMsg: '' };
     this.canvasRef = React.createRef();
     this.drag = null;
   }
@@ -1031,6 +1055,16 @@ class Component extends DCLogic {
       this.setState({ sync: 'offline', loadingRemote: false });
     };
     window.addEventListener('error', this._scriptErr, true);
+    // 저장되지 않은 해석을 두고 창을 닫지 못하게 / do not let the tab close on analysis that has
+    // not reached the sheet. The browser supplies its own wording; the pause is the point.
+    this._beforeUnload = (e) => {
+      if (!this.isView() || !this.state.viewPid) return;
+      if (!this.state.senseDirty && !this.state.conflict && !this.state.senseBig) return;
+      e.preventDefault();
+      e.returnValue = '';
+      return '';
+    };
+    window.addEventListener('beforeunload', this._beforeUnload);
     this._blur = (e) => this.blurUnlessTarget(e);
     window.addEventListener('pointerdown', this._blur, true);
     window.addEventListener('pointermove', this._move);
@@ -1167,10 +1201,31 @@ class Component extends DCLogic {
       else if (tg !== this._tsig) { this._tsig = tg; this.scheduleTx(); }
       const sg = this.senseSig();
       if (this._ssig === undefined) this._ssig = sg;
-      else if (sg !== this._ssig) { this._ssig = sg; this.scheduleSense(); }
+      else if (sg !== this._ssig) { this._ssig = sg; this.setState({ senseDirty: true }); this.scheduleSense(); }
     }
     try {
       localStorage.setItem(STORE + ':lang', this.state.lang);
+      // 해석도 이 기기에 남긴다 / the analysis is mirrored here too. It used to live ONLY on
+      // the sheet: if a save failed — an old deployment, a dead network, a refused row —
+      // the work existed nowhere but the open tab, and closing it was the end of it. The
+      // participant's board has always had this; the analysis layer had nothing.
+      if (this.isView() && this.state.viewPid && !this.state.travel) {
+        const mine = this.senseState();
+        const empty = !mine.cards.length && !mine.notes.length &&
+          !(mine.arrows || []).length && !(mine.strokes || []).length;
+        const prior = this.localSense(this.state.viewPid);
+        const priorHas = !!prior && ((prior.state.cards || []).length || (prior.state.notes || []).length);
+        // 빈 상태로 덮어쓰지 않는다 / never overwrite a copy that HAS something with one that
+        // has nothing. Opening a record starts empty for a moment while the layer loads,
+        // and writing that moment through destroyed the very copy this exists to keep —
+        // the recovery worked right up until you reopened the page to use it.
+        // 되살릴지 묻는 동안에도 손대지 않는다 / and not while a recovery is being offered.
+        if (!this.state.recover && !(empty && priorHas)) {
+          localStorage.setItem(STORE + ':sm:' + this.state.viewPid, JSON.stringify({
+            savedAt: Date.now(), pid: this.state.viewPid, state: mine, texts: this.txMap()
+          }));
+        }
+      }
       if (this.state.step > 0 && this.state.pid && !this.frozen()) {
         localStorage.setItem(STORE + ':' + this.state.pid, JSON.stringify({ savedAt: Date.now(), pid: this.state.pid, cards: this.state.cards, notes: this.state.notes, arrows: this.state.arrows, strokes: this.state.strokes, seq: this.state.seq, panelW: this.state.panelW, step: this.state.step, lang: this.state.lang, rules: this.state.rules }));
       }
@@ -1195,7 +1250,10 @@ class Component extends DCLogic {
   savedPids() {
     try {
       return Object.keys(localStorage)
-        .filter((k) => k.indexOf(STORE + ':') === 0 && k !== STORE + ':lang' && k !== STORE + ':queue')
+        // 해석 사본은 참여자가 아니다 / the analysis mirror is stored under the same prefix
+        // and would otherwise be listed as a participant code called "sm:P01"
+        .filter((k) => k.indexOf(STORE + ':') === 0 && k !== STORE + ':lang' && k !== STORE + ':queue'
+          && k.indexOf(STORE + ':sm:') !== 0)
         .map((k) => k.slice((STORE + ':').length)).sort();
     } catch (e) { return []; }
   }
@@ -1428,11 +1486,19 @@ class Component extends DCLogic {
     ]).then((both) => {
       const res = both[0], txr = both[1];
       const st = res && res.ok && res.state;
-      if (!st || this.state.viewPid !== pid) return;
+      if (this.state.viewPid !== pid) return;
+      // 서버에 아무것도 없을 때가 가장 위험하다 / the case that matters MOST is the server
+      // having nothing: that is what a run of failed saves looks like. Checking the local
+      // copy only on the success path skipped exactly the situation it exists for.
+      if (!st) { this.offerLocal(pid, 0); return; }
       const texts = (txr && txr.ok && txr.state && txr.state.texts) || {};
       const tag = (arr) => (arr || []).map((o) => Object.assign({}, o, { sm: true }));
       const notes = tag(st.notes).map((n) => (texts[n.id] !== undefined && !n.text
         ? Object.assign({}, n, { text: texts[n.id] }) : n));
+      // 이 기기에 더 새로운 것이 있으면 알린다 / if this device holds something NEWER than what
+      // came back, say so rather than quietly showing the older one. That gap is exactly
+      // what a failed save looks like from here.
+      this.offerLocal(pid, st.savedAt || 0);
       this.setState((s) => ({
         cards: s.cards.concat(tag(st.cards)),
         notes: (s.notes || []).concat(notes),
@@ -1449,6 +1515,56 @@ class Component extends DCLogic {
         // save. Seeding it with the loaded map instead would skip the migration entirely.
         this._txSaved = '{}';
       });
+    });
+  }
+
+  // 이 기기에 남은 해석 / the analysis this device still holds for a participant
+  localSense(pid) {
+    try {
+      const d = JSON.parse(localStorage.getItem(STORE + ':sm:' + pid) || 'null');
+      if (!d || !d.state) return null;
+      // 빈 사본은 사본이 아니다 / an EMPTY copy is not a copy. `[]` is truthy, so a stored
+      // state with no objects in it counted as recoverable: every open raised a recovery
+      // offer for nothing, and — because the offer freezes the mirror — that phantom then
+      // stopped the real copy from ever being written. Two bugs, one cause.
+      const st = d.state;
+      const any = (st.cards || []).length + (st.notes || []).length +
+        (st.arrows || []).length + (st.strokes || []).length;
+      return any ? d : null;
+    } catch (e) { return null; }
+  }
+
+  // 서버 것보다 새로우면 되살릴지 묻는다 / offer it back when it is ahead of the server's.
+  // 30초는 저장이 오가는 시간 / the 30s margin is ordinary save latency, not a difference.
+  offerLocal(pid, remoteAt) {
+    const d = this.localSense(pid);
+    if (!d || !d.savedAt) return;
+    if (d.savedAt <= (remoteAt || 0) + 30000) return;
+    this.setState({ recover: { pid: pid, at: d.savedAt, cards: (d.state.cards || []).length } });
+  }
+
+  restoreLocal() {
+    const r = this.state.recover;
+    if (!r) return;
+    const d = this.localSense(r.pid);
+    if (!d) { this.setState({ recover: null }); return; }
+    const texts = d.texts || {};
+    const tag = (arr) => (arr || []).map((o) => Object.assign({}, o, { sm: true }));
+    const notes = tag(d.state.notes).map((n) => (texts[n.id] !== undefined && !n.text
+      ? Object.assign({}, n, { text: texts[n.id] }) : n));
+    this.setState((s) => ({
+      recover: null,
+      cards: s.cards.filter((c) => !c.sm).concat(tag(d.state.cards)),
+      notes: (s.notes || []).filter((n) => !n.sm).concat(notes),
+      arrows: (s.arrows || []).filter((a) => !a.sm).concat(tag(d.state.arrows)),
+      strokes: (s.strokes || []).filter((k) => !k.sm).concat(tag(d.state.strokes)),
+      seq: Math.max(s.seq || 1, d.state.seq || 1)
+    }), () => {
+      // 되살린 것은 곧바로 서버로 / push it straight back, so the recovery is not itself
+      // one tab away from being lost again
+      this._ssig = undefined;
+      this._txSaved = '{}';
+      this.pushSense();
     });
   }
 
@@ -1513,7 +1629,7 @@ class Component extends DCLogic {
     const at = new Date().toISOString();
     const slices = this.sliceState(json, key, stamp, at);
     if (!slices) { this.setState({ senseBig: true }); return; }
-    this.setState({ senseBig: false, senseParts: slices.length });
+    this.setState({ senseBig: false, senseDirty: false, senseParts: slices.length });
     this._head = stamp;      // 방금 쓴 것이 head / what we just wrote IS the head now
     // 조각은 순서대로, 그러나 기다리지 않는다 / the slices go in order and are not awaited:
     // the response is unreadable under no-cors anyway. A group is only READ once every
@@ -1666,6 +1782,22 @@ class Component extends DCLogic {
       size = Math.floor(size / 2);
     }
     return null;
+  }
+
+  /* 해석 내려받기 / the analysis as a file she keeps. Everything else here depends on the
+     sheet, the deployment, or somebody else's session; this does not. */
+  downloadSense() {
+    const pid = this.state.viewPid;
+    if (!pid) return;
+    const blob = new Blob([JSON.stringify({
+      participant: pid, savedAt: Date.now(), app: 'llm-rules-workshop',
+      state: this.senseState(), texts: this.txMap()
+    }, null, 2)], { type: 'application/json' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = pid + '-analysis-' + new Date().toISOString().slice(0, 10) + '.json';
+    a.click();
+    URL.revokeObjectURL(a.href);
   }
 
   // ── 참여자 항목 숨김 · 설명 / hide a record, and say whose it is ──────────
@@ -3303,11 +3435,23 @@ class Component extends DCLogic {
       backLabel: viewing ? t.backList : t.prev,
       onBack: viewing ? () => this.backToRoster() : () => this.setState({ step: 1, tab: 'flow' }),
       isLoggedIn: this.state.step > 0 || viewing,
-      showSync: this.state.step > 0 && !RO,
-      syncLabel: this.isDemo() ? t.syncDemo : !this.syncUrl() ? t.syncLocal : this.state.loadingRemote ? t.syncLoading : this.state.sync === 'saved' ? t.syncSaved : this.state.sync === 'offline' ? t.syncOffline : this.state.sync ? t.syncPending : t.syncReady,
-      syncColor: this.isDemo() ? '#8a6a1f' : !this.syncUrl() ? '#8a6a1f' : this.state.sync === 'saved' ? '#5b7a5e' : this.state.sync === 'offline' ? '#b03f34' : '#98958c',
+      // 해석 중에도 저장 상태를 보인다 / the save indicator was hidden for the whole of
+      // analysis mode, so hours of work gave no signal about whether any of it was reaching
+      // the sheet. That is not a thing to leave invisible.
+      showSync: (this.state.step > 0 && !RO) || viewing,
+      // 해석 중에는 해석의 저장 상태를 보인다 / in analysis mode the indicator reports the
+      // ANALYSIS record, which is the thing being written then
+      syncLabel: viewing
+        ? (this.state.conflict ? t.syncPaused : this.state.senseBig ? t.syncFailed
+           : this.state.senseDirty ? t.syncPending : t.syncSaved)
+        : this.isDemo() ? t.syncDemo : !this.syncUrl() ? t.syncLocal : this.state.loadingRemote ? t.syncLoading : this.state.sync === 'saved' ? t.syncSaved : this.state.sync === 'offline' ? t.syncOffline : this.state.sync ? t.syncPending : t.syncReady,
+      syncColor: viewing
+        ? ((this.state.conflict || this.state.senseBig) ? '#b03f34' : this.state.senseDirty ? '#98958c' : '#5b7a5e')
+        : this.isDemo() ? '#8a6a1f' : !this.syncUrl() ? '#8a6a1f' : this.state.sync === 'saved' ? '#5b7a5e' : this.state.sync === 'offline' ? '#b03f34' : '#98958c',
       syncBg: !this.syncUrl() ? '#f7f0dc' : '#f4f2eb',
-      syncDot: this.isDemo() ? '#d0a531' : !this.syncUrl() ? '#d0a531' : this.state.sync === 'saved' ? '#7d9a80' : this.state.sync === 'offline' ? '#c9776c' : '#c9c5ba',
+      syncDot: viewing
+        ? ((this.state.conflict || this.state.senseBig) ? '#c9776c' : this.state.senseDirty ? '#c9c5ba' : '#7d9a80')
+        : this.isDemo() ? '#d0a531' : !this.syncUrl() ? '#d0a531' : this.state.sync === 'saved' ? '#7d9a80' : this.state.sync === 'offline' ? '#c9776c' : '#c9c5ba',
       isStep1: this.state.step === 1,
       emptyA: this.state.step === 1 ? t.empty1 : t.empty2A,
       emptyB: this.state.step === 1 ? t.empty1b : t.empty2B,
@@ -3344,6 +3488,7 @@ class Component extends DCLogic {
       doFinish: () => this.finish(),
       onHistory: () => this.openHistory(),
       onMark: () => this.saveCheckpoint(),
+      onDownSense: () => this.downloadSense(),
       markLabel: this.state.marked ? (t.markedPre + this.state.marked) : t.markBtn,
       onHistWho: () => this.openHistory('board'),
       onHistMine: () => this.openHistory('sense'),
@@ -3352,6 +3497,12 @@ class Component extends DCLogic {
       histMineBg: this.state.histWho === 'sense' ? '#1b1a17' : '#fff',
       histMineFg: this.state.histWho === 'sense' ? '#faf8f3' : '#1b1a17',
       histSub: this.state.histWho === 'sense' ? t.histSubMine : t.histSubTheirs,
+      recover: !!this.state.recover,
+      recoverBody: this.state.recover
+        ? (new Date(this.state.recover.at).toLocaleString() + t.recoverMid + this.state.recover.cards + t.recoverEnd)
+        : '',
+      onRecover: () => this.restoreLocal(),
+      onDropRecover: () => this.setState({ recover: null }),
       conflict: !!this.state.conflict,
       conflictBody: t.conflictBody2,
       onTakeTheirs: () => this.takeTheirs(),

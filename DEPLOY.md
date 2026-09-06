@@ -213,6 +213,31 @@ wrote — a scan that skipped the wrong row would look fine in every browser che
 an analysis record silently. Run all three: `test_ui_scale.js`, `test_server.js`,
 `browser/e2e.js`.
 
+## Not losing the analysis
+
+Three things stand between a coauthor and a lost session, because one had almost lost one:
+
+1. **A copy on the device.** The analysis mirrors to `localStorage` under `<STORE>:sm:<pid>`
+   on every change — transcripts included — exactly as a participant's board always has.
+   Reopening compares it against what the server returned and offers it back when it is
+   genuinely ahead (a 30s margin covers ordinary save latency); restoring pushes straight
+   back, so the recovery is not itself one tab from being lost.
+2. **A visible save state.** The indicator was hidden for the whole of analysis mode, which
+   is most of why a near-loss could go unnoticed. It now reports the analysis record —
+   saving, saved, paused (conflict), not saved (too large) — and the tab will not close
+   while any of that is outstanding.
+3. **A file she owns.** ↓ 해석 파일 downloads the analysis as JSON, transcripts included,
+   depending on neither the sheet nor the deployment nor anyone else's session.
+
+Two traps worth remembering, both found by testing the failure rather than the success:
+
+- `[]` is truthy, so an empty stored state read as *recoverable*. Every open raised a
+  recovery offer for nothing — and since an outstanding offer freezes the mirror, that
+  phantom then stopped the real copy from ever being written.
+- Opening a record is empty for a moment while the layer loads. Writing that moment through
+  overwrote the copy with nothing: the recovery worked right up until you reopened the page
+  in order to use it. An empty board never overwrites a stored copy that has content.
+
 ### Compatibility
 
 Three directions, all covered by `tools/test_server.js` against a sheet built only from
