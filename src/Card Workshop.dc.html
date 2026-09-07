@@ -1051,6 +1051,13 @@ class Component extends DCLogic {
       if (e.filename || (e.message && !/^script error/i.test(e.message))) return;
       e.stopImmediatePropagation();
       e.preventDefault();
+      // 번들 배너는 우리보다 먼저 잡는다 / the bundle's own handler is registered at page load,
+      // before this one, so it has already put its red banner on screen by the time we get
+      // here. Take it back down: a cross-origin "Script error." from a JSONP reply is a
+      // failed read, which belongs in the sync indicator, not in a crash banner across the
+      // board. Anything with a real message is a real bug and is left alone.
+      const b = document.getElementById('__bundler_err');
+      if (b && /script error/i.test(b.textContent || '')) b.remove();
       // 표시는 사실대로 / say what happened: the load failed, so do not sit on "loading"
       this.setState({ sync: 'offline', loadingRemote: false });
     };
@@ -1725,6 +1732,9 @@ class Component extends DCLogic {
       if (!this.isView() || !pid || this.state.travel || this.state.conflict) return;
       this.jsonp('head=' + encodeURIComponent('sm:' + pid)).then((res) => {
         const h = res && res.ok && res.head ? res.head : null;
+        // 답이 이상하면 그만 묻는다 / a deployment that cannot answer this will not answer it
+        // in twenty seconds either. Stop asking rather than failing on a loop.
+        if (!res || (res.head === undefined && res.ok)) { clearInterval(this._hw); return; }
         if (!h || !this._head) return;
         // 우리가 쓴 것보다 최신이면 남이 쓴 것 / newer than anything we wrote means somebody
         // else did. Freeze saving rather than racing them for the last word.
@@ -1907,25 +1917,45 @@ class Component extends DCLogic {
   /* 유령이 놓일 자리 / where the ghost belongs: the same board coordinate addCard will use,
      snapped the same way, converted back to CSS px inside the zoomed root. Returning the
      raw pointer plus a constant is what let the two drift apart. */
+  /* 화면 배율은 재서 쓴다 / MEASURE the scale, never assume it.
+     UI 는 로드할 때 한 번 계산한 상수이고 CSS zoom 으로도 쓰인다. 그런데 포인터 좌표와
+     getBoundingClientRect 가 각각 어느 좌표계로 오는지는 브라우저·확대·OS 배율에 따라
+     달라진다. 둘이 어긋나면 커서와 그리는 위치가 통째로 밀린다.
+     UI is a constant computed once at load and also fed to CSS `zoom`. Whether pointer
+     coordinates and getBoundingClientRect come back in the same coordinate space depends
+     on the browser, on page zoom, and on OS scaling — and when they disagree, everything
+     drawn sits at an offset from the cursor. The element knows its own answer: the ratio
+     of its painted width to its layout width IS the effective scale, whatever the browser
+     decided to do. Ask it rather than trusting a number from page-load time. */
+  scaleOf(el) {
+    const w = el.offsetWidth;
+    if (!w) return UI;
+    const s = el.getBoundingClientRect().width / w;
+    return s > 0.2 && s < 5 ? s : UI;      // 말이 되는 값일 때만 / only when it is sane
+  }
+
   ghostAt() {
     const g = this.state.ghost;
     const el = this.canvasRef.current;
     if (!g || !el) return { x: 0, y: 0 };
     const r = el.getBoundingClientRect();
     const z = this.state.zoom;
+    const s = this.scaleOf(el);
     // 스냅은 onMove 에서 이미 끝났다 / the snap already happened on the move; only convert
     const bx = g.bx, by = g.by;
-    if (bx === undefined) return { x: g.x / UI, y: g.y / UI };
+    if (bx === undefined) return { x: g.x / s, y: g.y / s };
     return {
-      x: (r.left / UI) + bx * z + this.state.pan.x,
-      y: (r.top / UI) + by * z + this.state.pan.y
+      x: (r.left / s) + bx * z + this.state.pan.x,
+      y: (r.top / s) + by * z + this.state.pan.y
     };
   }
 
   toCanvas(cx, cy) {
-    const r = this.canvasRef.current.getBoundingClientRect();
+    const el = this.canvasRef.current;
+    const r = el.getBoundingClientRect();
     const z = this.state.zoom;
-    return { x: ((cx - r.left) / UI - this.state.pan.x) / z, y: ((cy - r.top) / UI - this.state.pan.y) / z };
+    const s = this.scaleOf(el);
+    return { x: ((cx - r.left) / s - this.state.pan.x) / z, y: ((cy - r.top) / s - this.state.pan.y) / z };
   }
   fix(v) { return (this.props.snapToGrid ?? true) ? Math.round(v / 24) * 24 : Math.round(v); }
 
@@ -2721,7 +2751,7 @@ class Component extends DCLogic {
       const w = Math.max(TAG_MIN, Math.min(TAG_MAX, d.w0 + (e.clientX - d.sx) / k));
       this.setState((s) => ({ cards: s.cards.map((c) => (c.id === d.id ? Object.assign({}, c, { w: Math.round(w) }) : c)) }));
     } else if (d.kind === 'resize') {
-      this.setState({ panelW: Math.min(940, Math.max(210, d.pw + (e.clientX - d.sx) / UI)) });
+      this.setState({ panelW: Math.min(940, Math.max(210, d.pw + (e.clientX - d.sx) / this.scaleOf(this.canvasRef.current || document.body))) });
     } else if (d.kind === 'draw') {
       const q = this.toCanvas(e.clientX, e.clientY);
       const n = d.pts.length;
@@ -2735,7 +2765,8 @@ class Component extends DCLogic {
       const q = this.toCanvas(e.clientX, e.clientY);
       this.eraseAt(q.x, q.y);
     } else if (d.kind === 'pan') {
-      this.setState({ pan: { x: d.px + (e.clientX - d.sx) / UI, y: d.py + (e.clientY - d.sy) / UI } });
+      const ps = this.scaleOf(this.canvasRef.current || document.body);
+      this.setState({ pan: { x: d.px + (e.clientX - d.sx) / ps, y: d.py + (e.clientY - d.sy) / ps } });
     }
   }
   onUp(e) {

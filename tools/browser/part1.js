@@ -382,6 +382,40 @@ module.exports = async function (browser) {
     await page.close();
   }
 
+  // ------------------------------------------------- 3e-bis. the cursor and the ink agree
+  // 커서와 그려지는 위치가 어긋나면 전부 어긋난다 / if the pointer and what gets drawn disagree,
+  // everything disagrees — the marquee lands away from the drag, cards drop somewhere else.
+  // The scale used to come from a constant computed at page load; it is measured from the
+  // element now, so this checks the agreement holds at each rung of the ladder.
+  say("\nwhat is drawn lands under the cursor, at every UI scale");
+  for (const [w, h] of [[2560, 1440], [1700, 1000], [1366, 768]]) {
+    const { page, errors } = await boot(browser, { width: w, height: h });
+    await toStep1(page, "ALN");
+    const cb = await (await page.$('div[style*="radial-gradient"]')).boundingBox();
+    const sx = cb.x + cb.width * 0.45, sy = cb.y + cb.height * 0.5;
+    await page.mouse.move(sx, sy);
+    await page.mouse.down();
+    await page.mouse.move(sx + 150, sy + 110, { steps: 6 });
+    await page.waitForTimeout(120);
+    const m = await page.evaluate(() => {
+      const d = [...document.querySelectorAll("div")].find((x) => x.style.position === "absolute"
+        && (x.style.border || "").includes("oklch(0.51 0.08 253)"));
+      if (!d) return null;
+      const r = d.getBoundingClientRect();
+      return { x: r.x, y: r.y, w: r.width, h: r.height };
+    });
+    await page.mouse.up();
+    check(m !== null, `${w}x${h}: a marquee is drawn`);
+    check(m && Math.abs(m.x - sx) < 2 && Math.abs(m.y - sy) < 2,
+      `${w}x${h}: it starts where the drag started`,
+      m ? ` (off by ${Math.round(m.x - sx)},${Math.round(m.y - sy)})` : "");
+    check(m && Math.abs(m.w - 150) < 3 && Math.abs(m.h - 110) < 3,
+      `${w}x${h}: and is the size of the drag`,
+      m ? ` (${Math.round(m.w)}x${Math.round(m.h)} for 150x110)` : "");
+    check(errors.length === 0, `${w}x${h}: no console errors`, errors.length ? ` (${errors[0]})` : "");
+    await page.close();
+  }
+
   // ------------------------------------------------- 3f. arrows to anything
   say("\narrows attach to cards, notes and empty space");
   {

@@ -374,6 +374,11 @@ module.exports = async function (browser) {
       const m = document.body.innerText.match(/오프라인|저장됨|저장 중|연결됨|불러오는 중/);
       return m ? m[0] : "?";
     })) === "오프라인", "with the indicator saying offline, not stuck on loading");
+    // 번들 배너는 우리보다 먼저 잡는다 / the bundle's own handler is registered first and had
+    // already painted "[bundle] Script error." across the bottom of the board. Suppressing
+    // our own propagation was never going to be enough; the banner has to come back down.
+    check(await page.evaluate(() => !document.getElementById("__bundler_err")),
+      "and no crash banner is left on the board");
     await page.close();
 
     // 진짜 오류는 그대로 드러나야 한다 / a real error must still surface, or this is a gag

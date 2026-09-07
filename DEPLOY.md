@@ -213,6 +213,15 @@ wrote — a scan that skipped the wrong row would look fine in every browser che
 an analysis record silently. Run all three: `test_ui_scale.js`, `test_server.js`,
 `browser/e2e.js`.
 
+## Pointer maths: measure, never assume
+
+Every conversion between the screen and the board asks `scaleOf(el)` — the element's
+painted width over its layout width. That ratio IS the effective scale, whatever the
+browser did with CSS `zoom`, page zoom or OS scaling. It used to divide by `UI`, a constant
+computed once at page load: correct whenever the two agreed, and silently offset by a fixed
+amount whenever they did not, which is what "the drag square is above where I'm dragging"
+looks like. `UI` remains the fallback when the measurement is nonsense.
+
 ## Not losing the analysis
 
 Three things stand between a coauthor and a lost session, because one had almost lost one:
@@ -302,6 +311,12 @@ Compatibility, both directions, checked in part3 against the real server: an old
 is stored and returned unchanged (so a colleague still working in a tab from the previous
 build is unaffected by deploying this), and a record this build sliced across rows reads
 back as one plain state (so that colleague can also open what this build wrote).
+
+A JSONP reply that is not valid JS — an Apps Script error page, typically — throws
+cross-origin as an opaque `Script error.`, and the bundle's own handler paints a red
+`[bundle] Script error.` banner across the board before ours ever runs. Suppressing our own
+propagation was never enough: the handler removes that banner and puts the truth in the
+sync indicator instead. Anything with a real message is a real bug and is left alone.
 
 ⚠ **The client checks the deployment's `VERSION` and says so when it is old.** This is the
 failure that prompted it: a new client slices a record across rows, an old deployment cannot

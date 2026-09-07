@@ -108,11 +108,18 @@ for (const UI of [1, 1.35])
 
 // ---- 4. the patch is actually present ----
 console.log("\npatch sites");
+// 배율은 재서 쓴다 / the scale is MEASURED now, not taken from a constant computed at page
+// load. Whether pointer coordinates and getBoundingClientRect arrive in the same space
+// depends on the browser, on page zoom and on OS scaling; when they disagree, everything
+// drawn sits at an offset from the cursor. The element's painted-over-layout width is the
+// effective scale whatever the browser decided, so every conversion asks it.
 [
-  ["toCanvas divides by UI", "((cx - r.left) / UI - this.state.pan.x) / z"],
-  ["panel resize divides by UI", "d.pw + (e.clientX - d.sx) / UI"],
-  ["pan divides by UI", "d.px + (e.clientX - d.sx) / UI"],
-  ["ghost converts from the snapped board coordinate", "(r.left / UI) + bx * z + this.state.pan.x"],
+  ["toCanvas measures the scale", "((cx - r.left) / s - this.state.pan.x) / z"],
+  ["panel resize measures it too", "d.pw + (e.clientX - d.sx) / this.scaleOf("],
+  ["pan measures it too", "d.px + (e.clientX - d.sx) / ps"],
+  ["ghost converts from the snapped board coordinate", "(r.left / s) + bx * z + this.state.pan.x"],
+  ["and the measurement comes from the element itself", "el.getBoundingClientRect().width / w"],
+  ["with UI as the fallback when the answer is nonsense", "s > 0.2 && s < 5 ? s : UI"],
   ["drop reuses the ghost's own coordinate", "d.bx !== undefined ? d.bx :"],
   ["root applies zoom", "zoom:{{ ui }}"],
   ["root compensates height", "height:calc(100vh / {{ ui }})"],
