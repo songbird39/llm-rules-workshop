@@ -661,7 +661,7 @@ const SERVER_MIN = '2026-09-07d';
 // screen, so anyone reporting a problem can read it off without opening anything — "it does
 // not load" is a very different report from someone on last week's page than from someone
 // on today's. Bump it with any change worth telling apart.
-const APP_VERSION = '2026-09-07f';
+const APP_VERSION = '2026-09-08b';
 // 분석 메모는 두 종류 / two kinds of note in analysis mode, told apart by colour: the
 // gold one is the admin's own remark and matches the rest of the sensemaking layer;
 // the slate one holds transcript, which is somebody else's words, not the admin's.
@@ -1955,8 +1955,6 @@ class Component extends DCLogic {
     this.setState({ rosterMsg: 'loading' });
     this.jsonp('list=1').then((res) => {
       if (!this.state.admin) return;
-      const ver = (res && res.version) || '';
-      this.setState({ oldServer: !ver || ver < SERVER_MIN });
       if (res && res.ok && res.participants) {
         // 배포가 밀린 백엔드 대비 / a backend that has not been redeployed yet does not know
         // about mt: rows and hands them back as if they were participants. Filter them
@@ -3194,7 +3192,19 @@ class Component extends DCLogic {
         resolve(v);
       };
       const timer = setTimeout(() => finish(null), 9000);
-      window[cb] = (res) => finish(res || null);
+      // 어느 응답이든 서버 판을 알려 준다 / EVERY reply carries the deployment's version, so
+      // read it from every reply. Checking only when the roster loads meant the warning
+      // stayed on screen after a redeploy had already fixed it, which is its own small
+      // betrayal: the banner said "out of date" at a server that was current.
+      this._noteVersion = (res) => {
+        // 실패한 요청으로는 판단하지 않는다 / a failed or timed-out read says nothing about the
+        // deployment. Only a real answer is evidence — and every real answer from a current
+        // deployment carries a version, so its ABSENCE on one is what "old" looks like.
+        if (!res || !res.ok) return;
+        const stale = !res.version || res.version < SERVER_MIN;
+        if (!!this.state.oldServer !== stale) this.setState({ oldServer: stale });
+      };
+      window[cb] = (res) => { this._noteVersion(res); finish(res || null); };
       s.onerror = () => finish(null);
       s.src = url + (url.indexOf('?') < 0 ? '?' : '&') + query + '&callback=' + cb;
       document.head.appendChild(s);

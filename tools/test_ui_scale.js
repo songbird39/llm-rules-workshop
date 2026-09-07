@@ -771,6 +771,15 @@ console.log("\nthe loading gate");
   // 하루에 여러 번 고칠 수 있다 / more than one change can happen in a day, so the build is a
   // date plus a letter — a date alone cannot tell this morning's page from this evening's
   check(/const APP_VERSION = '\d{4}-\d{2}-\d{2}[a-z]?'/.test(src), "the page knows which build it is");
+  // 배포한 뒤에도 경고가 남아 있으면 안 된다 / the warning must clear itself once the server is
+  // fixed. Checking only at roster load left it on screen accusing a current deployment.
+  check(/this\._noteVersion = \(res\) =>/.test(doc), "every reply's version is read, not just the roster's");
+  check(/if \(!res \|\| !res\.ok\) return;/.test(doc),
+    "a failed read is not evidence about the deployment either way");
+  check(/const stale = !res\.version \|\| res\.version < SERVER_MIN;/.test(doc),
+    "and a real answer with no version at all is what an old deployment looks like");
+  check(/window\[cb\] = \(res\) => \{ this\._noteVersion\(res\); finish/.test(doc),
+    "so the banner clears itself after a redeploy");
   // 클라이언트가 요구하는 서버 판 / the server the client needs, and Code.gs's own claim, must
   // not drift apart: if they do, the app cries "out of date" at a deployment that is current
   {

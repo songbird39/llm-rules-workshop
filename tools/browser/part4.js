@@ -609,6 +609,24 @@ module.exports = async function (browser) {
       "and told exactly what to do about it");
     check(await page.evaluate(() => document.body.innerText.includes("P9")),
       "while the roster still works, since reading mostly does");
+    // 고치고 나면 저절로 사라져야 한다 / once the deployment is fixed the warning must go by
+    // itself. It used to be read only when the roster loaded, so it stayed on screen
+    // accusing a server that had already been redeployed — which is how a correct deploy
+    // came to look like a failed one.
+    await page.unroute("**/macros/s/**");
+    await page.route("**/macros/s/**", async (route) => {
+      const u = new URL(route.request().url());
+      if (route.request().method() === "POST") return route.fulfill({ status: 200, body: "{}" });
+      const cb = u.searchParams.get("callback");
+      const out = u.searchParams.get("list")
+        ? { ok: true, version: SERVER_VERSION, participants: [{ participant: "P9", rows: 3, submits: 1, lastAt: "2026-08-29T10:00:00Z" }] }
+        : { ok: true, version: SERVER_VERSION, state: null };
+      return route.fulfill({ status: 200, contentType: "application/javascript", body: cb + "(" + JSON.stringify(out) + ");" });
+    });
+    await page.getByText("새로고침", { exact: false }).click();
+    await page.waitForTimeout(1400);
+    check(!(await page.evaluate(() => document.body.innerText.includes("오래되었습니다"))),
+      "and it clears itself once the deployment is current, without a page reload");
     check(errors.length === 0, "no console errors", errors.length ? ` (${errors[0]})` : "");
     await page.close();
   }
