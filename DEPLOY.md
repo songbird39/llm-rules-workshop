@@ -213,6 +213,26 @@ wrote — a scan that skipped the wrong row would look fine in every browser che
 an analysis record silently. Run all three: `test_ui_scale.js`, `test_server.js`,
 `browser/e2e.js`.
 
+## If an analysis will not load
+
+**The app failing to read a record is not the record being gone.** Every save appends rows
+and nothing ever deletes them. In order:
+
+1. **Check the sheet.** Filter column B for `sm:<pid>`. Rows there mean the work arrived.
+2. **Deploy the current Code.gs.** The usual cause is exactly this: a new client writes a
+   record across several rows, an old deployment stores them happily and cannot reassemble
+   them on read. Deploying makes it load — nothing needs recovering.
+3. **If you cannot deploy**, File ▸ Download ▸ CSV and run
+   `node tools/rescue.js responses.csv P4113 > P4113-analysis.json`. It does what the server
+   would — newest complete group of slices, joined, transcripts included — and writes the
+   file the app's **↑ 파일에서** button accepts.
+4. **Check the browser that did the work.** If it was on a build with the local mirror,
+   `localStorage['llm-guardrail-workshop-v4:sm:<pid>']` still holds it, and reopening the
+   participant offers it back.
+
+`↓ 해석 파일` and `↑ 파일에서` are a pair on purpose: a download you cannot load back is a
+file you cannot use.
+
 ## Opening a participant is gated
 
 Three fetches — the participant's board, the analysis over it, the transcripts — and the

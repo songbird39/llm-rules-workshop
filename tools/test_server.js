@@ -281,5 +281,54 @@ console.log("\nan old sheet, read by this server and by the previous client");
   check(roster.find((r) => r.participant === "P02").submits === 0, "and counts as no submit, which it was");
 }
 
+console.log("\nthe rescue script reads a record the app cannot");
+{
+  // 앱이 못 읽는 것과 없어진 것은 다르다 / the app failing to READ a record is not the record
+  // being gone. tools/rescue.js does what the server would, straight off a CSV export, so a
+  // deployment that cannot reassemble slices is an inconvenience rather than a loss.
+  const { execFileSync } = require("child_process");
+  const fs2 = require("fs");
+  const os = require("os");
+  const pathm = require("path");
+  const dir = fs2.mkdtempSync(pathm.join(os.tmpdir(), "rescue-"));
+  const file = pathm.join(dir, "responses.csv");
+
+  const st = { savedAt: 1, pid: "sm:P77", step: 2, lang: "ko", rules: [],
+    cards: [{ id: "s1", type: "when", title: "해석 카드", sm: true, src: "a", x: 1, y: 1 }],
+    notes: [{ id: "n7", x: 2, y: 2, text: "", kind: "tx", sm: true, src: "a" }],
+    arrows: [], strokes: [], seq: 9 };
+  const j = JSON.stringify(st);
+  const size = Math.ceil(j.length / 3);
+  const esc = (v) => '"' + String(v).replace(/"/g, '""') + '"';
+  const rows = [["receivedAt", "participant", "kind", "queuedAt", "step", "a", "b", "c", "d", "json"]];
+  for (let i = 0; i < 3; i++) {
+    rows.push(["t", "sm:P77", "sensemaking", "", "2", "", "", "", "", JSON.stringify({
+      participant: "sm:P77", kind: "sensemaking", stamp: 99, part: i, parts: 3,
+      payload: { participant: "sm:P77", chunk: j.slice(i * size, (i + 1) * size) } })]);
+  }
+  // 따옴표와 줄바꿈이 든 전사 / a transcript with quotes and newlines in it, which is what
+  // makes a CSV impossible to split on lines or commas
+  const txt = '그가 "먼저 해 보고" 라고 말했다.\n다음 줄';
+  rows.push(["t", "tx:P77", "transcript", "", "2", "", "", "", "", JSON.stringify({
+    participant: "tx:P77", kind: "transcript", stamp: 98, part: 0, parts: 1,
+    payload: { participant: "tx:P77", chunk: JSON.stringify({ texts: { n7: txt }, cards: [] }) } })]);
+  fs2.writeFileSync(file, rows.map((r) => r.map(esc).join(",")).join("\n"), "utf8");
+
+  let out = "";
+  try {
+    out = execFileSync("node", [pathm.join(__dirname, "rescue.js"), file, "P77"], { encoding: "utf8" });
+  } catch (e) { out = ""; }
+  let got = null;
+  try { got = JSON.parse(out); } catch (e) { got = null; }
+  check(got !== null, "the rescue script produces valid JSON from a raw CSV export");
+  check(got && got.state.cards.length === 1, "with the analysis reassembled from its slices",
+    got ? ` (${got.state.cards.length} cards)` : "");
+  check(got && got.state.notes.length === 1, "and its notes");
+  check(got && got.texts.n7 === txt, "and the transcript intact, quotes and newlines and all");
+  check(got && got.participant === "P77" && got.app === "llm-rules-workshop",
+    "in the shape the app's own import accepts");
+  fs2.rmSync(dir, { recursive: true, force: true });
+}
+
 console.log(failures ? `\n${failures} FAILURE(S)` : "\nall passed");
 process.exit(failures ? 1 : 0);

@@ -77,6 +77,7 @@
           <button onClick="{{ onImg }}" style="padding:5px 9px;border:1px solid #d6d3ca;border-radius:6px;background:#fff;font-size:12.5px;cursor:pointer" style-hover="background:#f1efe8">{{ t.imgBtn }}</button>
           <button onClick="{{ onImgSense }}" style="padding:5px 9px;border:1px dashed oklch(0.62 0.11 62);border-radius:6px;background:#fdfbf5;color:#7a5a1f;font-size:12.5px;cursor:pointer">{{ t.imgSenseBtn }}</button>
           <button onClick="{{ onClearSense }}" style="padding:5px 8px;border:1px solid #e2dfd7;border-radius:6px;background:transparent;color:#98958c;font-size:12.5px;cursor:pointer" style-hover="color:#b03f34">{{ t.clearSenseBtn }}</button>
+          <label title="{{ t.upSenseTip }}" style="padding:5px 9px;border:1px solid #d6d3ca;border-radius:6px;background:#fff;font-size:12.5px;cursor:pointer" style-hover="background:#f1efe8">{{ upLabel }}<input type="file" accept="application/json,.json" onChange="{{ onUpSense }}" style="display:none" /></label>
           <button onClick="{{ onDownSense }}" title="{{ t.downSenseTip }}" style="padding:5px 9px;border:1px solid #d6d3ca;border-radius:6px;background:#fff;font-size:12.5px;cursor:pointer" style-hover="background:#f1efe8">{{ t.downSense }}</button>
           <button onClick="{{ onMark }}" title="{{ t.markTip }}" style="padding:5px 9px;border:1px dashed oklch(0.62 0.11 62);border-radius:6px;background:#fdfbf5;color:#7a5a1f;font-size:12.5px;cursor:pointer">{{ markLabel }}</button>
           <button onClick="{{ onHistory }}" style="padding:5px 9px;border:1px solid #d6d3ca;border-radius:6px;background:#fff;font-size:12.5px;cursor:pointer" style-hover="background:#f1efe8">{{ t.histBtn }}</button>
@@ -860,6 +861,7 @@ const I18N = {
       hiddenNote: '기록은 지워지지 않았습니다. 목록에서만 빠져 있습니다.',
       metaPh: '설명 (누구의 기록인지 적어 두세요)',
       panelHide: '덱 접기', panelShow: '덱 펼치기',
+      upSense: '↑ 파일에서', upSenseTip: '내려받은 해석 JSON 파일을 이 참여자의 해석으로 불러오기', upBad: '읽을 수 없음', upDone: '불러옴 · ',
       downSense: '↓ 해석 파일', downSenseTip: '지금 해석을 JSON 파일로 내려받기 (전사 포함)',
       syncPaused: '저장 멈춤', syncFailed: '저장 실패',
       loadingTitle: '불러오는 중',
@@ -990,6 +992,7 @@ const I18N = {
       hiddenNote: 'Nothing was deleted. These are only out of the list.',
       metaPh: 'Description (who this code belongs to)',
       panelHide: 'Fold the deck away', panelShow: 'Bring the deck back',
+      upSense: '↑ From file', upSenseTip: 'Load a downloaded analysis JSON into this participant', upBad: 'unreadable', upDone: 'loaded · ',
       downSense: '↓ Analysis file', downSenseTip: 'Download the analysis as JSON, transcripts included',
       syncPaused: 'paused', syncFailed: 'not saved',
       loadingTitle: 'Loading',
@@ -1041,7 +1044,7 @@ const I18N = {
 class Component extends DCLogic {
   constructor(props) {
     super(props);
-    this.state = { sync: '', step: 0, lang: 'ko', rules: [], pid: '', loginPid: '', cards: [], notes: [], arrows: [], arrowMode: false, pendingArrow: null, pen: null, strokes: [], selArrow: null, noteMode: false, noteKind: 'memo', panelOff: false, rosterMode: '', histWho: 'board', conflict: null, marked: '', senseDirty: false, recover: null, loading: null, undoDepth: 0, focusNote: null, pan: { x: 0, y: 0 }, zoom: 1, ghost: null, seq: 1, panelW: panelCap(), sel: [], marquee: null, finish: null, tab: 'flow', hist: null, histList: [], travel: null, senseOn: true, admin: false, viewPid: '', roster: [], rosterMsg: '' };
+    this.state = { sync: '', step: 0, lang: 'ko', rules: [], pid: '', loginPid: '', cards: [], notes: [], arrows: [], arrowMode: false, pendingArrow: null, pen: null, strokes: [], selArrow: null, noteMode: false, noteKind: 'memo', panelOff: false, rosterMode: '', histWho: 'board', conflict: null, marked: '', senseDirty: false, recover: null, loading: null, importMsg: '', undoDepth: 0, focusNote: null, pan: { x: 0, y: 0 }, zoom: 1, ghost: null, seq: 1, panelW: panelCap(), sel: [], marquee: null, finish: null, tab: 'flow', hist: null, histList: [], travel: null, senseOn: true, admin: false, viewPid: '', roster: [], rosterMsg: '' };
     this.canvasRef = React.createRef();
     this.drag = null;
   }
@@ -1828,6 +1831,47 @@ class Component extends DCLogic {
       size = Math.floor(size / 2);
     }
     return null;
+  }
+
+  /* 해석 불러오기 / put a downloaded analysis back. 내려받기만 있고 되돌릴 길이 없으면 그 파일은
+     쓸모가 없다 — 시트에서 건져 낸 JSON 도 마찬가지다.
+     A download with no way back in is a file you cannot use. This takes one — the app's own
+     export, or a payload rescued by hand out of the sheet's json column — and puts it on
+     the board, then saves it. It only ever touches the analysis layer; the participant's
+     own board is not in the file and is not disturbed. */
+  importSense(file) {
+    const pid = this.state.viewPid;
+    if (!file || !pid) return;
+    const rd = new FileReader();
+    rd.onload = () => {
+      let d = null;
+      try { d = JSON.parse(String(rd.result)); } catch (e) { d = null; }
+      // 두 모양 다 받는다 / accept both shapes: our export {state, texts}, and a bare state
+      // lifted straight out of a sheet cell
+      const st = d && (d.state && d.state.cards ? d.state : (d.cards ? d : null));
+      if (!st) { this.setState({ importMsg: 'bad' }); return; }
+      const texts = (d && d.texts) || {};
+      const tag = (arr) => (arr || []).map((o) => Object.assign({}, o, { sm: true }));
+      const notes = tag(st.notes).map((n) => (texts[n.id] !== undefined && !n.text
+        ? Object.assign({}, n, { text: texts[n.id] }) : n));
+      this.setState((s) => ({
+        importMsg: '',
+        cards: s.cards.filter((c) => !c.sm).concat(tag(st.cards)),
+        notes: (s.notes || []).filter((n) => !n.sm).concat(notes),
+        arrows: (s.arrows || []).filter((a) => !a.sm).concat(tag(st.arrows)),
+        strokes: (s.strokes || []).filter((k) => !k.sm).concat(tag(st.strokes)),
+        seq: Math.max(s.seq || 1, st.seq || 1),
+        recover: null
+      }), () => {
+        this._ssig = undefined;
+        this._txSaved = '{}';
+        this.pushSense();
+        const n = (st.cards || []).length + (st.notes || []).length;
+        this.setState({ importMsg: String(n) });
+        setTimeout(() => this.setState({ importMsg: '' }), 4000);
+      });
+    };
+    rd.readAsText(file);
   }
 
   /* 해석 내려받기 / the analysis as a file she keeps. Everything else here depends on the
@@ -3586,6 +3630,13 @@ class Component extends DCLogic {
       onHistory: () => this.openHistory(),
       onMark: () => this.saveCheckpoint(),
       onDownSense: () => this.downloadSense(),
+      onUpSense: (e) => {
+        const f = e.target.files && e.target.files[0];
+        e.target.value = '';
+        this.importSense(f);
+      },
+      upLabel: this.state.importMsg === 'bad' ? t.upBad
+        : this.state.importMsg ? (t.upDone + this.state.importMsg) : t.upSense,
       markLabel: this.state.marked ? (t.markedPre + this.state.marked) : t.markBtn,
       onHistWho: () => this.openHistory('board'),
       onHistMine: () => this.openHistory('sense'),

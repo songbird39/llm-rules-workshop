@@ -217,6 +217,84 @@ module.exports = async function (browser) {
     await page.close();
   }
 
+  // ------------------------------------------------- putting a rescued file back
+  // 내려받기만 있고 되돌릴 길이 없으면 그 파일은 쓸모가 없다 / a download with no way back in is
+  // a file you cannot use — and the same goes for anything rescued by hand out of the
+  // sheet. This is the other half of the safety net.
+  say("\na rescued analysis file can be loaded back in");
+  {
+    const EP = "https://script.google.com/macros/s/FAKE/exec";
+    const page = await browser.newPage({ viewport: { width: 1700, height: 1000 } });
+    const errors = [];
+    page.on("pageerror", (e) => errors.push(e.message));
+    const board = {
+      savedAt: Date.now(), pid: "P9", step: 2, lang: "ko", rules: [],
+      cards: [{ id: "c1", type: "act", title: "학습 계획", desc: "", dia: null, collapsed: false, w: 352, x: 300, y: 400 }],
+      notes: [], arrows: [], seq: 5, panelW: 566,
+    };
+    const { srv } = await realServer(page, {
+      seed: (s) => s.post({ participant: "P9", kind: "autosave", payload: { participant: "P9", state: board } }),
+    });
+    await page.goto(APP + "?sync=" + encodeURIComponent(EP), { waitUntil: "load", timeout: 120000 });
+    await page.waitForSelector('input[placeholder="P0000"]', { timeout: 120000 });
+    await page.fill('input[placeholder="P0000"]', "admin");
+    await page.getByText("시작하기", { exact: false }).click();
+    await page.waitForTimeout(900);
+    await page.getByText("P9", { exact: true }).first().click();
+    await page.waitForTimeout(2200);
+
+    const nCards = () => page.evaluate(() => {
+      const L = [...document.querySelectorAll("div")].find((d) => d.style.width === "5000px");
+      return [...L.querySelectorAll(':scope > [data-obj="card"]')].length;
+    });
+    check(await nCards() === 1, "the board opens with no analysis on it", ` (${await nCards()})`);
+
+    // 구조 파일 / the shape tools/rescue.js writes
+    const fs2 = require("fs");
+    const os = require("os");
+    const pathm = require("path");
+    const dir = fs2.mkdtempSync(pathm.join(os.tmpdir(), "imp-"));
+    const file = pathm.join(dir, "P9-analysis.json");
+    fs2.writeFileSync(file, JSON.stringify({
+      participant: "P9", savedAt: Date.now(), app: "llm-rules-workshop",
+      state: {
+        savedAt: Date.now(), pid: "sm:P9", step: 2, lang: "ko", rules: [],
+        cards: [{ id: "s1", type: "when", title: "되살린 카드", desc: "", sm: true, src: "a", x: 900, y: 300 }],
+        notes: [{ id: "n7", x: 900, y: 200, text: "", kind: "tx", sm: true, src: "a" }],
+        arrows: [], strokes: [], seq: 12,
+      },
+      texts: { n7: "되살린 전사" },
+    }), "utf8");
+
+    await page.setInputFiles('input[type="file"]', file);
+    await page.waitForTimeout(2600);
+    check(await nCards() === 2, "loading a file puts the analysis back on the board", ` (${await nCards()})`);
+    check(await page.evaluate(() => {
+      const L = [...document.querySelectorAll("div")].find((d) => d.style.width === "5000px");
+      return [...L.querySelectorAll(':scope > [data-obj="card"] input')].some((i) => i.value === "되살린 카드");
+    }), "with its cards");
+    check(await page.evaluate(() => {
+      const L = [...document.querySelectorAll("div")].find((d) => d.style.width === "5000px");
+      return [...L.querySelectorAll(':scope > [data-obj="note"] textarea')].some((t) => t.value === "되살린 전사");
+    }), "and its transcripts merged back into the notes");
+    check(await page.evaluate(() => document.body.innerText.includes("불러옴")),
+      "and it says how much it loaded");
+    // 그리고 곧바로 서버로 / and straight back to the server, so it is not one tab from gone
+    const saved = srv.get({ participant: "sm:P9" }).state;
+    check(saved && saved.cards.length === 1, "the rescue is saved, not just displayed",
+      saved ? ` (${saved.cards.length})` : " (nothing was pushed)");
+    const tx = srv.get({ participant: "tx:P9" }).state;
+    check(tx && tx.texts && tx.texts.n7 === "되살린 전사", "transcripts included");
+    // 참여자 보드는 파일에 없고 건드려서도 안 된다 / the participant's board is not in the file
+    check(await page.evaluate(() => {
+      const L = [...document.querySelectorAll("div")].find((d) => d.style.width === "5000px");
+      return [...L.querySelectorAll(':scope > [data-obj="card"] input')].some((i) => i.value === "학습 계획");
+    }), "and their own board is untouched by it");
+    check(errors.length === 0, "no console errors", errors.length ? ` (${errors[0]})` : "");
+    fs2.rmSync(dir, { recursive: true, force: true });
+    await page.close();
+  }
+
   // ------------------------------------------------- the loading gate
   // 보드가 먼저, 해석이 나중에 온다 / the board comes back first and the analysis follows. In
   // between the screen looks exactly like a board whose analysis has been lost — alarming
