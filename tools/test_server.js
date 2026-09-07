@@ -281,6 +281,88 @@ console.log("\nan old sheet, read by this server and by the previous client");
   check(roster.find((r) => r.participant === "P02").submits === 0, "and counts as no submit, which it was");
 }
 
+console.log("\nsmlist says who has analysis, and whether it can be read");
+{
+  // "저장은 되는데 안 열린다" 는 눈에 보이지 않는다 / "it saved but will not load" is otherwise
+  // invisible: the rows sit in the sheet and the app shows an empty board. This endpoint is
+  // the difference between "your work is gone" and "your work is here and unreadable".
+  const { post, get } = loadServer();
+  const mk = (pid, n) => ({ savedAt: 1, pid: "sm:" + pid, step: 2, lang: "ko", rules: [],
+    cards: Array.from({ length: n }, (_, i) => ({ id: "s" + i, type: "when", title: "t", sm: true, src: "a", x: 1, y: 1 })),
+    notes: [], arrows: [], strokes: [], seq: 9 });
+
+  // 정상적으로 저장된 참여자 / one saved whole
+  post({ participant: "P01", kind: "autosave", payload: { participant: "P01", state: { cards: [{ id: "c1" }], notes: [] } } });
+  post({ participant: "sm:P01", kind: "sensemaking", payload: { participant: "sm:P01", state: mk("P01", 3) } });
+  post({ participant: "tx:P01", kind: "transcript", payload: { participant: "tx:P01", state: { texts: { n1: "전사" }, cards: [] } } });
+
+  // 조각이 하나 빠진 참여자 / one whose slices never all arrived — saved, unreadable
+  const j = JSON.stringify(mk("P02", 5));
+  const size = Math.ceil(j.length / 3);
+  post({ participant: "sm:P02", kind: "sensemaking", stamp: 7, part: 0, parts: 3,
+         payload: { participant: "sm:P02", chunk: j.slice(0, size) } });
+  post({ participant: "sm:P02", kind: "sensemaking", stamp: 7, part: 2, parts: 3,
+         payload: { participant: "sm:P02", chunk: j.slice(2 * size) } });
+
+  // 해석을 한 적 없는 참여자 / one who simply has no analysis
+  post({ participant: "P03", kind: "autosave", payload: { participant: "P03", state: { cards: [], notes: [] } } });
+
+  const list = get({ smlist: "1" }).analyses;
+  check(list.length === 2, "only participants with an analysis record are listed",
+    ` (${list.map((r) => r.participant)})`);
+  const a1 = list.find((r) => r.participant === "P01");
+  check(a1 && a1.readable === true, "one that reads back is marked readable");
+  check(a1 && a1.cards === 3 && a1.transcripts === 1, "with what is in it", a1 ? ` (${a1.cards} cards, ${a1.transcripts} transcripts)` : "");
+  const a2 = list.find((r) => r.participant === "P02");
+  check(a2 && a2.rows === 2 && a2.readable === false,
+    "and one whose rows are there but cannot be assembled is marked unreadable",
+    a2 ? ` (${a2.rows} rows, readable=${a2.readable})` : "");
+  check(!list.some((r) => r.participant === "P03"), "someone with no analysis is not listed");
+  // 이게 핵심 / this is the whole point of the endpoint
+  check(a2 && a2.rows > 0 && !a2.readable,
+    "so 'saved but will not load' is distinguishable from 'never saved'");
+}
+
+console.log("\nan empty record does not bury a full one");
+{
+  // 실제로 일어난 일 / this happened: a full analysis was replaced by an empty record, and
+  // the app then showed an empty board over work that was still sitting in the sheet.
+  // Reading is where that becomes survivable.
+  const { post, get } = loadServer();
+  const full = { savedAt: 1, pid: "sm:P9", step: 2, lang: "ko", rules: [],
+    cards: [{ id: "s1", type: "when", title: "실제 작업", sm: true, src: "a", x: 1, y: 1 },
+            { id: "s2", type: "when", title: "더", sm: true, src: "a", x: 2, y: 2 }],
+    notes: [{ id: "n1", x: 1, y: 1, text: "메모", sm: true, src: "a" }],
+    arrows: [], strokes: [], seq: 9 };
+  const empty = { savedAt: 2, pid: "sm:P9", step: 2, lang: "ko", rules: [],
+    cards: [], notes: [], arrows: [], strokes: [], seq: 9 };
+  post({ participant: "sm:P9", kind: "sensemaking", payload: { participant: "sm:P9", state: full } });
+  post({ participant: "sm:P9", kind: "sensemaking", payload: { participant: "sm:P9", state: empty } });
+  post({ participant: "sm:P9", kind: "sensemaking", payload: { participant: "sm:P9", state: empty } });
+  const back = get({ participant: "sm:P9" }).state;
+  check(back && back.cards.length === 2 && back.notes.length === 1,
+    "the last record with something in it is what comes back",
+    back ? ` (${back.cards.length} cards)` : " (nothing)");
+
+  // 전사도 같다 / the same for transcripts, which are empty-able in their own way
+  post({ participant: "tx:P9", kind: "transcript", payload: { participant: "tx:P9", state: { texts: { n1: "전사 본문" }, cards: [] } } });
+  post({ participant: "tx:P9", kind: "transcript", payload: { participant: "tx:P9", state: { texts: {}, cards: [] } } });
+  const tx = get({ participant: "tx:P9" }).state;
+  check(tx && tx.texts && tx.texts.n1 === "전사 본문", "and an emptied transcript record does not bury the text");
+
+  // 일부러 지운 것은 지워진 채로 / but a deliberate clear stays cleared, or 해석 지우기 would
+  // be a button that does nothing
+  post({ participant: "sm:P9", kind: "sensemaking", payload: { participant: "sm:P9", state: Object.assign({}, empty, { cleared: true }) } });
+  const after = get({ participant: "sm:P9" }).state;
+  check(after && (after.cards || []).length === 0, "an explicit clear is honoured");
+
+  // 처음부터 빈 참여자는 빈 채로 / someone whose analysis has genuinely never held anything
+  // still gets an answer rather than null
+  const { post: p2, get: g2 } = loadServer();
+  p2({ participant: "sm:P8", kind: "sensemaking", payload: { participant: "sm:P8", state: empty } });
+  check(g2({ participant: "sm:P8" }).state !== null, "an always-empty analysis still returns a state");
+}
+
 console.log("\nthe rescue script reads a record the app cannot");
 {
   // 앱이 못 읽는 것과 없어진 것은 다르다 / the app failing to READ a record is not the record

@@ -21,7 +21,7 @@
 // across several rows and an old deployment cannot reassemble them, so analysis saves
 // appear to work and then will not load. The client compares this against what it needs
 // and says so plainly instead of leaving you to guess.
-var VERSION = '2026-09-05';
+var VERSION = '2026-09-07d';
 
 var SHEET_NAME = 'responses';
 // 관리자 해석(sensemaking) 레코드는 'sm:' 접두어가 붙은 별도 키로 저장한다.
@@ -96,6 +96,8 @@ function doGet(e) {
     out = { ok: true, participants: roster_() };
   } else if (p.versions) {
     out = { ok: true, participant: p.versions, versions: versions_(p.versions, Number(p.every) || 120000) };
+  } else if (p.smlist) {
+    out = { ok: true, analyses: smList_() };
   } else if (p.head) {
     out = { ok: true, participant: p.head, head: head_(p.head) };
   } else if (p.row) {
@@ -149,9 +151,16 @@ function roster_() {
     // session started — the sheet is append-only, so nothing earlier can appear later
     if (ts && (!rec.firstAt || ts < rec.firstAt)) rec.firstAt = ts;
   }
+  // 해석 현황을 같이 실어 보낸다 / carry the analysis situation along with the roster, so the
+  // list can say who has analysis and how much of it without a second round trip — and so
+  // "저장은 됐는데 안 열린다" is visible in the list rather than only after opening a record.
+  var an = {};
+  smList_().forEach(function (a) { an[a.participant] = a; });
+
   var out = order.map(function (pid) {
     var r = map[pid];
     var m = metaRow[pid] ? readMeta_(sh, metaRow[pid]) : {};
+    var a = an[pid] || null;
     return {
       participant: r.participant,
       rows: r.rows,
@@ -161,7 +170,13 @@ function roster_() {
       // 숨김은 목록에서만 빠진다 / hidden only drops it out of the default list; every
       // row it ever wrote is still on the sheet and the client can bring it back
       hidden: !!m.hidden,
-      desc: String(m.desc || '')
+      desc: String(m.desc || ''),
+      // 해석 / the analysis over this participant's board: how many objects are in it, how
+      // many saves it took, and whether the newest one can actually be read back
+      smRows: a ? a.rows : 0,
+      smReadable: a ? a.readable : false,
+      smCount: a ? (a.cards + a.notes) : 0,
+      smTx: a ? a.transcripts : 0
     };
   });
   // 세션이 열린 순서대로 / in the order the sessions happened, oldest first: the roster
@@ -217,6 +232,46 @@ function versions_(pid, everyMs) {
   }
   out.reverse();
   return out;
+}
+
+/** 해석이 저장된 참여자 전부 / every participant with an analysis record, and whether it can
+ *  actually be READ back. "저장은 되는데 안 열린다" 를 눈으로 확인하는 창구.
+ *
+ *  This exists because "it saved but will not load" is otherwise invisible: the rows are
+ *  right there in the sheet and the app shows nothing. For each sm: key it reports how many
+ *  rows carry it, when the last one arrived, and — the part that matters — whether the
+ *  newest group of slices is COMPLETE and parses. `readable:false` with `rows>0` means the
+ *  work is on the sheet and something is wrong with reading it, not with the saving.
+ */
+function smList_() {
+  var sh = sheet_();
+  var last = sh.getLastRow();
+  if (last < 2) return [];
+  var vals = sh.getRange(2, 1, last - 1, 2).getValues();   // receivedAt, participant
+  var seen = {}, order = [];
+  for (var i = 0; i < vals.length; i++) {
+    var key = String(vals[i][1] || '').trim();
+    if (key.indexOf(SENSE_PREFIX) !== 0) continue;
+    var pid = key.slice(SENSE_PREFIX.length);
+    if (!seen[pid]) { seen[pid] = { participant: pid, rows: 0, lastAt: null }; order.push(pid); }
+    seen[pid].rows++;
+    var ts = vals[i][0];
+    if (ts && (!seen[pid].lastAt || ts > seen[pid].lastAt)) seen[pid].lastAt = ts;
+  }
+  return order.map(function (pid) {
+    var r = seen[pid];
+    var st = latestState_(SENSE_PREFIX + pid);
+    var tx = latestState_(TX_PREFIX + pid);
+    return {
+      participant: pid,
+      rows: r.rows,
+      lastAt: r.lastAt ? new Date(r.lastAt).toISOString() : null,
+      readable: !!st,
+      cards: st ? (st.cards || []).length : 0,
+      notes: st ? (st.notes || []).length : 0,
+      transcripts: tx && tx.texts ? Object.keys(tx.texts).length : 0
+    };
+  });
 }
 
 /** The newest complete record for a key, as {stamp, at} — or null.
@@ -278,6 +333,19 @@ function stateAtRow_(row) {
   }
 }
 
+/** 빈 기록인가 / is this record empty — nothing in it at all?
+ *  빈 것이 가득 찬 것을 덮어써 버린 일이 실제로 있었다 / an empty record really did land on top of
+ *  a full one and the newest save then held nothing. Reading is where that becomes
+ *  recoverable: an empty record is skipped in favour of an older one that has something,
+ *  unless it was an explicit "해석 지우기", which sets `cleared`.
+ */
+function isEmptyState_(st) {
+  if (!st || st.cleared) return false;
+  if (st.texts) return Object.keys(st.texts).length === 0;
+  return ((st.cards || []).length + (st.notes || []).length +
+          (st.arrows || []).length + (st.strokes || []).length) === 0;
+}
+
 /** Newest saved board state for a participant, or null.
  *  Handles both shapes: a whole state in one row, and a state sliced across several rows
  *  that share a stamp. Scans newest-first and returns the first COMPLETE record found, so
@@ -307,6 +375,7 @@ function latestState_(pid) {
     } catch (err2) {}
   }
 
+  var empties = 0, firstEmpty = null;
   for (var i = pidCol.length - 1; i >= 0; i--) {             // newest first
     if (String(pidCol[i][0]) !== String(pid)) continue;
     // 이중 안전장치 / belt and braces: even if a sensemaking row were somehow written
@@ -328,14 +397,19 @@ function latestState_(pid) {
         }
         if (!whole) continue;                      // 조각이 빈다 / an incomplete save, skip it
         var st2 = JSON.parse(joined);
+        // 빈 것은 건너뛴다 / skip an empty one and keep looking for something with content
+        if (st2 && isEmptyState_(st2)) { empties++; if (!firstEmpty) firstEmpty = st2; continue; }
         if (st2 && (st2.cards || st2.texts)) return st2;
         continue;
       }
       var st = body && body.payload && body.payload.state;
+      if (st && isEmptyState_(st)) { empties++; if (!firstEmpty) firstEmpty = st; continue; }
       if (st && (st.cards || st.texts)) return st;
     } catch (err) {}
   }
-  return null;
+  // 전부 비어 있었다면 빈 것을 돌려준다 / if every record really is empty, hand one back — this
+  // is a participant whose analysis has genuinely never had anything in it
+  return firstEmpty;
 }
 
 function sheet_() {

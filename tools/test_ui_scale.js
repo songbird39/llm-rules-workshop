@@ -598,6 +598,10 @@ console.log("\ntwo kinds of analysis note, sized by hand and tied to a step");
   check(/const TX_INK = 'oklch\(0\.52 0\.055 250\)'/.test(src), "transcript ink is defined once");
   check(/font: tx \? 'ui-monospace/.test(doc), "and transcript is set in mono, not the UI face");
   check(/noteKind: 'tx'/.test(doc), "the transcript tool arms its own note kind");
+  // 전사는 말이 들어간다 / transcript holds speech, so it starts as wide as the activity tag it
+  // belongs to; a memo's width is right for a remark and far too narrow for a quotation
+  check(/text: '', kind: 'tx', w: TAG_W, link: tagId/.test(doc), "a step's transcript starts tag-wide");
+  check(/s\.noteKind === 'tx' \? \{ w: TAG_W \} : \{\}/.test(doc), "and so does one drawn by hand");
   check(/kind: s\.noteKind \|\| 'memo'/.test(doc), "and a plain click still makes a plain memo");
 
   // 크기를 잡으면 늘어나기를 멈춘다 / a hand-set size must STOP the auto-grow, or the note
@@ -608,6 +612,12 @@ console.log("\ntwo kinds of analysis note, sized by hand and tied to a step");
   // which is exactly why this cannot be data-manual
   check(!/data-\w+="\{\{/.test(doc), "no interpolated data-* attribute anywhere in the markup");
   check(/ov: n\.manual \? 'auto' : 'hidden'/.test(doc), "a hand-sized note scrolls rather than clipping");
+  // 갇히지는 않는다 / but the writing is never trapped in it: a box someone sized by hand
+  // still opens downward when the text outgrows it, and only the grip makes it smaller
+  check(/const spill = ta\.scrollHeight - ta\.clientHeight;/.test(doc),
+    "a hand-sized note grows downward when the text overflows");
+  check(/if \(spill > 1\) over\[n\.id\] = Math\.round\(\(n\.h \|\| NOTE_MIN_H\) \+ spill\)/.test(doc),
+    "growing only, never shrinking — that stays the grip's job");
   // 손잡이와 ✕ 가 같은 모서리를 쓰고 있었다 / the grip and the delete button shared one corner
   check(/ctrlPad: \(RO && n\.sm\) \? '14px' : '0'/.test(doc),
     "the control row stops short of the resize grip");
@@ -758,8 +768,51 @@ console.log("\nthe loading gate");
   check(/clearTimeout\(this\._loadGuard\)/.test(doc), "with the guard cleared on the way out");
   // 판 번호는 눈에 보여야 한다 / the build has to be readable without opening anything: "it
   // does not load" means something different from someone on last week's page
-  check(/const APP_VERSION = '\d{4}-\d{2}-\d{2}'/.test(src), "the page knows which build it is");
+  // 하루에 여러 번 고칠 수 있다 / more than one change can happen in a day, so the build is a
+  // date plus a letter — a date alone cannot tell this morning's page from this evening's
+  check(/const APP_VERSION = '\d{4}-\d{2}-\d{2}[a-z]?'/.test(src), "the page knows which build it is");
+  // 클라이언트가 요구하는 서버 판 / the server the client needs, and Code.gs's own claim, must
+  // not drift apart: if they do, the app cries "out of date" at a deployment that is current
+  {
+    const need = (src.match(/const SERVER_MIN = '([^']+)'/) || [])[1];
+    const has = (gs.match(/var VERSION = '([^']+)'/) || [])[1];
+    check(!!need && !!has && need <= has,
+      "Code.gs is at least the version the client asks for", ` (needs ${need}, is ${has})`);
+  }
   check(/\('v' \+ APP_VERSION/.test(doc), "and says so where the step label goes on sign-in");
+}
+
+// ---- 6q. an empty analysis must never land on a full one ----
+console.log("\nnothing writes an empty analysis over a real one");
+{
+  // 실제로 일어난 일 / this actually happened: a full analysis — 35 cards, 26 notes — was
+  // replaced by an empty record, twice, because the board is empty until the layer loads
+  // and anything at all can schedule a save in that window.
+  check(/if \(!this\._senseLoaded\) return;/.test(doc),
+    "nothing is written before the analysis has been read back at least once");
+  check(/if \(res && res\.ok\) this\._senseLoaded = true;/.test(doc),
+    "and only a real answer opens that path, never a failed read");
+  check(/if \(nowEmpty && this\._hadContent && !this\._clearing\)/.test(doc),
+    "an empty board never overwrites an analysis known to have had content");
+  check(/this\._clearing = true;/.test(doc), "unless it was an explicit 해석 지우기");
+  // 서버도 같은 판단을 한다 / the server makes the same judgement on the way out, so a record
+  // clobbered by an older build still reads back as the last one with something in it
+  check(/function isEmptyState_\(st\)/.test(gs), "and the server skips empty records when reading");
+  check(/if \(!st \|\| st\.cleared\) return false;/.test(gs), "except a deliberate clear");
+  check(/return firstEmpty;/.test(gs), "falling back to an empty one only when that is all there is");
+}
+
+// ---- 6r. zoom holds the point under the cursor ----
+console.log("\nzoom is anchored to the pointer");
+{
+  // 원점 기준으로 배율만 바꾸면 보고 있던 곳이 미끄러진다 / scaling around the origin sends
+  // whatever you are looking at sliding away as soon as the board is panned
+  check(/zoomAt\(d, cx, cy\)/.test(doc), "there is a pointer-anchored zoom");
+  check(/pan: \{ x: s\.pan\.x \+ px \* \(z0 - z1\), y: s\.pan\.y \+ py \* \(z0 - z1\) \}/.test(doc),
+    "and it moves the pan so the board point under the cursor stays put");
+  check(/this\.zoomAt\(step, e\.clientX, e\.clientY\)/.test(doc), "a pinch uses the cursor");
+  check(/return this\.zoomAt\(d, r\.left \+ r\.width \/ 2, r\.top \+ r\.height \/ 2\)/.test(doc),
+    "and the buttons hold the middle of the board");
 }
 
 // ---- 7. view mode must not be able to write ----
@@ -789,7 +842,7 @@ console.log("\nview mode cannot write");
   // 7b. admin mode must leave state.pid empty — that alone disables every path
   check(/admin: true, viewPid: '', loginPid: '', pid: '', step: 0/.test(doc),
     "admin login clears state.pid");
-  check(/openParticipant\(pid\) \{\s*this\.setState\(\{\s*viewPid: pid/.test(doc),
+  check(/openParticipant\(pid\) \{[\s\S]{0,220}?this\.setState\(\{\s*viewPid: pid/.test(doc),
     "viewed code goes to viewPid, not pid");
 
   // 7c. simulate the guards for real
@@ -851,7 +904,7 @@ console.log("\nview mode cannot write");
   check(/mine\(o\) \{ return this\.isView\(\) \? Object\.assign\(\{\}, o, \{ sm: true, src: 'a' \}\) : o; \}/.test(doc),
     "everything the admin creates is flagged sm, so it saves to the sm: key");
   check(/concat\(\[this\.mine\(card\)\]\)/.test(doc), "a card dragged in during analysis is flagged");
-  check(/concat\(\[this\.mine\(\{ id: id/.test(doc), "and so is a note");
+  check(/concat\(\[this\.mine\(Object\.assign\(\s*\{ id: id/.test(doc), "and so is a note");
   // Deck tiles use "RO ? NOOP :"; board objects use the per-object form so that admin
   // sensemaking copies stay editable while the participant's do not. Both must exist.
   const deckNoops = (doc.match(/this\.canAuthor\(\) \? \(e\) => this\.startNew/g) || []).length;
@@ -922,6 +975,7 @@ console.log("\nview mode cannot write");
     const run = (target, deltaY, mod) => {
       panned = zoomed = false;
       const fn = new Function("e", "self", body.replace("this._wheel = (e) => {", "").replace(/\};$/, "")
+        .replace(/this\.zoomAt\([^)]*\)/g, "self.zoom()")
         .replace(/this\.zoomBy\([^)]*\)/g, "self.zoom()")
         .replace(/this\.setState\(\([\s\S]*?\)\);/g, "self.pan();"));
       const e = {

@@ -25,6 +25,7 @@ TWO ESCAPING RULES, both learned the hard way:
   - ensure_ascii=False keeps Korean readable rather than exploding into \\uXXXX.
 """
 import json
+import re
 import pathlib
 import sys
 
@@ -103,6 +104,17 @@ def main():
     assert markup(doc2)[2] == want_mk, "markup did not round-trip"
     assert doc2.rstrip().endswith("</html>"), "bundle document is truncated"
     print("verified: unpacks, markup and app source match src, document intact")
+
+# 판 번호를 매번 눈앞에 / print the versions on every build. Forgetting to bump one is easy
+# and invisible, and "which build are you on" has already cost more than one debugging round.
+_src = (ROOT / "src" / "Card Workshop.dc.html").read_text(encoding="utf-8")
+_gs = (ROOT / "server" / "Code.gs").read_text(encoding="utf-8")
+_app = re.search(r"const APP_VERSION = '([^']+)'", _src)
+_min = re.search(r"const SERVER_MIN = '([^']+)'", _src)
+_srv = re.search(r"var VERSION = '([^']+)'", _gs)
+print(f"  app {_app.group(1) if _app else '?'} · needs server >= {_min.group(1) if _min else '?'} · Code.gs is {_srv.group(1) if _srv else '?'}")
+if _min and _srv and _min.group(1) > _srv.group(1):
+    print("  !! the client demands a newer server than Code.gs claims to be")
 
 
 if __name__ == "__main__":

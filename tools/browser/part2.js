@@ -2,6 +2,12 @@
 const { APP, SHOTS, check, near, boardCards, boardTransform, uiScale,
         boot, toStep1, toBoard, dragTileToBoard, say } = require("./harness");
 
+// 판 번호는 한 군데서 / the version lives in one place, so bumping Code.gs does not
+// quietly turn every stub into an "out of date" deployment
+const SERVER_VERSION = require("fs")
+  .readFileSync(require("path").join(__dirname, "../../server/Code.gs"), "utf8")
+  .match(/var VERSION = '([^']+)'/)[1];
+
 module.exports = async function (browser) {
   // ------------------------------------------------- pen and step-1 arrows
   say("\ndrawing tools: the pen, and arrows in step 1 too");
@@ -519,7 +525,7 @@ module.exports = async function (browser) {
       // 스텁도 버전을 밝힌다 / the stub reports a version too, or the page would think the
       // deployment is old and put a banner across the top of every one of these checks
       const reply = (o) => route.fulfill({ status: 200, contentType: "application/javascript",
-        body: cbn + "(" + JSON.stringify(Object.assign({ version: "2026-09-05" }, o)) + ");" });
+        body: cbn + "(" + JSON.stringify(Object.assign({ version: SERVER_VERSION }, o)) + ");" });
       if (u.searchParams.get("list")) return reply({ ok: true, participants: [{ participant: "P9", rows: 3, submits: 1, lastAt: "2026-08-29T10:00:00Z" }] });
       const who = u.searchParams.get("participant");
       if (who === "P9") return reply({ ok: true, state: board });

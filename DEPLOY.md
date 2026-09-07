@@ -213,6 +213,26 @@ wrote — a scan that skipped the wrong row would look fine in every browser che
 an analysis record silently. Run all three: `test_ui_scale.js`, `test_server.js`,
 `browser/e2e.js`.
 
+## Versions
+
+`APP_VERSION` in the source, `VERSION` in Code.gs, and `SERVER_MIN` (the server the client
+insists on). **Bump the app version on every change**; `tools/build.py` prints all three on
+every build and shouts if the client demands a newer server than Code.gs claims to be.
+
+## An empty analysis must never bury a full one
+
+This happened, on 2026-09-07, to P4113: a record with 35 cards and 26 notes was replaced by
+an empty one. The board is empty until the analysis layer arrives, so anything at all in
+that window — a measured height, a nudged card — could schedule a save of nothing on top of
+everything. Guards now on both sides:
+
+- **Writing.** Nothing is saved before the analysis has been read back at least once
+  (`_senseLoaded`, set only on a real answer, never on a failed read), and an empty board
+  never overwrites a record known to have had content unless it was an explicit 해석 지우기.
+- **Reading.** `latestState_` skips empty records in favour of the last one with something
+  in it, so a clobber written by an older build is survivable rather than fatal. A record
+  flagged `cleared` is honoured, and a genuinely always-empty analysis still returns.
+
 ## If an analysis will not load
 
 **The app failing to read a record is not the record being gone.** Every save appends rows

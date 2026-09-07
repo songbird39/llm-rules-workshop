@@ -3,6 +3,12 @@
 const { APP, SHOTS, check, near, boardCards, boardTransform, uiScale,
         boot, toStep1, toBoard, dragTileToBoard, realServer, say } = require("./harness");
 
+// 판 번호는 한 군데서 / the version lives in one place, so bumping Code.gs does not
+// quietly turn every stub into an "out of date" deployment
+const SERVER_VERSION = require("fs")
+  .readFileSync(require("path").join(__dirname, "../../server/Code.gs"), "utf8")
+  .match(/var VERSION = '([^']+)'/)[1];
+
 module.exports = async function (browser) {
   // ------------------------------------------------- analysis, against the REAL server
   // 스텁이 아니라 진짜 Code.gs 를 뒤에 둔다 / the endpoint here is server/Code.gs itself,
@@ -323,7 +329,7 @@ module.exports = async function (browser) {
       const cbn = u.searchParams.get("callback");
       const reply = (o, ms) => new Promise((r) => setTimeout(r, ms)).then(() => route.fulfill({
         status: 200, contentType: "application/javascript",
-        body: cbn + "(" + JSON.stringify(Object.assign({ version: "2026-09-05" }, o)) + ");",
+        body: cbn + "(" + JSON.stringify(Object.assign({ version: SERVER_VERSION }, o)) + ");",
       }));
       if (u.searchParams.get("list")) return reply({ ok: true, participants: [{ participant: "P9", rows: 3, submits: 1, firstAt: "2026-08-20T09:00:00Z", lastAt: "2026-08-29T10:00:00Z" }] }, 0);
       const who = u.searchParams.get("participant");
@@ -554,7 +560,7 @@ module.exports = async function (browser) {
     const back = srv.get({ participant: "sm:P9" });
     check(back.state && back.state.notes[0].text === "예전 전사",
       "the new server stores and returns an old-shape save unchanged");
-    check(back.version === "2026-09-05", "and reports its version, which the old client ignores");
+    check(back.version === SERVER_VERSION, "and reports its version, which the old client ignores");
     // 그리고 새 클라이언트가 저장한 것을 예전 클라이언트가 읽어도 / and a record this build
     // sliced across rows still comes back as one plain state, which is all the old client
     // knows how to read
