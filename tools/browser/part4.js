@@ -217,6 +217,94 @@ module.exports = async function (browser) {
     await page.close();
   }
 
+  // ------------------------------------------------- the loading gate
+  // 보드가 먼저, 해석이 나중에 온다 / the board comes back first and the analysis follows. In
+  // between the screen looks exactly like a board whose analysis has been lost — alarming
+  // in itself — and anything done in that window edits a half-loaded board.
+  say("\nloading holds the board until all of it is here");
+  {
+    const EP = "https://script.google.com/macros/s/FAKE/exec";
+    const page = await browser.newPage({ viewport: { width: 1500, height: 950 } });
+    const errors = [];
+    page.on("pageerror", (e) => errors.push(e.message));
+    const board = {
+      savedAt: Date.now(), pid: "P9", step: 2, lang: "ko", rules: [],
+      cards: [{ id: "c1", type: "act", title: "학습 계획", desc: "", dia: null, collapsed: false, w: 352, x: 300, y: 400 }],
+      notes: [], arrows: [], seq: 5, panelW: 566,
+    };
+    const analysis = {
+      savedAt: Date.now(), pid: "sm:P9", step: 2, lang: "ko", rules: [],
+      cards: [{ id: "s1", type: "when", title: "해석", sm: true, src: "a", x: 900, y: 400 }],
+      notes: [{ id: "n7", x: 900, y: 250, text: "", kind: "tx", sm: true, src: "a" }],
+      arrows: [], strokes: [], seq: 9,
+    };
+    // 느린 서버 / a slow server, each read taking its own time, so the steps are separable
+    await page.route("**/macros/s/**", async (route) => {
+      const u = new URL(route.request().url());
+      if (route.request().method() === "POST") return route.fulfill({ status: 200, body: "{}" });
+      const cbn = u.searchParams.get("callback");
+      const reply = (o, ms) => new Promise((r) => setTimeout(r, ms)).then(() => route.fulfill({
+        status: 200, contentType: "application/javascript",
+        body: cbn + "(" + JSON.stringify(Object.assign({ version: "2026-09-05" }, o)) + ");",
+      }));
+      if (u.searchParams.get("list")) return reply({ ok: true, participants: [{ participant: "P9", rows: 3, submits: 1, firstAt: "2026-08-20T09:00:00Z", lastAt: "2026-08-29T10:00:00Z" }] }, 0);
+      const who = u.searchParams.get("participant");
+      if (who === "P9") return reply({ ok: true, state: board }, 700);
+      if (who === "sm:P9") return reply({ ok: true, state: analysis }, 2200);
+      if (who && who.indexOf("tx:") === 0) return reply({ ok: true, state: { texts: { n7: "전사" }, cards: [] } }, 3600);
+      return reply({ ok: true, rows: 0 }, 0);
+    });
+    await page.goto(APP + "?sync=" + encodeURIComponent(EP), { waitUntil: "load", timeout: 120000 });
+    await page.waitForSelector('input[placeholder="P0000"]', { timeout: 120000 });
+    await page.fill('input[placeholder="P0000"]', "admin");
+    await page.getByText("시작하기", { exact: false }).click();
+    await page.waitForTimeout(700);
+    await page.getByText("P9", { exact: true }).first().click();
+
+    const gate = () => page.evaluate(() => {
+      const o = [...document.querySelectorAll("div")].find((d) => d.style.zIndex === "80");
+      if (!o) return null;
+      const bar = o.querySelector('div[style*="width:"] , div[style*="width: "]');
+      const fill = [...o.querySelectorAll("div")].find((d) => d.style.background === "rgb(27, 26, 23)");
+      const txt = o.innerText.replace(/\s+/g, " ").trim();
+      void bar;
+      return { pct: fill ? fill.style.width : "?", txt: txt.slice(0, 60) };
+    });
+    await page.waitForTimeout(300);
+    const g0 = await gate();
+    check(g0 !== null, "a cover appears while it loads");
+    check(g0 && /0 \/ 3/.test(g0.txt), "starting at nothing fetched", g0 ? ` (${g0.txt})` : "");
+    await page.waitForTimeout(1400);                       // 보드는 도착 / board has landed
+    const g1 = await gate();
+    check(g1 && /1 \/ 3/.test(g1.txt), "one step once the board is in", g1 ? ` (${g1.txt})` : "");
+    check(g1 && g1.pct === "33%", "and the bar is a third across", g1 ? ` (${g1.pct})` : "");
+    // 그동안 보드는 손댈 수 없다 / and the board cannot be touched meanwhile
+    check(await page.evaluate(() => {
+      const o = [...document.querySelectorAll("div")].find((d) => d.style.zIndex === "80");
+      const r = o.getBoundingClientRect();
+      const el = document.elementFromPoint(Math.round(r.width / 2), Math.round(r.height / 2));
+      return o.contains(el);
+    }), "and a click in the middle of the screen hits the cover, not the board");
+
+    await page.waitForTimeout(1400);
+    const g2 = await gate();
+    check(g2 && /2 \/ 3/.test(g2.txt), "two steps once the analysis is in", g2 ? ` (${g2.txt})` : "");
+
+    await page.waitForTimeout(2200);
+    check((await gate()) === null, "and the cover is gone once the transcript lands");
+    const shown = await page.evaluate(() => {
+      const L = [...document.querySelectorAll("div")].find((d) => d.style.width === "5000px");
+      return {
+        cards: [...L.querySelectorAll(':scope > [data-obj="card"]')].length,
+        tx: [...L.querySelectorAll(':scope > [data-obj="note"] textarea')].map((t) => t.value),
+      };
+    });
+    check(shown.cards === 2, "with the whole board underneath it", ` (${shown.cards})`);
+    check(shown.tx.includes("전사"), "transcript included", ` (${JSON.stringify(shown.tx)})`);
+    check(errors.length === 0, "no console errors", errors.length ? ` (${errors[0]})` : "");
+    await page.close();
+  }
+
   // ------------------------------------------------- a save that never lands
   // 이게 실제로 일어난 일이다 / this is the failure that actually happened: the server refuses
   // or cannot store the analysis, the POST is no-cors so nothing says so, and the work

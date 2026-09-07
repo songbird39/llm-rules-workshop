@@ -713,7 +713,7 @@ console.log("\nthe analysis has a copy, a signal, and a way back");
   check(/this\.offerLocal\(pid, st\.savedAt \|\| 0\)/.test(doc), "the check runs on opening a record");
   // 서버에 아무것도 없을 때가 가장 중요한 경우 / the case it exists for is the server having
   // NOTHING — a run of failed saves — and that is the path an early return skipped
-  check(/if \(!st\) \{ this\.offerLocal\(pid, 0\); return; \}/.test(doc),
+  check(/if \(!st\) \{ this\.setState\(\{ loading: null \}\); this\.offerLocal\(pid, 0\); return; \}/.test(doc),
     "and also when the server has no analysis at all, which is the whole point");
   check(/restoreLocal\(\)/.test(doc) && /this\.pushSense\(\);/.test(doc),
     "and restoring it pushes straight back, so the recovery is not itself one tab from gone");
@@ -736,6 +736,30 @@ console.log("\nthe analysis has a copy, a signal, and a way back");
   check(/downloadSense\(\)/.test(doc), "the analysis can be downloaded as a file");
   check(/state: this\.senseState\(\), texts: this\.txMap\(\)\s*\}, null, 2\)/.test(doc),
     "transcripts included");
+}
+
+// ---- 6p. the board is not editable until it is all there ----
+console.log("\nthe loading gate");
+{
+  // 보드가 먼저, 해석이 나중 / the board arrives first and the analysis follows. That gap looks
+  // exactly like a board whose analysis is missing, and anything done in it edits a
+  // half-loaded board.
+  check(/loading: \{ done: 0, total: 3, label: '', pid: pid \}/.test(doc),
+    "opening a participant counts three fetches");
+  check(/board\.then\(\(\) => this\.loadTick\('sense'\)\)/.test(doc)
+    && /tx\.then\(\(\) => this\.loadTick\('tx'\)\)/.test(doc),
+    "and the bar advances per request that actually returned");
+  check(/loadingPct: this\.state\.loading \? Math\.round\(\(this\.state\.loading\.done \/ this\.state\.loading\.total\) \* 100\)/.test(doc),
+    "so the percentage is a real count, not a timer");
+  check(/z-index:80/.test(doc), "the cover sits above the board while it is up");
+  // 영원히 잠기면 안 된다 / a stuck request must never lock the board for good
+  check(/this\._loadGuard = setTimeout\(\(\) => this\.setState\(\{ loading: null \}\), 20000\)/.test(doc),
+    "and it lifts on its own if something never comes back");
+  check(/clearTimeout\(this\._loadGuard\)/.test(doc), "with the guard cleared on the way out");
+  // 판 번호는 눈에 보여야 한다 / the build has to be readable without opening anything: "it
+  // does not load" means something different from someone on last week's page
+  check(/const APP_VERSION = '\d{4}-\d{2}-\d{2}'/.test(src), "the page knows which build it is");
+  check(/\('v' \+ APP_VERSION/.test(doc), "and says so where the step label goes on sign-in");
 }
 
 // ---- 7. view mode must not be able to write ----
@@ -765,7 +789,7 @@ console.log("\nview mode cannot write");
   // 7b. admin mode must leave state.pid empty — that alone disables every path
   check(/admin: true, viewPid: '', loginPid: '', pid: '', step: 0/.test(doc),
     "admin login clears state.pid");
-  check(/openParticipant\(pid\) \{\s*this\.setState\(\{ viewPid: pid/.test(doc),
+  check(/openParticipant\(pid\) \{\s*this\.setState\(\{\s*viewPid: pid/.test(doc),
     "viewed code goes to viewPid, not pid");
 
   // 7c. simulate the guards for real

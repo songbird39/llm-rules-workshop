@@ -118,6 +118,26 @@
   <!-- 이 기기에 더 새로운 해석이 있다 / this device holds analysis newer than the server's.
        That gap is what a failed save looks like from here, so it is offered back rather
        than quietly discarded. -->
+  <!-- 불러오는 동안은 덮어 둔다 / a cover while it loads: the board arrives before the
+       analysis does, and that gap both looks like lost work and lets a half-loaded board
+       be edited. Three fetches, three steps — the bar counts what actually returned. -->
+  <sc-if value="{{ loading }}" hint-placeholder-val="{{ false }}">
+    <div style="position:fixed;left:0;top:0;right:0;bottom:0;background:rgba(241,239,232,0.92);display:flex;align-items:center;justify-content:center;z-index:80">
+      <div style="width:320px;max-width:80vw;display:flex;flex-direction:column;gap:12px">
+        <div style="display:flex;align-items:baseline;gap:8px">
+          <span style="font-size:14px;font-weight:700;letter-spacing:-0.01em">{{ t.loadingTitle }}</span>
+          <span style="font-size:12.5px;color:#7a776f">{{ loadingPid }}</span>
+          <span style="flex:1"></span>
+          <span style="font-size:11.5px;font-family:ui-monospace,Menlo,monospace;color:#98958c">{{ loadingCount }}</span>
+        </div>
+        <div style="height:6px;border-radius:3px;background:#e2dfd7;overflow:hidden">
+          <div style="height:100%;width:{{ loadingPct }}%;background:#1b1a17;border-radius:3px;transition:width 0.25s ease"></div>
+        </div>
+        <div style="font-size:12.5px;line-height:1.6;color:#7a776f">{{ loadingWhat }}</div>
+      </div>
+    </div>
+  </sc-if>
+
   <sc-if value="{{ recover }}" hint-placeholder-val="{{ false }}">
     <div style="flex:0 0 auto;display:flex;flex-wrap:wrap;align-items:center;gap:10px;padding:8px 18px;background:#f7f0dc;border-bottom:1px solid #e6dcc0">
       <span style="font-size:12.5px;font-weight:600;color:#8a6a1f">{{ t.recoverTitle }}</span>
@@ -633,6 +653,11 @@ const TX_PREFIX = 'tx:';
 // reassemble a sliced record, so analysis work would save and then fail to load — with no
 // error anywhere, because the POST is no-cors. Check it and say so.
 const SERVER_MIN = '2026-09-05';
+// 이 페이지의 판 / which build this page is. It sits where the step label goes on the sign-in
+// screen, so anyone reporting a problem can read it off without opening anything — "it does
+// not load" is a very different report from someone on last week's page than from someone
+// on today's. Bump it with any change worth telling apart.
+const APP_VERSION = '2026-09-07';
 // 분석 메모는 두 종류 / two kinds of note in analysis mode, told apart by colour: the
 // gold one is the admin's own remark and matches the rest of the sensemaking layer;
 // the slate one holds transcript, which is somebody else's words, not the admin's.
@@ -837,6 +862,10 @@ const I18N = {
       panelHide: '덱 접기', panelShow: '덱 펼치기',
       downSense: '↓ 해석 파일', downSenseTip: '지금 해석을 JSON 파일로 내려받기 (전사 포함)',
       syncPaused: '저장 멈춤', syncFailed: '저장 실패',
+      loadingTitle: '불러오는 중',
+      loadBoard: '참여자가 만든 보드를 가져오고 있습니다.',
+      loadSense: '해석 작업을 가져오고 있습니다.',
+      loadTx: '전사 메모를 가져오고 있습니다. 길면 조금 걸립니다.',
       recoverTitle: '이 기기에 더 새로운 해석이 있습니다 ·',
       recoverMid: '에 저장된 것으로, 카드 ', recoverEnd: '개가 들어 있습니다. 서버에는 이보다 예전 것만 있습니다.',
       recoverBtn: '이 기기 것으로 되살리기', recoverNo: '서버 것 그대로 두기',
@@ -963,6 +992,10 @@ const I18N = {
       panelHide: 'Fold the deck away', panelShow: 'Bring the deck back',
       downSense: '↓ Analysis file', downSenseTip: 'Download the analysis as JSON, transcripts included',
       syncPaused: 'paused', syncFailed: 'not saved',
+      loadingTitle: 'Loading',
+      loadBoard: 'Fetching the board the participant built.',
+      loadSense: 'Fetching the analysis over it.',
+      loadTx: 'Fetching the transcription notes. A long one takes a moment.',
       recoverTitle: 'This device holds newer analysis ·',
       recoverMid: ', with ', recoverEnd: ' cards. The server only has something older.',
       recoverBtn: 'Restore from this device', recoverNo: 'Keep the server version',
@@ -1008,7 +1041,7 @@ const I18N = {
 class Component extends DCLogic {
   constructor(props) {
     super(props);
-    this.state = { sync: '', step: 0, lang: 'ko', rules: [], pid: '', loginPid: '', cards: [], notes: [], arrows: [], arrowMode: false, pendingArrow: null, pen: null, strokes: [], selArrow: null, noteMode: false, noteKind: 'memo', panelOff: false, rosterMode: '', histWho: 'board', conflict: null, marked: '', senseDirty: false, recover: null, undoDepth: 0, focusNote: null, pan: { x: 0, y: 0 }, zoom: 1, ghost: null, seq: 1, panelW: panelCap(), sel: [], marquee: null, finish: null, tab: 'flow', hist: null, histList: [], travel: null, senseOn: true, admin: false, viewPid: '', roster: [], rosterMsg: '' };
+    this.state = { sync: '', step: 0, lang: 'ko', rules: [], pid: '', loginPid: '', cards: [], notes: [], arrows: [], arrowMode: false, pendingArrow: null, pen: null, strokes: [], selArrow: null, noteMode: false, noteKind: 'memo', panelOff: false, rosterMode: '', histWho: 'board', conflict: null, marked: '', senseDirty: false, recover: null, loading: null, undoDepth: 0, focusNote: null, pan: { x: 0, y: 0 }, zoom: 1, ghost: null, seq: 1, panelW: panelCap(), sel: [], marquee: null, finish: null, tab: 'flow', hist: null, histList: [], travel: null, senseOn: true, admin: false, viewPid: '', roster: [], rosterMsg: '' };
     this.canvasRef = React.createRef();
     this.drag = null;
   }
@@ -1487,17 +1520,20 @@ class Component extends DCLogic {
   // merged. A note whose text already came back inside the board record keeps it: that is
   // what an analysis record saved before this split looks like, and it must still open.
   loadSense(pid) {
-    Promise.all([
-      this.jsonp('participant=' + encodeURIComponent('sm:' + pid)),
-      this.jsonp('participant=' + encodeURIComponent(TX_PREFIX + pid))
-    ]).then((both) => {
+    // 각 요청이 돌아올 때마다 한 칸 / one step per request as it lands, so the bar moves for a
+    // reason rather than on a timer
+    const board = this.jsonp('participant=' + encodeURIComponent('sm:' + pid));
+    const tx = this.jsonp('participant=' + encodeURIComponent(TX_PREFIX + pid));
+    board.then(() => this.loadTick('sense'));
+    tx.then(() => this.loadTick('tx'));
+    Promise.all([board, tx]).then((both) => {
       const res = both[0], txr = both[1];
       const st = res && res.ok && res.state;
       if (this.state.viewPid !== pid) return;
       // 서버에 아무것도 없을 때가 가장 위험하다 / the case that matters MOST is the server
       // having nothing: that is what a run of failed saves looks like. Checking the local
       // copy only on the success path skipped exactly the situation it exists for.
-      if (!st) { this.offerLocal(pid, 0); return; }
+      if (!st) { this.setState({ loading: null }); this.offerLocal(pid, 0); return; }
       const texts = (txr && txr.ok && txr.state && txr.state.texts) || {};
       const tag = (arr) => (arr || []).map((o) => Object.assign({}, o, { sm: true }));
       const notes = tag(st.notes).map((n) => (texts[n.id] !== undefined && !n.text
@@ -1867,11 +1903,34 @@ class Component extends DCLogic {
 
   // 참여자 보드를 읽기 전용으로 연다 / open one participant's board, read-only.
   // pid는 viewPid에만 담고 state.pid는 비워 둔다 — 저장 경로가 전부 죽는다.
+  /* 다 불러오기 전에는 손대지 못하게 / hold the board until it is all here.
+     보드가 먼저 도착하고 해석·전사가 몇 초 뒤에 오는 사이에, 화면은 "작업이 사라진 보드"처럼
+     보이고 그때 건드린 것이 반쯤 불러온 상태로 저장될 수도 있다.
+     The participant's board arrives first and the analysis and transcript follow seconds
+     later. In between, the screen looks exactly like a board whose analysis is missing —
+     which is alarming for its own sake — and anything done in that window edits a
+     half-loaded board. Three fetches, three steps: the bar is a real count, not a guess. */
+  loadTick(label) {
+    this.setState((s) => {
+      const l = s.loading;
+      if (!l) return null;
+      const done = l.done + 1;
+      return { loading: done >= l.total ? null : Object.assign({}, l, { done: done, label: label }) };
+    });
+  }
+
   openParticipant(pid) {
-    this.setState({ viewPid: pid, rosterMsg: 'loading' });
+    this.setState({
+      viewPid: pid, rosterMsg: 'loading',
+      loading: { done: 0, total: 3, label: '', pid: pid }
+    });
+    // 영원히 잠기지 않게 / never lock the board forever: jsonp resolves null after 9s, but if
+    // something else goes wrong the gate lifts on its own and the work is still reachable
+    clearTimeout(this._loadGuard);
+    this._loadGuard = setTimeout(() => this.setState({ loading: null }), 20000);
     this.loadRemote(pid).then((remote) => {
       if (!this.state.admin || this.state.viewPid !== pid) return;
-      if (!remote) { this.setState({ rosterMsg: 'nosnap' }); return; }
+      if (!remote) { this.setState({ rosterMsg: 'nosnap', loading: null }); return; }
       this.setState({ rosterMsg: '' });
       this.applyState(remote);
       this._ssig = undefined;
@@ -1879,6 +1938,7 @@ class Component extends DCLogic {
       // transcript still lives inside its notes gets migrated on the next save. loadSense
       // sets this again, but it also returns early when there is no analysis record yet.
       this._txSaved = '{}';
+      this.loadTick('board');
       this.loadSense(pid);
       this.refreshHead().then(() => this.watchHead());
     });
@@ -1886,6 +1946,7 @@ class Component extends DCLogic {
 
   backToRoster() {
     clearInterval(this._hw);
+    clearTimeout(this._loadGuard);
     this._head = null;
     this.setState({ viewPid: '', step: 0, cards: [], notes: [], arrows: [], strokes: [], travel: null, conflict: null, rosterMsg: '' },
       () => this.refreshRoster());
@@ -3500,7 +3561,12 @@ class Component extends DCLogic {
       tabGuardFg: this.state.tab === 'guard' ? '#1b1a17' : '#98958c',
       tabFlowBd: this.state.tab === 'flow' ? '#1b1a17' : 'transparent',
       tabGuardBd: this.state.tab === 'guard' ? '#1b1a17' : 'transparent',
-      stepLabel: this.state.step === 0 ? t.step0 : this.state.step === 1 ? t.step1 : t.step2,
+      // 로그인 화면에는 단계 대신 판 번호 / on the sign-in screen the step label says nothing
+      // useful ("participant sign-in", above a card that says exactly that), so the build
+      // goes there instead
+      stepLabel: this.state.step === 0
+        ? ('v' + APP_VERSION + (this.state.admin ? ' · admin' : ''))
+        : this.state.step === 1 ? t.step1 : t.step2,
       loginPid: this.state.loginPid,
       onLoginPid: (e) => this.setState({ loginPid: e.target.value }),
       consentPages: CONSENT.pages.map((src, i) => ({
@@ -3528,6 +3594,14 @@ class Component extends DCLogic {
       histMineBg: this.state.histWho === 'sense' ? '#1b1a17' : '#fff',
       histMineFg: this.state.histWho === 'sense' ? '#faf8f3' : '#1b1a17',
       histSub: this.state.histWho === 'sense' ? t.histSubMine : t.histSubTheirs,
+      loading: !!this.state.loading,
+      loadingPid: this.state.loading ? this.state.loading.pid : '',
+      loadingCount: this.state.loading ? (this.state.loading.done + ' / ' + this.state.loading.total) : '',
+      loadingPct: this.state.loading ? Math.round((this.state.loading.done / this.state.loading.total) * 100) : 0,
+      loadingWhat: this.state.loading
+        ? (this.state.loading.done === 0 ? t.loadBoard
+           : this.state.loading.done === 1 ? t.loadSense : t.loadTx)
+        : '',
       recover: !!this.state.recover,
       recoverBody: this.state.recover
         ? (new Date(this.state.recover.at).toLocaleString() + t.recoverMid + this.state.recover.cards + t.recoverEnd)

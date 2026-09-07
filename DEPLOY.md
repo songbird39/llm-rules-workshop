@@ -213,6 +213,19 @@ wrote — a scan that skipped the wrong row would look fine in every browser che
 an analysis record silently. Run all three: `test_ui_scale.js`, `test_server.js`,
 `browser/e2e.js`.
 
+## Opening a participant is gated
+
+Three fetches — the participant's board, the analysis over it, the transcripts — and the
+board comes back first. That gap looks exactly like a board whose analysis has been lost,
+which is alarming for its own sake, and anything done in it edits a half-loaded board. A
+cover holds the screen until all three land, with a bar that counts requests that actually
+returned rather than running on a timer. It lifts itself after 20s if something never comes
+back, so nothing can be locked out of its own work.
+
+`APP_VERSION` shows where the step label goes on the sign-in screen. "It doesn't load"
+means something different from someone on last week's page; bump it with any change worth
+telling apart.
+
 ## Pointer maths: measure, never assume
 
 Every conversion between the screen and the board asks `scaleOf(el)` — the element's
