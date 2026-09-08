@@ -436,7 +436,7 @@ module.exports = async function (browser) {
     const EP = "https://script.google.com/macros/s/FAKE/exec";
     // 정렬 기준이 진짜 '만든 시각'인지 보려면 두 시각이 엇갈려야 한다 / the two orderings must
     // DISAGREE, or a list sorted by last activity would pass a created-time check
-    const people = [{ participant: "P01", rows: 12, submits: 1, firstAt: "2026-08-20T09:00:00Z", lastAt: "2026-08-29T10:00:00Z", hidden: false, desc: "" },
+    const people = [{ participant: "P01", rows: 12, submits: 1, firstAt: "2026-08-20T09:00:00Z", lastAt: "2026-08-29T10:00:00Z", hidden: false, desc: "", smRows: 9 },
                     { participant: "P02", rows: 4, submits: 0, firstAt: "2026-08-18T09:00:00Z", lastAt: "2026-08-29T09:00:00Z", hidden: true, desc: "파일럿" }];
     const posts = [];
     const page = await browser.newPage({ viewport: { width: 1400, height: 900 } });
@@ -456,6 +456,12 @@ module.exports = async function (browser) {
       const reply = (o) => route.fulfill({ status: 200, contentType: "application/javascript",
         body: cbn + "(" + JSON.stringify(Object.assign({ version: SERVER_VERSION }, o)) + ");" });
       if (u.searchParams.get("list")) return reply({ ok: true, participants: people });
+      // 개수는 별도 요청, 일부러 늦게 / the counts are their own request, answered deliberately
+      // late so the list has to stand up without them first
+      if (u.searchParams.get("smlist")) {
+        return new Promise((r) => setTimeout(r, 2500)).then(() => reply({ ok: true, analyses: [
+          { participant: "P01", rows: 9, readable: true, cards: 7, notes: 5, transcripts: 2 }] }));
+      }
       return reply({ ok: true, state: null });
     });
     await page.goto(APP + "?sync=" + encodeURIComponent(EP), { waitUntil: "load", timeout: 120000 });
@@ -476,6 +482,14 @@ module.exports = async function (browser) {
 
     check(JSON.stringify(await rows()) === JSON.stringify(["P01"]),
       "the hidden one is out of the default list", ` (${JSON.stringify(await rows())})`);
+    // 목록이 먼저, 개수는 나중 / the list first, the counts after. Counting means reading every
+    // record back, and doing that before the list could be drawn took ?list=1 past the
+    // timeout — the roster then failed entirely, to report analysis it could not show.
+    check(await page.evaluate(() => document.body.innerText.includes("해석 저장 9")),
+      "the row says how many analysis saves there are as soon as the list lands");
+    await page.waitForTimeout(2200);
+    check(await page.evaluate(() => document.body.innerText.includes("해석 12")),
+      "and the object counts replace that once they arrive separately");
     check(await page.evaluate(() => document.body.innerText.includes("숨긴 항목 (1)")),
       "and the toggle says how many are hidden");
     check(!(await page.evaluate(() => /삭제/.test(document.body.innerText))),

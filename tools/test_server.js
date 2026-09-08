@@ -323,6 +323,39 @@ console.log("\nsmlist says who has analysis, and whether it can be read");
     "so 'saved but will not load' is distinguishable from 'never saved'");
 }
 
+console.log("\nthe roster stays cheap enough to arrive");
+{
+  // 목록이 안 뜨는 것보다 나쁜 건 없다 / nothing is worse than the list not arriving. Counting
+  // the objects in an analysis means reading the record back, and doing that per
+  // participant walked the whole sheet once per person — ?list=1 went past the client's
+  // nine-second timeout and the roster failed entirely, in order to report how much
+  // analysis it could not show.
+  const { post, get, sh } = loadServer();
+  for (let p = 0; p < 12; p++) {
+    const pid = "P" + (100 + p);
+    post({ participant: pid, kind: "autosave", payload: { participant: pid, state: { cards: [{ id: "c1" }], notes: [] } } });
+    const st = { savedAt: 1, pid: "sm:" + pid, step: 2, lang: "ko", rules: [],
+      cards: [{ id: "s1", type: "when", title: "t", sm: true, src: "a", x: 1, y: 1 }],
+      notes: [{ id: "n1", x: 1, y: 1, text: "메모", sm: true, src: "a" }], arrows: [], strokes: [], seq: 9 };
+    for (let k = 0; k < 8; k++) {
+      post({ participant: "sm:" + pid, kind: "sensemaking", payload: { participant: "sm:" + pid, state: st } });
+    }
+  }
+  const before = sh._rows.length;
+  const roster = get({ list: "1" }).participants;
+  check(roster.length === 12, "the roster lists everyone", ` (${roster.length})`);
+  check(roster.every((r) => r.smRows === 8), "with how many times each analysis was saved",
+    ` (${roster[0] && roster[0].smRows})`);
+  check(roster.every((r) => r.smCount === undefined),
+    "and without the object counts, which are what made it expensive");
+
+  const sm = get({ smlist: "1" }).analyses;
+  check(sm.length === 12, "smlist answers for all of them separately", ` (${sm.length})`);
+  check(sm.every((a) => a.readable && a.cards === 1 && a.notes === 1),
+    "with the counts read back properly");
+  check(sh._rows.length === before, "and neither read writes anything");
+}
+
 console.log("\nan empty record does not bury a full one");
 {
   // 실제로 일어난 일 / this happened: a full analysis was replaced by an empty record, and

@@ -21,7 +21,7 @@
 // across several rows and an old deployment cannot reassemble them, so analysis saves
 // appear to work and then will not load. The client compares this against what it needs
 // and says so plainly instead of leaving you to guess.
-var VERSION = '2026-09-07d';
+var VERSION = '2026-09-08a';
 
 var SHEET_NAME = 'responses';
 // 관리자 해석(sensemaking) 레코드는 'sm:' 접두어가 붙은 별도 키로 저장한다.
@@ -129,10 +129,16 @@ function roster_() {
   var last = sh.getLastRow();
   if (last < 2) return [];
   var vals = sh.getRange(2, 1, last - 1, 3).getValues(); // receivedAt, participant, kind
-  var map = {}, order = [], metaRow = {};
+  var map = {}, order = [], metaRow = {}, smRows = {};
   for (var i = 0; i < vals.length; i++) {
     var pid = String(vals[i][1] || '').trim();
     if (!pid) continue;
+    // 해석 행 수는 이 스캔에서 공짜로 나온다 / the analysis row count falls out of the scan we
+    // already run; anything past it costs a read of the record itself
+    if (pid.indexOf(SENSE_PREFIX) === 0) {
+      var who = pid.slice(SENSE_PREFIX.length);
+      smRows[who] = (smRows[who] || 0) + 1;
+    }
     // 숨김·설명은 마지막 mt: 행만 유효하다 / only the LAST mt: row counts, so the loop
     // just remembers where it was and the json is read once, after the scan
     if (pid.indexOf(META_PREFIX) === 0) { metaRow[pid.slice(META_PREFIX.length)] = i + 2; continue; }
@@ -151,16 +157,9 @@ function roster_() {
     // session started — the sheet is append-only, so nothing earlier can appear later
     if (ts && (!rec.firstAt || ts < rec.firstAt)) rec.firstAt = ts;
   }
-  // 해석 현황을 같이 실어 보낸다 / carry the analysis situation along with the roster, so the
-  // list can say who has analysis and how much of it without a second round trip — and so
-  // "저장은 됐는데 안 열린다" is visible in the list rather than only after opening a record.
-  var an = {};
-  smList_().forEach(function (a) { an[a.participant] = a; });
-
   var out = order.map(function (pid) {
     var r = map[pid];
     var m = metaRow[pid] ? readMeta_(sh, metaRow[pid]) : {};
-    var a = an[pid] || null;
     return {
       participant: r.participant,
       rows: r.rows,
@@ -171,12 +170,12 @@ function roster_() {
       // row it ever wrote is still on the sheet and the client can bring it back
       hidden: !!m.hidden,
       desc: String(m.desc || ''),
-      // 해석 / the analysis over this participant's board: how many objects are in it, how
-      // many saves it took, and whether the newest one can actually be read back
-      smRows: a ? a.rows : 0,
-      smReadable: a ? a.readable : false,
-      smCount: a ? (a.cards + a.notes) : 0,
-      smTx: a ? a.transcripts : 0
+      // 몇 번 저장됐는지만 / how many times an analysis was saved for them, and no more.
+      // Counting the OBJECTS means reading each record back, and doing that for every
+      // participant on the way to drawing a list walked the whole sheet once per person —
+      // ?list=1 went past the client's timeout and the roster stopped loading at all.
+      // ?smlist=1 answers that separately, once the list is already on screen.
+      smRows: smRows[pid] || 0
     };
   });
   // 세션이 열린 순서대로 / in the order the sessions happened, oldest first: the roster
@@ -247,25 +246,56 @@ function smList_() {
   var sh = sheet_();
   var last = sh.getLastRow();
   if (last < 2) return [];
-  var vals = sh.getRange(2, 1, last - 1, 2).getValues();   // receivedAt, participant
-  var seen = {}, order = [];
-  for (var i = 0; i < vals.length; i++) {
-    var key = String(vals[i][1] || '').trim();
-    if (key.indexOf(SENSE_PREFIX) !== 0) continue;
-    var pid = key.slice(SENSE_PREFIX.length);
-    if (!seen[pid]) { seen[pid] = { participant: pid, rows: 0, lastAt: null }; order.push(pid); }
-    seen[pid].rows++;
-    var ts = vals[i][0];
-    if (ts && (!seen[pid].lastAt || ts > seen[pid].lastAt)) seen[pid].lastAt = ts;
+  // 한 번만 훑는다 / ONE pass. This used to call latestState_ per participant — a full sheet
+  // scan each time — so it walked a few thousand rows once per person.
+  var pidCol = sh.getRange(2, 2, last - 1, 1).getValues();
+  var jsonCol = sh.getRange(2, 10, last - 1, 1).getValues();
+  var keys = {}, order = [];
+  for (var i = 0; i < pidCol.length; i++) {
+    var key = String(pidCol[i][0] || '').trim();
+    var isSm = key.indexOf(SENSE_PREFIX) === 0, isTx = key.indexOf(TX_PREFIX) === 0;
+    if (!isSm && !isTx) continue;                    // 참여자 행은 파싱하지 않는다 / never parsed
+    var pid = key.slice(isSm ? SENSE_PREFIX.length : TX_PREFIX.length);
+    if (!keys[pid]) { keys[pid] = { rows: 0, sm: {}, tx: {}, smWhole: null, txWhole: null }; order.push(pid); }
+    var k = keys[pid];
+    if (isSm) k.rows++;
+    var body = null;
+    try { body = JSON.parse(jsonCol[i][0]); } catch (e) { continue; }
+    if (!body) continue;
+    var bag = isSm ? k.sm : k.tx;
+    if (body.parts) {
+      var g = bag[body.stamp] || (bag[body.stamp] = { parts: body.parts, s: {}, seen: i });
+      g.s[body.part] = (body.payload && body.payload.chunk) || '';
+      g.seen = i;
+    } else if (body.payload && body.payload.state) {
+      if (isSm) k.smWhole = body.payload.state; else k.txWhole = body.payload.state;
+    }
   }
-  return order.map(function (pid) {
-    var r = seen[pid];
-    var st = latestState_(SENSE_PREFIX + pid);
-    var tx = latestState_(TX_PREFIX + pid);
+  // 가장 최근 완성본부터 / newest complete group first, the same order a read walks
+  function pick(bag, whole) {
+    var stamps = [];
+    for (var st in bag) if (bag.hasOwnProperty(st)) stamps.push(st);
+    stamps.sort(function (a, b) { return bag[b].seen - bag[a].seen; });
+    for (var n = 0; n < stamps.length; n++) {
+      var g = bag[stamps[n]], joined = '', ok = true;
+      for (var q = 0; q < g.parts; q++) {
+        if (g.s[q] === undefined) { ok = false; break; }
+        joined += g.s[q];
+      }
+      if (!ok) continue;
+      try {
+        var st2 = JSON.parse(joined);
+        if (st2 && !isEmptyState_(st2)) return st2;
+      } catch (e) {}
+    }
+    return whole && !isEmptyState_(whole) ? whole : null;
+  }
+  return order.filter(function (pid) { return keys[pid].rows > 0; }).map(function (pid) {
+    var k = keys[pid];
+    var st = pick(k.sm, k.smWhole), tx = pick(k.tx, k.txWhole);
     return {
       participant: pid,
-      rows: r.rows,
-      lastAt: r.lastAt ? new Date(r.lastAt).toISOString() : null,
+      rows: k.rows,
       readable: !!st,
       cards: st ? (st.cards || []).length : 0,
       notes: st ? (st.notes || []).length : 0,

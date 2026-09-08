@@ -219,6 +219,19 @@ an analysis record silently. Run all three: `test_ui_scale.js`, `test_server.js`
 insists on). **Bump the app version on every change**; `tools/build.py` prints all three on
 every build and shouts if the client demands a newer server than Code.gs claims to be.
 
+## The roster must arrive
+
+`?list=1` is drawn before anything else works, so it stays cheap: one scan, and the only
+analysis fact it carries is `smRows`, which falls out of that scan for free. Counting the
+OBJECTS in an analysis means reading each record back — doing that per participant walked
+the whole sheet once per person, took `?list=1` past the client's 9s timeout, and the
+roster then failed *entirely*, in order to report analysis it could not show.
+
+`?smlist=1` answers that separately, in one pass over the sheet, and the client fetches it
+after the list is on screen and merges it in. Until it lands each row says how many analysis
+saves there are; then it becomes the object count. A slow or failed count can no longer stop
+the list appearing.
+
 ## An empty analysis must never bury a full one
 
 This happened, on 2026-09-07, to P4113: a record with 35 cards and 26 notes was replaced by

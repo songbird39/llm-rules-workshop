@@ -656,12 +656,12 @@ const TX_PREFIX = 'tx:';
 // 이 클라이언트가 요구하는 서버 버전 / the deployment this client needs. An older one cannot
 // reassemble a sliced record, so analysis work would save and then fail to load — with no
 // error anywhere, because the POST is no-cors. Check it and say so.
-const SERVER_MIN = '2026-09-07d';
+const SERVER_MIN = '2026-09-08a';
 // 이 페이지의 판 / which build this page is. It sits where the step label goes on the sign-in
 // screen, so anyone reporting a problem can read it off without opening anything — "it does
 // not load" is a very different report from someone on last week's page than from someone
 // on today's. Bump it with any change worth telling apart.
-const APP_VERSION = '2026-09-08b';
+const APP_VERSION = '2026-09-08c';
 // 분석 메모는 두 종류 / two kinds of note in analysis mode, told apart by colour: the
 // gold one is the admin's own remark and matches the rest of the sensemaking layer;
 // the slate one holds transcript, which is somebody else's words, not the admin's.
@@ -863,7 +863,7 @@ const I18N = {
       hiddenTitle: '숨긴 참여자', hiddenEmpty: '숨긴 항목이 없습니다.',
       hiddenNote: '기록은 지워지지 않았습니다. 목록에서만 빠져 있습니다.',
       metaPh: '설명 (누구의 기록인지 적어 두세요)',
-      smPrefix: '해석 ', smTx: '전사 ', smBroken: '해석 있음 · 열리지 않음',
+      smPrefix: '해석 ', smTx: '전사 ', smBroken: '해석 있음 · 열리지 않음', smSaves: '해석 저장 ',
       panelHide: '덱 접기', panelShow: '덱 펼치기',
       upSense: '↑ 파일에서', upSenseTip: '내려받은 해석 JSON 파일을 이 참여자의 해석으로 불러오기', upBad: '읽을 수 없음', upDone: '불러옴 · ',
       downSense: '↓ 해석 파일', downSenseTip: '지금 해석을 JSON 파일로 내려받기 (전사 포함)',
@@ -995,7 +995,7 @@ const I18N = {
       hiddenTitle: 'Hidden participants', hiddenEmpty: 'Nothing is hidden.',
       hiddenNote: 'Nothing was deleted. These are only out of the list.',
       metaPh: 'Description (who this code belongs to)',
-      smPrefix: 'analysis ', smTx: 'transcripts ', smBroken: 'analysis saved · will not open',
+      smPrefix: 'analysis ', smTx: 'transcripts ', smBroken: 'analysis saved · will not open', smSaves: 'analysis saves ',
       panelHide: 'Fold the deck away', panelShow: 'Bring the deck back',
       upSense: '↑ From file', upSenseTip: 'Load a downloaded analysis JSON into this participant', upBad: 'unreadable', upDone: 'loaded · ',
       downSense: '↓ Analysis file', downSenseTip: 'Download the analysis as JSON, transcripts included',
@@ -1961,6 +1961,24 @@ class Component extends DCLogic {
         // here too, so a stale deployment shows a stale roster rather than a broken one.
         const list = res.participants.filter((r) => String(r.participant || '').indexOf('mt:') !== 0);
         this.setState({ roster: list, rosterMsg: list.length ? '' : 'empty' });
+        // 해석 개수는 목록이 그려진 뒤에 따로 / the analysis counts come afterwards, on their own
+        // request. Reading every record back is what it costs to count the objects in one,
+        // and doing that before the list could be drawn pushed ?list=1 past the timeout —
+        // the roster then failed entirely, to say how much analysis it could not show.
+        this.jsonp('smlist=1').then((sm) => {
+          if (!sm || !sm.ok || !sm.analyses || !this.state.admin) return;
+          const by = {};
+          sm.analyses.forEach((a) => { by[a.participant] = a; });
+          this.setState((st) => ({
+            roster: (st.roster || []).map((r) => (by[r.participant]
+              ? Object.assign({}, r, {
+                  smReadable: by[r.participant].readable,
+                  smCount: by[r.participant].cards + by[r.participant].notes,
+                  smTx: by[r.participant].transcripts
+                })
+              : r))
+          }));
+        });
       } else {
         this.setState({ rosterMsg: 'error' });
       }
@@ -3620,12 +3638,15 @@ class Component extends DCLogic {
           // 해석이 있는지, 열리는지 / whether there is analysis and whether it opens. An entry
           // with rows but nothing readable is the case worth seeing from the list.
           hasSm: (r.smRows || 0) > 0,
+          // 개수는 나중에 도착한다 / the counts arrive a moment later, so until they do the row
+          // says only that there IS analysis rather than guessing at how much
           smLabel: !r.smRows ? ''
+            : r.smReadable === undefined ? t.smSaves + r.smRows
             : !r.smReadable ? t.smBroken
             : t.smPrefix + (r.smCount || 0) + (r.smTx ? (' · ' + t.smTx + r.smTx) : ''),
-          smColor: r.smReadable ? '#7a5a1f' : '#b03f34',
-          smBg: r.smReadable ? '#fdfbf5' : '#f7e6e3',
-          smBd: r.smReadable ? 'oklch(0.62 0.11 62)' : '#e8cdc7',
+          smColor: r.smReadable === false ? '#b03f34' : '#7a5a1f',
+          smBg: r.smReadable === false ? '#f7e6e3' : '#fdfbf5',
+          smBd: r.smReadable === false ? '#e8cdc7' : 'oklch(0.62 0.11 62)',
           // 목록에 보이는 시각은 정렬 기준과 같아야 한다 / show the time the list is sorted
           // by; showing last-activity beside a created-time order reads as a bug
           when: (r.firstAt || r.lastAt) ? new Date(r.firstAt || r.lastAt).toLocaleString() : t.neverSaved,
