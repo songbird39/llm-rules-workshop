@@ -66,6 +66,9 @@ function TickingDate() {
 }
 
 function loadServer() {
+  // 시트가 둘이다 / two sheets now: responses, and codes for the global codebook
+  const sheets = {};
+  const sheetFor = (name) => (sheets[name] || (sheets[name] = makeSheet()));
   const sh = makeSheet();
   // 첫 호출에서는 시트가 없다 / the sheet does not exist on the first call, which is what
   // makes sheet_() create it and write the header. Handing back a ready-made sheet skips
@@ -75,8 +78,15 @@ function loadServer() {
   const sandbox = {
     SpreadsheetApp: {
       getActiveSpreadsheet: () => ({
-        getSheetByName: () => (created ? sh : null),
-        insertSheet: () => { created = true; return sh; },
+        getSheetByName: (name) => {
+          if (name === "codes") return sheets.codes || null;
+          return created ? sh : null;
+        },
+        insertSheet: (name) => {
+          if (name === "codes") return sheetFor("codes");
+          created = true;
+          return sh;
+        },
       }),
     },
     LockService: { getScriptLock: () => ({ waitLock() {}, releaseLock() {} }) },
@@ -108,7 +118,7 @@ function loadServer() {
     Object.keys(params || {}).forEach((k) => { if (k !== "callback") p2[k] = params[k]; });
     return JSON.parse(getText(p2));
   };
-  return { sh, post, get, getText, ctx: sandbox };
+  return { sh, sheets, post, get, getText, ctx: sandbox };
 }
 
 

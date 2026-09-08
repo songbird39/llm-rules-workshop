@@ -219,6 +219,26 @@ an analysis record silently. Run all three: `test_ui_scale.js`, `test_server.js`
 insists on). **Bump the app version on every change**; `tools/build.py` prints all three on
 every build and shouts if the client demands a newer server than Code.gs claims to be.
 
+## Coding
+
+A third panel tab, 코드, admin only. The codebook is **global** — one set of codes across
+every participant, which is what makes counting them mean anything — so it lives on its own
+`codes` sheet rather than in a log keyed by participant. Same append-only rule as everything
+else: a rename, a recolour or a deletion is one more row.
+
+A slash names the folder: typing `정확성/검증 회피` files it under 정확성. One level, typed
+rather than dragged, which is the whole of the folder UI.
+
+Select elements, press a code, and it draws a dashed square with `CODE_PAD` of air around
+them. The square is **recomputed from its members every render**, so it follows them — a
+region that stops matching what it encloses is not a coding. Several codes on one set share
+one square with their tags stacked beside it on a single leader line; each count reads
+`here / everywhere`. Pressing a code twice takes it off, and so does clicking its tag.
+
+Deleting a code leaves the codings that used it: they are evidence of what was read, and
+erasing them silently would rewrite the history. The board simply stops drawing a tag whose
+code is gone.
+
 ## Both halves have to match, and both directions are named
 
 `APP_VERSION` (the page), `VERSION` (Code.gs), `SERVER_MIN` (the server the page insists

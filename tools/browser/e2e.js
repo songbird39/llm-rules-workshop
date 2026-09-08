@@ -7,6 +7,7 @@
  *   PART=3 node tools/browser/e2e.js     # third quarter only (tools/browser/part3.js)
  *   PART=4 node tools/browser/e2e.js     # persistence only    (tools/browser/part4.js)
  *   PART=5 node tools/browser/e2e.js     # submit/history/admin (tools/browser/part5.js)
+ *   PART=6 node tools/browser/e2e.js     # coding               (tools/browser/part6.js)
  *   SHOTS=1 node tools/browser/e2e.js    # also write screenshots to /tmp/ws-shots
  *
  * SETUP (this sandbox, once per session):
@@ -49,6 +50,7 @@ const only = process.env.PART || "";
   if (!only || only === "3") await require("./part3")(browser);
   if (!only || only === "4") await require("./part4")(browser);
   if (!only || only === "5") await require("./part5")(browser);
+  if (!only || only === "6") await require("./part6")(browser);
   await browser.close();
   say(tally.failures ? `\n${tally.failures} FAILURE(S)` : "\nall passed");
   process.exit(tally.failures ? 1 : 0);

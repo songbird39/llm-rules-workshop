@@ -606,8 +606,9 @@ module.exports = async function (browser) {
       const b = [...document.querySelectorAll("button")].find((x) => x.title === "덱 접기");
       return [...b.parentElement.querySelectorAll("button")].map((x) => x.textContent.trim());
     });
-    check(tabs.length === 3 && tabs[0] === "규칙" && tabs[1] === "가드레일",
-      "beside the two deck tabs", ` (${JSON.stringify(tabs)})`);
+    // 관리자에게는 코드 탭이 하나 더 / the admin has a third tab, 코드, so the fold sits last
+    check(tabs.length === 4 && tabs[0] === "규칙" && tabs[1] === "가드레일" && tabs[2] === "코드",
+      "beside the deck tabs, with the codebook among them", ` (${JSON.stringify(tabs)})`);
     await page.mouse.click(f.x, f.y);
     await page.waitForTimeout(400);
     check(!(await page.evaluate(() => document.body.innerText.includes("아이디에이션"))),

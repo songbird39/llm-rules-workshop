@@ -398,6 +398,53 @@ console.log("\ntravelling into history finds the transcripts of that moment");
   check(then && then.texts.n1 !== "고쳐 쓴 전사", "never a transcript from after that version");
 }
 
+console.log("\nthe codebook is global and lives on its own sheet");
+{
+  // 코드북은 참여자별이 아니다 / the codebook is GLOBAL: one set of codes across every
+  // participant. Keeping it out of the responses log is what makes that true, and means
+  // neither scan is slowed by the other.
+  const { post, get, sh, sheets } = loadServer();
+  post({ participant: "P9", kind: "autosave", payload: { participant: "P9", state: { cards: [], notes: [] } } });
+  const before = sh._rows.length;
+
+  post({ kind: "code", id: "c1", name: "검증 회피", folder: "정확성", color: "oklch(0.62 0.11 62)" });
+  post({ kind: "code", id: "c2", name: "번역 의존", folder: "정확성", color: "oklch(0.55 0.10 250)" });
+  post({ kind: "code", id: "c3", name: "폴더 없음", folder: "", color: "" });
+  check(sh._rows.length === before, "a code writes nothing to the responses sheet");
+  check(!!sheets.codes, "it goes to the codes sheet instead");
+
+  let book = get({ codes: "all" }).codebook;
+  check(book.length === 3, "all three codes come back", ` (${book.length})`);
+  check(book[0].name === "검증 회피" && book[0].folder === "정확성", "with their names and folders");
+
+  // 이름 바꾸기는 덮어쓰기가 아니라 한 줄 더 / a rename is one more row, never an edit in place
+  post({ kind: "code", id: "c1", name: "검증 없이 수용", folder: "정확성", color: "oklch(0.62 0.11 62)" });
+  book = get({ codes: "all" }).codebook;
+  check(book.length === 3, "renaming does not add a code", ` (${book.length})`);
+  check(book.find((c) => c.id === "c1").name === "검증 없이 수용", "and the newest name wins");
+
+  post({ kind: "code", id: "c3", deleted: true });
+  book = get({ codes: "all" }).codebook;
+  check(book.length === 2 && !book.some((c) => c.id === "c3"), "a deleted code drops out",
+    ` (${book.length})`);
+  check(sheets.codes._rows.length === 6, "and every one of those was an appended row",
+    ` (${sheets.codes._rows.length} rows incl. header)`);
+
+  // 코딩은 참여자에 매인다 / a coding belongs to one participant's board
+  post({ kind: "coding", id: "g1", participant: "P9", name: "c1", members: ["s1", "s2", "n7"] });
+  post({ kind: "coding", id: "g2", participant: "P9", name: "c2", members: ["s1", "s2", "n7"] });
+  post({ kind: "coding", id: "g3", participant: "P8", name: "c1", members: ["s9"] });
+  const mine = get({ codes: "P9" }).codings;
+  check(mine.length === 2, "a participant's codings come back on their own", ` (${mine.length})`);
+  check(mine[0].members.length === 3, "with the elements each one encloses");
+  check(mine.every((c) => c.participant === "P9"), "and nobody else's");
+  const all = get({ codes: "all" }).codings;
+  check(all.length === 3, "and all of them together for counting", ` (${all.length})`);
+  // 한 묶음에 여러 코드 / several codes on one set is two codings over the same members
+  check(all.filter((c) => c.participant === "P9").every((c) => c.members.join() === "s1,s2,n7"),
+    "one set carrying two codes is two codings over the same members");
+}
+
 console.log("\nthe roster stays cheap enough to arrive");
 {
   // 목록이 안 뜨는 것보다 나쁜 건 없다 / nothing is worse than the list not arriving. Counting

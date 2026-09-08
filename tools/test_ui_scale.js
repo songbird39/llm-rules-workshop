@@ -585,7 +585,7 @@ console.log("\nink and arrows survive outside the layer's own box");
   // read as an invisible dead zone. A <div> is not clipped that way, which is why the cards
   // looked fine and only the pen and the arrows were affected.
   const layers = (src.match(/overflow: 'visible', pointerEvents: 'none'/g) || []).length;
-  check(layers === 3, "ink, arrows and leader lines all draw outside their box",
+  check(layers === 4, "ink, arrows, leader lines and coded regions all draw outside their box",
     ` (${layers})`);
 }
 

@@ -302,12 +302,48 @@
           <!-- 접기는 덱 옆에 붙어 있어야 한다 / the fold belongs beside the thing it folds,
                not adrift in the toolbar with the export buttons -->
           <sc-if value="{{ canFold }}" hint-placeholder-val="{{ false }}">
+            <button onClick="{{ onTabCode }}" style="flex:1;padding:10px 8px;border:none;border-bottom:2px solid {{ tabCodeBd }};background:{{ tabCodeBg }};color:{{ tabCodeFg }};font-size:12.5px;font-weight:600;cursor:pointer">{{ t.tabCode }}</button>
+          </sc-if>
+          <sc-if value="{{ canFold }}" hint-placeholder-val="{{ false }}">
             <button onClick="{{ onTogglePanel }}" title="{{ t.panelHide }}" style="flex:0 0 30px;border:none;border-bottom:2px solid #ece9e1;background:transparent;color:#98958c;font-size:12px;line-height:1;cursor:pointer;padding:0" style-hover="color:#1b1a17;background:#f1efe8">◀</button>
           </sc-if>
         </div>
       </sc-if>
       <div style="flex:1;min-height:0;overflow-y:auto">
       <div style="padding:14px 16px 12px;font-size:13px;line-height:1.65;color:#7a776f;border-bottom:1px solid #ece9e1">{{ panelHint }}</div>
+
+      <sc-if value="{{ showCodes }}" hint-placeholder-val="{{ false }}">
+      <div style="padding:14px 16px 10px;display:flex;flex-direction:column;gap:10px">
+        <div style="font-size:12.5px;line-height:1.6;color:#7a776f">{{ t.codeHint }}</div>
+        <div style="display:flex;gap:6px">
+          <input value="{{ codeDraft }}" onChange="{{ onCodeDraft }}" onKeyDown="{{ onCodeKey }}" placeholder="{{ t.codeNew }}" style="flex:1;min-width:0;padding:7px 10px;border:1px solid #dedbd3;border-radius:8px;background:#fdfcf9;font-size:13px;outline:none;font-family:inherit" style-focus="border-color:oklch(0.51 0.08 253)" />
+          <button onClick="{{ onCodeAdd }}" style="padding:7px 12px;border:1px solid transparent;border-radius:8px;background:#1b1a17;color:#faf8f3;font-size:13px;cursor:pointer">{{ t.codeAdd }}</button>
+        </div>
+        <sc-if value="{{ hasCodeMsg }}" hint-placeholder-val="{{ false }}">
+          <div style="font-size:12px;line-height:1.5;color:#8f342a;background:#f7e6e3;border-radius:7px;padding:7px 10px">{{ codeMsgText }}</div>
+        </sc-if>
+      </div>
+      <sc-for list="{{ codeFolders }}" as="f" hint-placeholder-count="0">
+        <div style="padding:6px 16px 2px;display:flex;align-items:baseline;gap:8px">
+          <span style="font-size:11.5px;font-weight:700;letter-spacing:0.02em;color:#8a877e">{{ f.name }}</span>
+          <span style="flex:1;height:1px;background:#ece9e1"></span>
+          <span style="font-size:11px;color:#a7a49b">{{ f.count }}</span>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:5px;padding:4px 16px 12px">
+          <sc-for list="{{ f.codes }}" as="c" hint-placeholder-count="0">
+            <div style="display:flex;align-items:center;gap:8px;padding:7px 9px;border:1px solid #e2dfd7;border-radius:9px;background:{{ c.bg }}" style-hover="border-color:#d6d3ca">
+              <button onClick="{{ c.onApply }}" title="{{ t.codeApplyTip }}" style="flex:1;min-width:0;display:flex;align-items:center;gap:8px;border:none;background:transparent;text-align:left;cursor:pointer;padding:0">
+                <span style="flex:none;width:10px;height:10px;border-radius:3px;background:{{ c.color }}"></span>
+                <span style="flex:1;min-width:0;font-size:13px;font-weight:600;color:#1b1a17;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ c.name }}</span>
+                <span style="flex:none;font-size:11px;font-family:ui-monospace,Menlo,monospace;color:{{ c.countColor }}">{{ c.count }}</span>
+              </button>
+              <button onClick="{{ c.onEdit }}" title="{{ t.editTip }}" style="flex:none;width:22px;height:22px;border:none;border-radius:5px;background:transparent;color:#bfbcb3;font-size:11px;cursor:pointer;padding:0" style-hover="color:#1b1a17">✎</button>
+              <button onClick="{{ c.onDel }}" title="{{ t.delTip }}" style="flex:none;width:22px;height:22px;border:none;border-radius:5px;background:transparent;color:#bfbcb3;font-size:11px;cursor:pointer;padding:0" style-hover="color:#b03f34">✕</button>
+            </div>
+          </sc-for>
+        </div>
+      </sc-for>
+      </sc-if>
 
       <sc-if value="{{ showFlow }}" hint-placeholder-val="{{ true }}">
       <div style="padding:16px 16px 4px;display:flex;align-items:baseline;gap:8px">
@@ -521,6 +557,7 @@
           </div>
           </sc-if>
         </sc-for>
+        {{ codeLayer }}
         {{ inkLayer }}
       </div>
 
@@ -668,15 +705,23 @@ const CELL_MAX = 50000, CELL_SAFE = 34000, SENSE_PARTS_MAX = 40;
 // one small row instead of a fistful of slices, which is the difference between a sheet
 // that stays quick to scan and one that does not.
 const TX_PREFIX = 'tx:';
+// 코드 칠 / the ink a coded region is drawn in, and how much air it leaves around what it
+// encloses. Deliberately unlike a card, a note or the participant-region box: a coding is a
+// reading laid OVER the board, not another thing on it.
+const CODE_INK = 'oklch(0.52 0.115 305)', CODE_PAD = 18, CODE_TAG_GAP = 26;
+const CODE_COLORS = [
+  'oklch(0.52 0.115 305)', 'oklch(0.55 0.110 250)', 'oklch(0.52 0.105 160)',
+  'oklch(0.58 0.115 62)', 'oklch(0.52 0.130 20)', 'oklch(0.45 0.060 285)'
+];
 // 이 클라이언트가 요구하는 서버 버전 / the deployment this client needs. An older one cannot
 // reassemble a sliced record, so analysis work would save and then fail to load — with no
 // error anywhere, because the POST is no-cors. Check it and say so.
-const SERVER_MIN = '2026-09-08c';
+const SERVER_MIN = '2026-09-09a';
 // 이 페이지의 판 / which build this page is. It sits where the step label goes on the sign-in
 // screen, so anyone reporting a problem can read it off without opening anything — "it does
 // not load" is a very different report from someone on last week's page than from someone
 // on today's. Bump it with any change worth telling apart.
-const APP_VERSION = '2026-09-08h';
+const APP_VERSION = '2026-09-09a';
 // 분석 메모는 두 종류 / two kinds of note in analysis mode, told apart by colour: the
 // gold one is the admin's own remark and matches the rest of the sensemaking layer;
 // the slate one holds transcript, which is somebody else's words, not the admin's.
@@ -912,7 +957,12 @@ const I18N = {
       consentTitle: '연구 설명문 및 동의서', consentHint: '참여 전에 아래 내용을 읽어 주세요. 마지막 장이 서명하실 동의서입니다.',
       consentPdf: '동의서 PDF', consentPng: '동의서 이미지', consentPage: '{n} / {total} 쪽', consentLast: '마지막 장 — 서명용',
       step0: '참여자 로그인', loginTitle: '참여자 코드를 입력해 주세요', loginSub: '작업은 참여자 코드별로 자동 저장됩니다. 같은 코드로 다시 들어오면 이어서 할 수 있습니다.', start: '시작하기 →', continueAs: '이어서 하기', logout: '나가기',
-      tabFlow: '규칙', tabGuard: '가드레일',
+      tabFlow: '규칙', tabGuard: '가드레일', tabCode: '코드',
+      codeHint: '보드에서 요소를 고른 뒤 코드를 누르면, 고른 것들을 감싸는 영역으로 표시됩니다. 한 묶음에 여러 코드를 걸 수 있습니다.',
+      codeNew: '새 코드 (폴더/이름)', codeAdd: '추가', codeNoFolder: '폴더 없음',
+      codeApplyTip: '선택한 요소에 이 코드 걸기 / 다시 누르면 해제', codeOffTip: '눌러서 코드 해제',
+      codeNoSel: '먼저 보드에서 요소를 선택해 주세요.',
+      codeRename: '코드 이름 (폴더/이름)', codeDelBody: '이 코드는 %n곳에 걸려 있습니다. 코드를 지워도 걸어 둔 표시는 남습니다. 계속할까요?',
       hintFlow: '내가 학습하는 순서대로 ① 활동 태그를 왼쪽에서 오른쪽으로 놓아 보세요. 활동 전 → 활동 중 → 활동 후 흐름이면 좋고, 길어지거나 갈래가 나뉘면 줄을 바꿔도 됩니다. 각 활동 옆에 ② 수단을 붙여 무엇으로 하는지 적어 주세요.',
       hintGuard: '각 활동 아래에 ③ 시점 · 조건 카드와 ④ 유도 카드를 놓아, 시스템이 언제 어떻게 개입하면 좋을지 정해 보세요. 카드 위 글자는 눌러서 직접 고칠 수 있습니다.',
       cardName: '카드 이름', descPh: '설명', notePh: '메모 쓰기…',
@@ -1046,7 +1096,12 @@ const I18N = {
       consentTitle: 'Information sheet and consent form', consentHint: 'Please read this before taking part. The last page is the consent form you sign.',
       consentPdf: 'Consent PDF', consentPng: 'Consent image', consentPage: 'Page {n} of {total}', consentLast: 'Last page — for signing',
       step0: 'Participant sign-in', loginTitle: 'Enter your participant code', loginSub: 'Work is saved automatically per participant code. Come back with the same code to continue where you left off.', start: 'Start →', continueAs: 'Continue as', logout: 'Exit',
-      tabFlow: 'Rules', tabGuard: 'Guardrails',
+      tabFlow: 'Rules', tabGuard: 'Guardrails', tabCode: 'Codes',
+      codeHint: 'Select elements on the board, then press a code to draw a region around them. One set can carry several codes.',
+      codeNew: 'New code (folder/name)', codeAdd: 'Add', codeNoFolder: 'No folder',
+      codeApplyTip: 'Code the current selection / press again to remove', codeOffTip: 'click to uncode',
+      codeNoSel: 'Select something on the board first.',
+      codeRename: 'Code name (folder/name)', codeDelBody: 'This code is applied in %n places. Deleting it leaves those marks in place. Continue?',
       hintFlow: 'Lay ① activity tags left to right in the order you study — before → during → after works well, and you can start a new row if it gets long or branches. Add ② means beside each activity to say what you do it with.',
       hintGuard: 'Place ③ timing · condition cards and ④ nudge cards under each activity to decide when and how the system should step in. Tap any text on a card to edit it.',
       cardName: 'Card name', descPh: 'Description', notePh: 'Write a note…',
@@ -1068,7 +1123,8 @@ const I18N = {
 class Component extends DCLogic {
   constructor(props) {
     super(props);
-    this.state = { sync: '', step: 0, lang: 'ko', rules: [], pid: '', loginPid: '', cards: [], notes: [], arrows: [], arrowMode: false, pendingArrow: null, pen: null, strokes: [], selArrow: null, noteMode: false, noteKind: 'memo', panelOff: false, rosterMode: '', histWho: 'board', conflict: null, marked: '', senseDirty: false, recover: null, loading: null, importMsg: '', oldPage: false, undoDepth: 0, focusNote: null, pan: { x: 0, y: 0 }, zoom: 1, ghost: null, seq: 1, panelW: panelCap(), sel: [], marquee: null, finish: null, tab: 'flow', hist: null, histList: [], travel: null, senseOn: true, admin: false, viewPid: '', roster: [], rosterMsg: '' };
+    this.state = { sync: '', step: 0, lang: 'ko', rules: [], pid: '', loginPid: '', cards: [], notes: [], arrows: [], arrowMode: false, pendingArrow: null, pen: null, strokes: [], selArrow: null, noteMode: false, noteKind: 'memo', panelOff: false, rosterMode: '', histWho: 'board', conflict: null, marked: '', senseDirty: false, recover: null, loading: null, importMsg: '', oldPage: false,
+      codebook: [], codings: [], allCodings: [], codeFolder: '', codeMsg: '', undoDepth: 0, focusNote: null, pan: { x: 0, y: 0 }, zoom: 1, ghost: null, seq: 1, panelW: panelCap(), sel: [], marquee: null, finish: null, tab: 'flow', hist: null, histList: [], travel: null, senseOn: true, admin: false, viewPid: '', roster: [], rosterMsg: '' };
     this.canvasRef = React.createRef();
     this.drag = null;
   }
@@ -1966,6 +2022,159 @@ class Component extends DCLogic {
     URL.revokeObjectURL(a.href);
   }
 
+  /* ── 코드 / the codebook ────────────────────────────────────────────────
+     코드는 참여자별이 아니라 전체에 하나다 / codes are GLOBAL: one codebook across every
+     participant, which is what makes counting them mean anything. The codings — which
+     elements of whose board carry which code — are per participant and load with them. */
+  // 코드 만들기 / adding a code. "정확성/검증 회피" 처럼 슬래시로 폴더를 적는다 — 폴더 UI를 따로
+  // 만들지 않고도 한 겹 폴더가 생긴다.
+  // A slash names the folder: "정확성/검증 회피" files it under 정확성. One level, typed
+  // rather than dragged, which is the whole of the folder UI.
+  addCode() {
+    const raw = (this.state.codeDraft || '').trim();
+    if (!raw) return;
+    const cut = raw.indexOf('/');
+    const folder = cut > 0 ? raw.slice(0, cut).trim() : '';
+    const name = (cut > 0 ? raw.slice(cut + 1) : raw).trim();
+    if (!name) return;
+    const used = (this.state.codebook || []).length;
+    this.putCode({
+      id: 'k' + Date.now().toString(36) + Math.random().toString(36).slice(2, 5),
+      name: name, folder: folder, color: CODE_COLORS[used % CODE_COLORS.length]
+    });
+    this.setState({ codeDraft: '' });
+  }
+
+  renameCode(c) {
+    const L = I18N[this.state.lang] || I18N.ko;
+    const cur = (c.folder ? c.folder + '/' : '') + c.name;
+    const raw = (window.prompt(L.ui.codeRename, cur) || '').trim();
+    if (!raw || raw === cur) return;
+    const cut = raw.indexOf('/');
+    const folder = cut > 0 ? raw.slice(0, cut).trim() : '';
+    const name = (cut > 0 ? raw.slice(cut + 1) : raw).trim();
+    if (!name) return;
+    this.putCode(Object.assign({}, c, { name: name, folder: folder }));
+  }
+
+  // 코드를 지워도 이미 붙인 코딩은 남는다 / deleting a code leaves the codings that used it:
+  // they are evidence of what was read, and quietly erasing them would rewrite history.
+  // The board simply stops drawing a tag whose code is gone.
+  removeCode(c) {
+    const L = I18N[this.state.lang] || I18N.ko;
+    const n = (this.state.allCodings || []).filter((g) => g.code === c.id).length;
+    if (n && !window.confirm(L.ui.codeDelBody.replace('%n', n))) return;
+    this.putCode(Object.assign({}, c, { deleted: true }));
+  }
+
+  loadCodes(pid) {
+    return this.jsonp('codes=' + encodeURIComponent('all')).then((res) => {
+      if (!res || !res.ok) return;
+      this.setState({
+        codebook: res.codebook || [],
+        allCodings: res.codings || [],
+        codings: (res.codings || []).filter((c) => c.participant === pid)
+      });
+    });
+  }
+
+  // 코드북 쓰기는 한 줄 더 / writing the codebook appends: a rename or a delete is one more
+  // row, so the codebook has a history like everything else here
+  putCode(code) {
+    const url = this.syncUrl();
+    this.setState((st) => {
+      const list = (st.codebook || []).filter((c) => c.id !== code.id);
+      return { codebook: code.deleted ? list : list.concat([code]) };
+    });
+    if (!url) return;
+    try {
+      fetch(url, {
+        method: 'POST', mode: 'no-cors',
+        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+        body: JSON.stringify({
+          kind: 'code', id: code.id, name: code.name || '', folder: code.folder || '',
+          color: code.color || '', deleted: !!code.deleted
+        })
+      });
+    } catch (e) {}
+  }
+
+  putCoding(g) {
+    const url = this.syncUrl();
+    this.setState((st) => {
+      const drop = (l) => (l || []).filter((c) => c.id !== g.id);
+      return {
+        codings: g.deleted ? drop(st.codings) : drop(st.codings).concat([g]),
+        allCodings: g.deleted ? drop(st.allCodings) : drop(st.allCodings).concat([g])
+      };
+    });
+    if (!url) return;
+    try {
+      fetch(url, {
+        method: 'POST', mode: 'no-cors',
+        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+        body: JSON.stringify({
+          kind: 'coding', id: g.id, participant: g.participant,
+          name: g.code, members: g.members, deleted: !!g.deleted
+        })
+      });
+    } catch (e) {}
+  }
+
+  // 선택한 것들에 코드를 건다 / put a code on what is selected. 같은 묶음에 같은 코드를 두 번
+  // 걸지는 않는다 — 두 번째 클릭은 해제다.
+  // Applying the same code to the same set twice is a toggle, not a duplicate: the second
+  // click takes it off, which is what a second click on a highlighted code should mean.
+  applyCode(codeId) {
+    const pid = this.state.viewPid;
+    const sel = (this.state.sel || []).filter((id) => this.codeMemberOk(id));
+    if (!pid || !sel.length) { this.setState({ codeMsg: 'nosel' }); setTimeout(() => this.setState({ codeMsg: '' }), 2200); return; }
+    const key = sel.slice().sort().join(',');
+    const already = (this.state.codings || []).find((g) => g.code === codeId && g.members.slice().sort().join(',') === key);
+    if (already) { this.putCoding(Object.assign({}, already, { deleted: true })); return; }
+    this.putCoding({
+      id: 'g' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6),
+      participant: pid, code: codeId, members: sel
+    });
+  }
+
+  // 코딩할 수 있는 것 / what a coding may enclose: anything on the board that has a rect
+  codeMemberOk(id) {
+    return this.state.cards.some((c) => c.id === id) || (this.state.notes || []).some((n) => n.id === id);
+  }
+
+  // 코딩이 감싸는 사각형 / the rectangle a coding encloses, recomputed from its members every
+  // render — that is what makes it follow them when they move
+  codingRect(g) {
+    const rs = [];
+    (g.members || []).forEach((id) => {
+      const c = this.state.cards.find((k) => k.id === id);
+      if (c) { rs.push(this.cardRect(c)); return; }
+      const n = (this.state.notes || []).find((k) => k.id === id);
+      if (n) rs.push(this.noteRect(n));
+    });
+    if (!rs.length) return null;
+    let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
+    rs.forEach((r) => {
+      x0 = Math.min(x0, r.x); y0 = Math.min(y0, r.y);
+      x1 = Math.max(x1, r.x + r.w); y1 = Math.max(y1, r.y + r.h);
+    });
+    return { x: x0 - CODE_PAD, y: y0 - CODE_PAD, w: (x1 - x0) + CODE_PAD * 2, h: (y1 - y0) + CODE_PAD * 2 };
+  }
+
+  // 같은 묶음은 사각형 하나 / one square per SET, with every code on that set stacked beside
+  // it. Three codes on one selection is three codings and one box, not three boxes.
+  codeGroups() {
+    const by = {};
+    (this.state.codings || []).forEach((g) => {
+      const key = (g.members || []).slice().sort().join(',');
+      const r = this.codingRect(g);
+      if (!r) return;                       // 멤버가 사라졌다 / its members are gone
+      (by[key] || (by[key] = { key: key, rect: r, codes: [] })).codes.push(g);
+    });
+    return Object.keys(by).map((k) => by[k]);
+  }
+
   // ── 참여자 항목 숨김 · 설명 / hide a record, and say whose it is ──────────
   // 삭제는 없앴다 / there is no delete. Hiding writes one more row saying "hidden", so
   // every autosave the participant ever made is still on the sheet and restoring is
@@ -2079,6 +2288,7 @@ class Component extends DCLogic {
       this._txSaved = '{}';
       this.loadTick('board');
       this.loadSense(pid);
+      this.loadCodes(pid);
       this.refreshHead().then(() => this.watchHead());
     });
   }
@@ -2593,6 +2803,49 @@ class Component extends DCLogic {
     if (!n.link) return null;
     if (!this.state.cards.some((k) => k.id === n.link)) return null;
     return this.arrowEnds({ from: { k: 'card', id: n.link }, to: { k: 'note', id: n.id } });
+  }
+
+  /* 코드 레이어 / the coded regions.
+     보드 위에 얹힌 읽기 / a reading laid over the board rather than another thing on it: a
+     dashed square around what was selected, its code tags stacked beside it on one leader
+     line, and pointer events only on the tags — the square must never intercept a drag
+     meant for what it encloses. */
+  codeLayer() {
+    const h = React.createElement;
+    const kids = [];
+    const book = {};
+    (this.state.codebook || []).forEach((c) => { book[c.id] = c; });
+    this.codeGroups().forEach((grp) => {
+      const r = grp.rect;
+      const ink = (book[grp.codes[0].code] || {}).color || CODE_INK;
+      kids.push(h('rect', {
+        key: grp.key + 'box', x: r.x, y: r.y, width: r.w, height: r.h, rx: 14,
+        fill: 'none', stroke: ink, strokeWidth: 1.5, strokeDasharray: '3 5', opacity: 0.9
+      }));
+      // 태그는 오른쪽 위에 쌓는다 / the tags stack at the top right, on one line back to the
+      // corner, so several codes on one set read as one act of coding
+      const tx = r.x + r.w + CODE_TAG_GAP, ty = r.y;
+      kids.push(h('line', {
+        key: grp.key + 'lead', x1: r.x + r.w, y1: r.y + 12, x2: tx, y2: ty + 12,
+        stroke: ink, strokeWidth: 1.2, opacity: 0.8
+      }));
+      grp.codes.forEach((g, i) => {
+        const c = book[g.code] || { name: g.code, color: CODE_INK };
+        const y = ty + i * 26;
+        const w = Math.max(54, textPx(c.name || '') + 26);
+        kids.push(h('g', { key: g.id, style: { pointerEvents: 'auto', cursor: 'pointer' },
+          onPointerDown: (ev) => { ev.stopPropagation(); ev.preventDefault(); this.putCoding(Object.assign({}, g, { deleted: true })); } },
+          h('title', null, (c.name || '') + ' — ' + (I18N[this.state.lang] || I18N.ko).ui.codeOffTip),
+          h('rect', { x: tx, y: y, width: w, height: 22, rx: 11, fill: '#fffefb', stroke: c.color || CODE_INK, strokeWidth: 1.4 }),
+          h('circle', { cx: tx + 12, cy: y + 11, r: 4, fill: c.color || CODE_INK }),
+          h('text', { x: tx + 21, y: y + 15, fontSize: 11.5, fill: '#1b1a17' }, c.name || '')
+        ));
+      });
+    });
+    return h('svg', {
+      width: 5000, height: 5000,
+      style: { position: 'absolute', left: 0, top: 0, overflow: 'visible', pointerEvents: 'none' }
+    }, kids);
   }
 
   linkLayer() {
@@ -3780,6 +4033,49 @@ class Component extends DCLogic {
       showFlow: this.state.step === 1 || this.state.tab === 'flow',
       showGuard: this.state.step === 2 && this.state.tab === 'guard',
       panelHint: this.state.step === 1 ? t.hintFlow : t.hintGuard,
+      onTabCode: () => this.setState({ tab: 'code' }),
+      showCodes: this.state.tab === 'code' && viewing,
+      tabCodeBd: this.state.tab === 'code' ? '#1b1a17' : '#ece9e1',
+      tabCodeBg: this.state.tab === 'code' ? '#fffefb' : 'transparent',
+      tabCodeFg: this.state.tab === 'code' ? '#1b1a17' : '#8a877e',
+      codeDraft: this.state.codeDraft || '',
+      onCodeDraft: (e) => this.setState({ codeDraft: e.target.value }),
+      onCodeKey: (e) => { if (e.key === 'Enter') this.addCode(); },
+      onCodeAdd: () => this.addCode(),
+      hasCodeMsg: !!this.state.codeMsg,
+      codeMsgText: this.state.codeMsg === 'nosel' ? t.codeNoSel : '',
+      // 폴더 한 겹 / one level of folders: a code sits in a named folder or at the top, which
+      // is enough to group a codebook by theme without a tree to drag things around in
+      codeFolders: (() => {
+        const counts = {};
+        (this.state.allCodings || []).forEach((g) => { counts[g.code] = (counts[g.code] || 0) + 1; });
+        const here = {};
+        (this.state.codings || []).forEach((g) => { here[g.code] = (here[g.code] || 0) + 1; });
+        const groups = {}, order = [];
+        (this.state.codebook || []).forEach((c) => {
+          const f = c.folder || '';
+          if (!groups[f]) { groups[f] = []; order.push(f); }
+          groups[f].push(c);
+        });
+        order.sort((a, b) => (a === '' ? 1 : b === '' ? -1 : a.localeCompare(b)));
+        return order.map((f) => ({
+          key: 'f' + f,
+          name: f || t.codeNoFolder,
+          count: (groups[f] || []).length,
+          codes: groups[f].map((c) => ({
+            key: c.id,
+            name: c.name,
+            color: c.color || CODE_INK,
+            // 이 참여자에게 몇 번, 전체로 몇 번 / how many times here, and everywhere
+            count: (here[c.id] || 0) + ' / ' + (counts[c.id] || 0),
+            countColor: here[c.id] ? '#7a5a1f' : '#a7a49b',
+            bg: here[c.id] ? '#fdfbf5' : '#fffefb',
+            onApply: () => this.applyCode(c.id),
+            onEdit: () => this.renameCode(c),
+            onDel: () => this.removeCode(c)
+          }))
+        }));
+      })(),
       onTabFlow: () => this.setState({ tab: 'flow' }),
       onTabGuard: () => this.setState({ tab: 'guard' }),
       tabFlowBg: this.state.tab === 'flow' ? '#faf8f3' : '#f1efe8',
@@ -3955,6 +4251,7 @@ class Component extends DCLogic {
       cardCursor: this.state.arrowMode ? 'crosshair' : 'grab',
       arrowsLayer: this.arrowsLayer(),
       linkLayer: this.linkLayer(),
+      codeLayer: RO ? this.codeLayer() : null,
       inkLayer: this.inkLayer(),
       selArrowInfo: !!(this.state.selArrow && this.arrowMid(this.state.selArrow)),
       selArrowX: this.state.selArrow && this.arrowMid(this.state.selArrow) ? this.arrowMid(this.state.selArrow).x : 0,

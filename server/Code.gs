@@ -21,9 +21,15 @@
 // across several rows and an old deployment cannot reassemble them, so analysis saves
 // appear to work and then will not load. The client compares this against what it needs
 // and says so plainly instead of leaving you to guess.
-var VERSION = '2026-09-08c';
+var VERSION = '2026-09-09a';
 
 var SHEET_NAME = 'responses';
+// 코드북은 참여자 기록과 다른 시트에 산다 / the codebook lives on its own sheet. It is GLOBAL —
+// one set of codes across every participant — so it does not belong in a log keyed by
+// participant, and keeping it out means neither scan is slowed by the other. Codings (which
+// elements of whose board carry which code) live here too, one row each.
+var CODE_SHEET = 'codes';
+var CODE_HEADERS = ['at', 'kind', 'id', 'participant', 'name', 'folder', 'color', 'members', 'deleted'];
 // 관리자 해석(sensemaking) 레코드는 'sm:' 접두어가 붙은 별도 키로 저장한다.
 // Admin sensemaking records live under a separate key, 'sm:' + participant. They are
 // never a participant's own record: roster_ skips them and latestState_ refuses to
@@ -48,6 +54,73 @@ var TX_PREFIX = 'tx:';
 // served: the previous complete one is returned instead.
 var HEADERS = ['receivedAt', 'participant', 'kind', 'queuedAt', 'step', 'selectedRules', 'combinations', 'annotations', 'arrows', 'json'];
 
+/** 코드 시트 / the codes sheet, created on first use like the responses one. */
+function codeSheet_() {
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var sh = ss.getSheetByName(CODE_SHEET);
+  if (!sh) {
+    sh = ss.insertSheet(CODE_SHEET);
+    sh.appendRow(CODE_HEADERS);
+    sh.setFrozenRows(1);
+  }
+  return sh;
+}
+
+/** 코드북 / the codebook: every code, newest row per id wins, deleted ones dropped.
+ *  응답 시트와 같은 규칙 / same rule as the responses sheet — append only, never rewrite, so a
+ *  rename or a deletion is one more row and the history of the codebook is intact.
+ */
+function codebook_() {
+  var sh = codeSheet_();
+  var last = sh.getLastRow();
+  if (last < 2) return [];
+  var v = sh.getRange(2, 1, last - 1, CODE_HEADERS.length).getValues();
+  var by = {}, order = [];
+  for (var i = 0; i < v.length; i++) {
+    if (String(v[i][1]) !== 'code') continue;
+    var id = String(v[i][2] || '');
+    if (!id) continue;
+    if (!by[id]) order.push(id);
+    by[id] = {
+      id: id,
+      name: String(v[i][4] || ''),
+      folder: String(v[i][5] || ''),
+      color: String(v[i][6] || ''),
+      deleted: String(v[i][8]) === 'true',
+      at: v[i][0] ? new Date(v[i][0]).toISOString() : null
+    };
+  }
+  return order.map(function (id) { return by[id]; }).filter(function (c) { return !c.deleted; });
+}
+
+/** 코딩 / the codings. Pass a participant to get theirs, or nothing for all of them.
+ *  A coding is (participant, code, the element ids it encloses); newest row per id wins.
+ */
+function codings_(pid) {
+  var sh = codeSheet_();
+  var last = sh.getLastRow();
+  if (last < 2) return [];
+  var v = sh.getRange(2, 1, last - 1, CODE_HEADERS.length).getValues();
+  var by = {}, order = [];
+  for (var i = 0; i < v.length; i++) {
+    if (String(v[i][1]) !== 'coding') continue;
+    var id = String(v[i][2] || '');
+    if (!id) continue;
+    if (pid && String(v[i][3]) !== String(pid)) continue;
+    if (!by[id]) order.push(id);
+    var members = [];
+    try { members = JSON.parse(v[i][7] || '[]'); } catch (e) { members = []; }
+    by[id] = {
+      id: id,
+      participant: String(v[i][3] || ''),
+      code: String(v[i][4] || ''),
+      members: members,
+      deleted: String(v[i][8]) === 'true'
+    };
+  }
+  return order.map(function (id) { return by[id]; }).filter(function (c) { return !c.deleted; });
+}
+
 function doPost(e) {
   var lock = LockService.getScriptLock();
   lock.waitLock(30000);
@@ -62,6 +135,17 @@ function doPost(e) {
     // post one; answer it without touching the sheet rather than letting it through.
     if (body.action === 'delete') {
       return json_({ ok: false, error: 'delete is disabled; hide the participant instead' });
+    }
+    // 코드 시트로 가는 쓰기 / writes bound for the codes sheet. Same append-only shape: a
+    // rename, a recolour or a deletion is one more row, never an edit in place.
+    if (body.kind === 'code' || body.kind === 'coding') {
+      codeSheet_().appendRow([
+        new Date(), body.kind, body.id || '', body.participant || '',
+        body.name || '', body.folder || '', body.color || '',
+        body.members ? JSON.stringify(body.members) : '',
+        body.deleted ? 'true' : ''
+      ]);
+      return json_({ ok: true });
     }
     var p = body.payload || {};
     sheet_().appendRow([
@@ -96,6 +180,8 @@ function doGet(e) {
     out = { ok: true, participants: roster_() };
   } else if (p.versions) {
     out = { ok: true, participant: p.versions, versions: versions_(p.versions, Number(p.every) || 120000) };
+  } else if (p.codes) {
+    out = { ok: true, codebook: codebook_(), codings: codings_(p.codes === 'all' ? null : p.codes) };
   } else if (p.txat) {
     out = { ok: true, participant: p.txat, state: txAt_(p.txat, p.at) };
   } else if (p.smlist) {
