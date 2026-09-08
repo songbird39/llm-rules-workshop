@@ -174,6 +174,10 @@ module.exports = async function (browser) {
     await page.waitForTimeout(1400);
     check(await page.evaluate(() => document.body.innerText.includes("1차 코딩 완료")),
       "the analysis tab lists the checkpoint by name");
+    // 어느 판본에 알맹이가 있는지 보여야 한다 / the list has to show which version holds what,
+    // or picking one to restore means opening them one at a time
+    check(await page.evaluate(() => /\d+개 · 메모 \d+개/.test(document.body.innerText)),
+      "and every version says how much is in it");
 
     // 저장점으로 돌아간다 / travel to the checkpoint
     await page.evaluate(() => {

@@ -323,6 +323,55 @@ console.log("\nsmlist says who has analysis, and whether it can be read");
     "so 'saved but will not load' is distinguishable from 'never saved'");
 }
 
+console.log("\nthe version list says how much is in each version");
+{
+  // 타임스탬프만 있는 목록은 고를 수가 없다 / a column of timestamps cannot be chosen from. When
+  // an empty save lands on a full one, the question is exactly "which of these has my work",
+  // and answering it by opening them one at a time is not answering it.
+  const { post, get } = loadServer();
+  const mk = (n, m) => ({ savedAt: 1, pid: "sm:P9", step: 2, lang: "ko", rules: [],
+    cards: Array.from({ length: n }, (_, i) => ({ id: "s" + i, type: "when", title: "t", sm: true, src: "a", x: 1, y: 1 })),
+    notes: Array.from({ length: m }, (_, i) => ({ id: "n" + i, x: 1, y: 1, text: "메모", sm: true, src: "a" })),
+    arrows: [], strokes: [], seq: 9 });
+
+  post({ participant: "sm:P9", kind: "sensemaking", payload: { participant: "sm:P9", state: mk(35, 26) } });
+  post({ participant: "sm:P9", kind: "checkpoint", label: "1차 코딩",
+         payload: { participant: "sm:P9", state: mk(12, 4) } });
+  // 조각난 판본도 세어야 한다 / a sliced version must be counted too, or the big ones — the very
+  // ones worth restoring — are the ones with no numbers beside them
+  const j = JSON.stringify(mk(7, 3)), size = Math.ceil(j.length / 3);
+  for (let i = 0; i < 3; i++) {
+    post({ participant: "sm:P9", kind: "sensemaking", stamp: 42, part: i, parts: 3,
+           payload: { participant: "sm:P9", chunk: j.slice(i * size, (i + 1) * size) } });
+  }
+  post({ participant: "sm:P9", kind: "sensemaking", payload: { participant: "sm:P9", state: mk(0, 0) } });
+
+  const vs = get({ versions: "sm:P9", every: "1" }).versions;
+  check(vs.length === 4, "every version is listed once", ` (${vs.length})`);
+  check(vs.every((v) => v.counted), "and every one of them carries counts");
+  const newest = vs[0];
+  check(newest.cards === 0 && newest.notes === 0, "the empty save shows as empty, so it can be skipped",
+    ` (${newest.cards}/${newest.notes})`);
+  const sliced = vs[1];
+  check(sliced.cards === 7 && sliced.notes === 3, "a sliced version is counted from its assembled parts",
+    ` (${sliced.cards}/${sliced.notes})`);
+  const mark = vs.find((v) => v.kind === "checkpoint");
+  check(mark && mark.cards === 12 && mark.label === "1차 코딩", "a checkpoint keeps its name and its counts");
+  const oldest = vs[vs.length - 1];
+  check(oldest.cards === 35 && oldest.notes === 26,
+    "and the full one is visibly the full one", ` (${oldest.cards}/${oldest.notes})`);
+
+  // 전사 기록은 전사 개수로 / a transcript record counts transcripts, not cards
+  post({ participant: "tx:P9", kind: "transcript", payload: { participant: "tx:P9", state: { texts: { a: "1", b: "2" }, cards: [] } } });
+  const tv = get({ versions: "tx:P9", every: "1" }).versions;
+  check(tv[0] && tv[0].transcripts === 2, "a transcript version counts transcripts", tv[0] ? ` (${tv[0].transcripts})` : "");
+
+  // 세는 데도 한계가 있다 / counting is bounded: it parses each version, and an unbounded parse
+  // per version is exactly what took ?list=1 past the client's timeout
+  check(/var COUNT_MAX = 60;/.test(require("fs").readFileSync(require("path").join(__dirname, "../server/Code.gs"), "utf8")),
+    "and it is capped, so a long history cannot make the dialog hang");
+}
+
 console.log("\nthe roster stays cheap enough to arrive");
 {
   // 목록이 안 뜨는 것보다 나쁜 건 없다 / nothing is worse than the list not arriving. Counting

@@ -675,6 +675,11 @@ console.log("\nanalysis versions, checkpoints, and a second editor");
   check(/if \(body && body\.parts && body\.part !== 0\) continue;/.test(gs),
     "and a sliced save is listed once, not once per slice");
   check(/'checkpoint', label\)/.test(doc), "the checkpoint carries the name that was typed");
+  // 목록에서 골라야 한다 / the list has to be choosable: which of these has the work in it
+  check(/hasCount: v\.counted === true/.test(doc), "each version says how much is in it");
+  check(/countColor: \(\(v\.cards \|\| 0\) \+ \(v\.notes \|\| 0\) \+ \(v\.transcripts \|\| 0\)\) === 0/.test(doc),
+    "and an empty one is marked, since that is the one you scroll past");
+  check(/var COUNT_MAX = 60;/.test(gs), "counting is capped, so a long history cannot hang the dialog");
   check(/senseState\(\)/.test(doc), "and writes exactly what an autosave writes");
 
   // 두 사람 / two editors

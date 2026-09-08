@@ -21,7 +21,7 @@
 // across several rows and an old deployment cannot reassemble them, so analysis saves
 // appear to work and then will not load. The client compares this against what it needs
 // and says so plainly instead of leaving you to guess.
-var VERSION = '2026-09-08a';
+var VERSION = '2026-09-08b';
 
 var SHEET_NAME = 'responses';
 // 관리자 해석(sensemaking) 레코드는 'sm:' 접두어가 붙은 별도 키로 저장한다.
@@ -207,13 +207,19 @@ function versions_(pid, everyMs) {
   if (last < 2) return [];
   var vals = sh.getRange(2, 1, last - 1, 3).getValues();   // receivedAt, participant, kind
   var jsonCol = sh.getRange(2, 10, last - 1, 1).getValues();
-  var out = [], lastKept = 0;
+  var out = [], lastKept = 0, groups = {};
   for (var i = 0; i < vals.length; i++) {
     if (String(vals[i][1] || '').trim() !== String(pid)) continue;
     var kind = String(vals[i][2] || '');
     var label = '';
     var body = null;
     try { body = JSON.parse(jsonCol[i][0]); } catch (e) { body = null; }
+    // 조각은 스탬프별로 모아 둔다 / slices are collected as we pass, so a version's contents
+    // can be counted later without walking the sheet again
+    if (body && body.parts) {
+      var g = groups[body.stamp] || (groups[body.stamp] = { parts: body.parts, s: {} });
+      g.s[body.part] = (body.payload && body.payload.chunk) || '';
+    }
     // 조각난 저장은 한 판본이다 / a record written across several rows is ONE version, and
     // the first slice stands for it: listing the others would show the same save four times
     if (body && body.parts && body.part !== 0) continue;
@@ -226,10 +232,47 @@ function versions_(pid, everyMs) {
     out.push({
       row: i + 2,
       at: vals[i][0] ? new Date(vals[i][0]).toISOString() : null,
-      kind: kind, label: label
+      kind: kind, label: label,
+      stamp: body && body.parts ? body.stamp : null,
+      whole: body && !body.parts && body.payload ? body.payload.state : null
     });
   }
   out.reverse();
+
+  /* 판본마다 몇 개가 들어 있는지 / how much is IN each version. 목록에서 알맹이 있는 판본을
+     골라내려면 이게 필요하다 — 빈 저장이 가득 찬 저장을 덮었을 때, 어느 것으로 돌아가야 하는지.
+     Without this the list is a column of timestamps, and picking the version to restore
+     means opening them one at a time. Counting is bounded to the newest COUNT_MAX because
+     it means parsing each one, and an unbounded parse per version is what took ?list=1 past
+     the client's timeout last time. */
+  var COUNT_MAX = 60;
+  for (var k = 0; k < out.length && k < COUNT_MAX; k++) {
+    var v = out[k], st = v.whole;
+    if (!st && v.stamp !== null) {
+      var grp = groups[v.stamp];
+      if (grp) {
+        var joined = '', ok = true;
+        for (var q = 0; q < grp.parts; q++) {
+          if (grp.s[q] === undefined) { ok = false; break; }
+          joined += grp.s[q];
+        }
+        if (ok) { try { st = JSON.parse(joined); } catch (e) { st = null; } }
+      }
+    }
+    if (st) {
+      if (st.texts) {
+        v.transcripts = Object.keys(st.texts).length;
+      } else {
+        v.cards = (st.cards || []).length;
+        v.notes = (st.notes || []).length;
+        v.arrows = (st.arrows || []).length;
+        v.strokes = (st.strokes || []).length;
+      }
+      v.counted = true;
+    }
+    delete v.whole; delete v.stamp;
+  }
+  for (var m = 0; m < out.length; m++) { delete out[m].whole; delete out[m].stamp; }
   return out;
 }
 

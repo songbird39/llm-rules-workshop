@@ -579,6 +579,9 @@
               <sc-if value="{{ v.hasLabel }}" hint-placeholder-val="{{ false }}">
                 <span style="font-size:12px;font-weight:700;color:#7a5a1f">{{ v.label }}</span>
               </sc-if>
+              <sc-if value="{{ v.hasCount }}" hint-placeholder-val="{{ false }}">
+                <span style="font-size:11.5px;color:{{ v.countColor }};white-space:nowrap">{{ v.count }}</span>
+              </sc-if>
               <span style="flex:1"></span>
               <span style="font-size:11px;color:{{ v.tagColor }}">{{ v.tag }}</span>
             </button>
@@ -668,12 +671,12 @@ const TX_PREFIX = 'tx:';
 // 이 클라이언트가 요구하는 서버 버전 / the deployment this client needs. An older one cannot
 // reassemble a sliced record, so analysis work would save and then fail to load — with no
 // error anywhere, because the POST is no-cors. Check it and say so.
-const SERVER_MIN = '2026-09-08a';
+const SERVER_MIN = '2026-09-08b';
 // 이 페이지의 판 / which build this page is. It sits where the step label goes on the sign-in
 // screen, so anyone reporting a problem can read it off without opening anything — "it does
 // not load" is a very different report from someone on last week's page than from someone
 // on today's. Bump it with any change worth telling apart.
-const APP_VERSION = '2026-09-08d';
+const APP_VERSION = '2026-09-08e';
 // 분석 메모는 두 종류 / two kinds of note in analysis mode, told apart by colour: the
 // gold one is the admin's own remark and matches the rest of the sensemaking layer;
 // the slate one holds transcript, which is somebody else's words, not the admin's.
@@ -889,6 +892,7 @@ const I18N = {
       recoverBtn: '이 기기 것으로 되살리기', recoverNo: '서버 것 그대로 두기',
       markBtn: '저장점', markTip: '지금 해석에 이름을 붙여 기록에 남기기', markPrompt: '저장점 이름 (예: 1차 코딩 완료)',
       markedPre: '저장됨 · ',
+      vCards: '개 · 메모 ', vNotes: '개', vTx: '전사 ', vInk: '필기 ',
       histTheirs: '참여자 보드', histMine: '해석 기록',
       histSubTheirs: '참여자가 저장한 시점들입니다. 열어 보아도 저장은 멈춰 있습니다.',
       histSubMine: '해석 작업이 저장된 시점들입니다. 저장점은 이름이 함께 표시됩니다.',
@@ -1022,6 +1026,7 @@ const I18N = {
       recoverBtn: 'Restore from this device', recoverNo: 'Keep the server version',
       markBtn: 'Checkpoint', markTip: 'Name this moment in the analysis history', markPrompt: 'Checkpoint name (e.g. first coding pass)',
       markedPre: 'Saved · ',
+      vCards: ' cards · ', vNotes: ' notes', vTx: 'transcripts ', vInk: 'ink ',
       histTheirs: "Participant's board", histMine: 'Analysis',
       histSubTheirs: 'Moments the participant saved. Opening one pauses saving.',
       histSubMine: 'Moments the analysis was saved. Checkpoints show their name.',
@@ -3822,6 +3827,17 @@ class Component extends DCLogic {
         when: v.at ? new Date(v.at).toLocaleString() : '-',
         hasLabel: !!v.label,
         label: v.label || '',
+        // 무엇이 얼마나 들어 있는지 / what is actually IN this version. A column of timestamps
+        // cannot be chosen from, and choosing is the entire job when an empty save has
+        // landed on a full one.
+        hasCount: v.counted === true,
+        count: v.transcripts !== undefined
+          ? (t.vTx + v.transcripts)
+          : ((v.cards || 0) + t.vCards + (v.notes || 0) + t.vNotes
+             + ((v.strokes || 0) ? (' · ' + t.vInk + v.strokes) : '')),
+        // 빈 판본은 눈에 띄게 / an empty version is greyed, because it is the one you are
+        // usually scrolling PAST to find the last real save
+        countColor: ((v.cards || 0) + (v.notes || 0) + (v.transcripts || 0)) === 0 ? '#b03f34' : '#7a776f',
         tag: v.kind === 'submit' ? t.submittedTag : v.kind === 'checkpoint' ? t.markBtn : t.autoTag,
         tagColor: v.kind === 'submit' ? 'oklch(0.51 0.08 253)' : v.kind === 'checkpoint' ? '#7a5a1f' : '#a7a49b',
         onOpen: () => this.travelTo(v)

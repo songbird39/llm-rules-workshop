@@ -350,6 +350,12 @@ showed) and the analysis, read from the `sm:` key and thinned on a shorter windo
 the analysis layer: the participant's board underneath is not part of that history and must
 not move.
 
+Each version says **how much is in it** — `35개 · 메모 26개`, or `전사 13` for a transcript
+record — and an empty one is marked in red. A column of timestamps cannot be chosen from,
+and choosing is the whole job when an empty save has landed on a full one. Counting means
+parsing each version, so it is capped at the newest 60: an unbounded parse per version is
+exactly what took `?list=1` past the client's timeout.
+
 **Checkpoints** (저장점) stamp the current analysis with a name you type, written as
 `kind: 'checkpoint'` so `versions_` never thins them away, and shown by name in the list.
 They write exactly what an autosave writes, via the shared `senseState()`.
