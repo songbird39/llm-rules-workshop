@@ -514,6 +514,21 @@ console.log("\n수단 is a chip with an ink bar, in the library and on the board
   // in analysis is told apart, because a copy that looks different is not a copy
   check(/chipInk: \(c\.sm && c\.src === 'a'\) \? SM_INK : '#413e37'/.test(doc),
     "only a chip authored in analysis is inked differently");
+  // 활동 태그도 같은 규칙 / an activity tag placed in analysis follows the same rule as the
+  // chip beside it, so "mine" reads the same way whichever card it is
+  check(/tagInk: \(c\.sm && c\.src === 'a'\) \? SM_INK : '#413e37'/.test(doc),
+    "an activity tag placed in analysis is inked like the chip");
+  check(/tagEdge: \(c\.sm && c\.src === 'a'\)/.test(doc), "keyline included, or the nose disagrees with the body");
+  // 덱 타일은 그대로 / the deck tile keeps the participant's ink: it is a library preview,
+  // not something anyone placed
+  check((doc.match(/background:#413e37;clip-path/g) || []).length === 1,
+    "the deck tile still shows the participant's own ink, since nobody placed it");
+  check(/ghostInk: RO \? SM_INK : '#413e37'/.test(doc),
+    "and the drag preview wears the colour it will land in");
+  // 재현 못 한 신고는 숫자로 받는다 / a report that cannot be reproduced is answered with
+  // numbers from the machine that has it, not with more guesses
+  check(/window\.__wsDiag = \(\) =>/.test(doc), "the board can report the numbers its maths uses");
+  check(/measured: el \? this\.scaleOf\(el\) : null/.test(doc), "including the measured scale next to UI");
   // 칩도 자기 조작을 갖는다 / the chip keeps its own controls
   const chip = doc.slice(doc.indexOf("{{ c.isMeans }}"), doc.indexOf("{{ c.isPlainCard }}"));
   for (const h of ["onDupDown", "onDelDown"])

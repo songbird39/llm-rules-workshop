@@ -631,6 +631,20 @@ module.exports = async function (browser) {
     await dragTileToBoard(page, "학습 계획", 0.74, 0.30);
     o = await objs();
     check(o.length === 5, "and a new card can be dragged in from the deck", ` (${o.length})`);
+    // 내가 놓은 것은 눈에 띄어야 한다 / what I placed myself has to be visible as mine. A copy
+    // keeps the participant's ink exactly; a tag dragged in during analysis wears the
+    // analysis colour, the same rule the 수단 chip already followed.
+    const inks = await page.evaluate(() => {
+      const L = [...document.querySelectorAll("div")].find((d) => d.style.width === "5000px");
+      return [...L.querySelectorAll(':scope > [data-obj="card"]')]
+        .filter((c) => c.offsetHeight === 62)
+        .map((c) => ([...c.querySelectorAll("span")]
+          .map((x) => x.style.background)
+          .find((bg) => bg && bg.indexOf("oklch") >= 0) || "plain"));
+    });
+    check(inks.some((i) => i === "plain"), "a copied activity tag keeps the participant's ink",
+      ` (${JSON.stringify(inks)})`);
+    check(inks.some((i) => i !== "plain"), "and one placed in analysis wears the analysis ink");
 
     // 4. 전사 메모 / the transcription note is a different animal from the memo
     await page.getByText("✎ 전사", { exact: true }).click();

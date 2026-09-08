@@ -464,8 +464,8 @@
             <!-- 코 끝 실선 / the nose keyline: two identically clipped layers, the upper one
                  shifted 1.6px left, so only the nose edge shows pale. Without it two tags
                  snapped nose-to-notch merge into one silhouette. -->
-            <span style="position:absolute;inset:0;background:#9c9789;clip-path:polygon(0 0, calc(100% - 17px) 0, 100% 50%, calc(100% - 17px) 100%, 0 100%, 17px 50%)"></span>
-            <span style="position:absolute;top:0;bottom:0;left:-1.6px;right:1.6px;background:#413e37;clip-path:polygon(0 0, calc(100% - 17px) 0, 100% 50%, calc(100% - 17px) 100%, 0 100%, 17px 50%)"></span>
+            <span style="position:absolute;inset:0;background:{{ c.tagEdge }};clip-path:polygon(0 0, calc(100% - 17px) 0, 100% 50%, calc(100% - 17px) 100%, 0 100%, 17px 50%)"></span>
+            <span style="position:absolute;top:0;bottom:0;left:-1.6px;right:1.6px;background:{{ c.tagInk }};clip-path:polygon(0 0, calc(100% - 17px) 0, 100% 50%, calc(100% - 17px) 100%, 0 100%, 17px 50%)"></span>
             <span style="position:relative;flex:none;width:9px;height:9px;border-radius:2px;background:#c9c3b2"></span>
             <input value="{{ c.title }}" onChange="{{ c.onTitle }}" placeholder="{{ c.titlePlaceholder }}" style="position:relative;flex:1;min-width:0;border:none;background:transparent;font-size:16.5px;font-weight:700;letter-spacing:-0.015em;white-space:nowrap;font-style:{{ c.slant }};color:#f7f5ef;outline:none;padding:0;pointer-events:{{ c.tpe }}" />
             <span style="position:relative;flex:none;display:{{ c.ctrls }};align-items:center;gap:0">
@@ -534,8 +534,8 @@
            chevron for 활동, a paper tag for 수단, a card for the guardrail decks. -->
       <sc-if value="{{ ghostTag }}" hint-placeholder-val="{{ false }}">
         <div style="position:fixed;left:{{ ghostX }}px;top:{{ ghostY }}px;width:352px;height:62px;transform:scale({{ ghostScale }});transform-origin:0 0;pointer-events:none;z-index:50;opacity:0.92;display:flex;align-items:center;gap:12px;padding:0 28px 0 38px;filter:drop-shadow(0 12px 24px rgba(0,0,0,0.22))">
-          <span style="position:absolute;inset:0;background:#9c9789;clip-path:polygon(0 0, calc(100% - 17px) 0, 100% 50%, calc(100% - 17px) 100%, 0 100%, 17px 50%)"></span>
-          <span style="position:absolute;top:0;bottom:0;left:-1.6px;right:1.6px;background:#413e37;clip-path:polygon(0 0, calc(100% - 17px) 0, 100% 50%, calc(100% - 17px) 100%, 0 100%, 17px 50%)"></span>
+          <span style="position:absolute;inset:0;background:{{ ghostEdge }};clip-path:polygon(0 0, calc(100% - 17px) 0, 100% 50%, calc(100% - 17px) 100%, 0 100%, 17px 50%)"></span>
+          <span style="position:absolute;top:0;bottom:0;left:-1.6px;right:1.6px;background:{{ ghostInk }};clip-path:polygon(0 0, calc(100% - 17px) 0, 100% 50%, calc(100% - 17px) 100%, 0 100%, 17px 50%)"></span>
           <span style="position:relative;flex:none;width:9px;height:9px;border-radius:2px;background:#c9c3b2"></span>
           <span style="position:relative;font-size:16.5px;font-weight:700;letter-spacing:-0.015em;white-space:nowrap;color:#f7f5ef">{{ ghostText }}</span>
         </div>
@@ -676,7 +676,7 @@ const SERVER_MIN = '2026-09-08c';
 // screen, so anyone reporting a problem can read it off without opening anything — "it does
 // not load" is a very different report from someone on last week's page than from someone
 // on today's. Bump it with any change worth telling apart.
-const APP_VERSION = '2026-09-08f';
+const APP_VERSION = '2026-09-08h';
 // 분석 메모는 두 종류 / two kinds of note in analysis mode, told apart by colour: the
 // gold one is the admin's own remark and matches the rest of the sensemaking layer;
 // the slate one holds transcript, which is somebody else's words, not the admin's.
@@ -1132,6 +1132,29 @@ class Component extends DCLogic {
       return '';
     };
     window.addEventListener('beforeunload', this._beforeUnload);
+    /* 좌표가 어긋난다는 신고를 재현하지 못했다 / a report that what is drawn sits away from the
+       cursor could not be reproduced here at any width, panned or zoomed. Rather than keep
+       guessing at a machine I cannot see, expose the numbers the maths actually uses so
+       they can be read off: __wsDiag() in the console, on the board, at the moment it
+       looks wrong. Costs nothing and settles it in one message. */
+    window.__wsDiag = () => {
+      const el = this.canvasRef.current;
+      const r = el ? el.getBoundingClientRect() : null;
+      const d = {
+        app: APP_VERSION,
+        innerWidth: window.innerWidth, innerHeight: window.innerHeight,
+        dpr: window.devicePixelRatio,
+        UI: UI,
+        measured: el ? this.scaleOf(el) : null,
+        rect: r ? { left: Math.round(r.left), top: Math.round(r.top), w: Math.round(r.width), h: Math.round(r.height) } : null,
+        offset: el ? { w: el.offsetWidth, h: el.offsetHeight } : null,
+        zoom: this.state.zoom, pan: this.state.pan,
+        scrollY: window.scrollY, bodyScroll: document.body.scrollTop,
+        cssZoom: el ? getComputedStyle(el).zoom : null
+      };
+      console.log('[workshop] ' + JSON.stringify(d));
+      return d;
+    };
     this._blur = (e) => this.blurUnlessTarget(e);
     window.addEventListener('pointerdown', this._blur, true);
     window.addEventListener('pointermove', this._move);
@@ -4029,6 +4052,11 @@ class Component extends DCLogic {
           isPlainCard: c.type !== 'act' && c.type !== 'means',
           // 해석 레이어 표시는 테두리 색으로 / the sensemaking layer shows in the ink
           chipInk: (c.sm && c.src === 'a') ? SM_INK : '#413e37',
+          // 내가 놓은 활동 태그는 수단 칩과 같은 잉크로 / an activity tag I placed myself is
+          // inked like the 수단 chip beside it: same rule, same colour, so "mine" reads the
+          // same way whichever card it is. A COPY keeps exactly the participant's own ink.
+          tagInk: (c.sm && c.src === 'a') ? SM_INK : '#413e37',
+          tagEdge: (c.sm && c.src === 'a') ? 'oklch(0.76 0.085 62)' : '#9c9789',
           isMeans: c.type === 'means',
           notMeans: c.type !== 'means',
           radius: c.type === 'means' ? 15 : 10,
@@ -4096,6 +4124,10 @@ class Component extends DCLogic {
         };
       }),
       ghostTag: !!this.state.ghost && this.state.ghost.type === 'act',
+      // 미리보기도 놓일 색으로 / the preview wears the colour it will land in, so the tag does
+      // not change appearance the instant it is dropped
+      ghostInk: RO ? SM_INK : '#413e37',
+      ghostEdge: RO ? 'oklch(0.76 0.085 62)' : '#9c9789',
       ghostMeans: !!this.state.ghost && this.state.ghost.type === 'means',
       ghostCard: !!this.state.ghost && this.state.ghost.type !== 'act' && this.state.ghost.type !== 'means',
       // 보드 확대율만큼 미리보기도 같이 확대 / preview scales with the board, so it is
