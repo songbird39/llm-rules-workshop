@@ -666,6 +666,13 @@ console.log("\nanalysis versions, checkpoints, and a second editor");
   check(/cards: s\.cards\.filter\(\(c\) => !c\.sm\)\.concat\(tag\(st\.cards\)\)/.test(doc),
     "opening an old analysis version swaps only the analysis layer");
   check(/travel: \{ row: v\.row, at: v\.at, sense: true \}/.test(doc), "and marks the travel as such");
+  // 전사는 다른 기록에 있다 / the transcripts are in a separate record, so a version of the
+  // board holds the note boxes and not the words. Fetched for that moment, or history is a
+  // wall of empty boxes that reads as lost writing.
+  check(/this\.jsonp\('txat=' \+ encodeURIComponent\(base\) \+ '&at=' \+ encodeURIComponent\(v\.at \|\| ''\)\)/.test(doc),
+    "travelling into the analysis history fetches the transcripts of that moment");
+  check(/function txAt_\(pid, at\)/.test(gs), "and the server can answer for a point in time");
+  check(/if \(when && t > when\) break;/.test(gs), "looking no later than the version being opened");
   check(/if \(this\.state\.travel && this\.state\.travel\.sense\)/.test(doc),
     "restoring one is handled separately from a participant restore");
 

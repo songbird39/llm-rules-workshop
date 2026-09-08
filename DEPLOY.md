@@ -350,6 +350,13 @@ showed) and the analysis, read from the `sm:` key and thinned on a shorter windo
 the analysis layer: the participant's board underneath is not part of that history and must
 not move.
 
+Travelling into an analysis version fetches the transcripts **as they stood at that
+moment** (`?txat=<pid>&at=<iso>`), never anything written after it. Transcripts live in
+their own record, so a version of the board carries the note boxes and not the words in
+them — without this, history is a wall of empty boxes, which reads as writing that has been
+lost. For the same reason the analysis version list shows cards and notes but no transcript
+count: that number belongs to the `tx:` record, which has its own history.
+
 Each version says **how much is in it** — `35개 · 메모 26개`, or `전사 13` for a transcript
 record — and an empty one is marked in red. A column of timestamps cannot be chosen from,
 and choosing is the whole job when an empty save has landed on a full one. Counting means

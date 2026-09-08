@@ -372,6 +372,32 @@ console.log("\nthe version list says how much is in each version");
     "and it is capped, so a long history cannot make the dialog hang");
 }
 
+console.log("\ntravelling into history finds the transcripts of that moment");
+{
+  // 전사는 보드와 다른 기록에 산다 / transcripts live apart from the board, which is what keeps
+  // the frequent save small — and the cost is that an old version carries the note boxes and
+  // not the words. Without this the history is a wall of empty boxes, which reads as writing
+  // that has been lost.
+  const { post, get } = loadServer();
+  const board = (n) => ({ savedAt: 1, pid: "sm:P9", step: 2, lang: "ko", rules: [],
+    cards: [], notes: [{ id: "n1", x: 1, y: 1, text: "", kind: "tx", sm: true, src: "a" }],
+    arrows: [], strokes: [], seq: n });
+  post({ participant: "tx:P9", kind: "transcript", payload: { participant: "tx:P9", state: { texts: { n1: "첫 번째 전사" }, cards: [] } } });
+  post({ participant: "sm:P9", kind: "sensemaking", payload: { participant: "sm:P9", state: board(1) } });
+  const v1 = get({ versions: "sm:P9", every: "1" }).versions[0];
+  post({ participant: "tx:P9", kind: "transcript", payload: { participant: "tx:P9", state: { texts: { n1: "고쳐 쓴 전사" }, cards: [] } } });
+  post({ participant: "sm:P9", kind: "sensemaking", payload: { participant: "sm:P9", state: board(2) } });
+
+  const then = get({ txat: "P9", at: v1.at }).state;
+  check(then && then.texts.n1 === "첫 번째 전사",
+    "an old version gets the transcripts as they were then",
+    then ? ` (${then.texts.n1})` : " (nothing)");
+  const now = get({ txat: "P9" }).state;
+  check(now && now.texts.n1 === "고쳐 쓴 전사", "and with no moment given, the newest");
+  // 그 시점 이후 것은 절대 딸려오지 않는다 / never anything written after the moment asked for
+  check(then && then.texts.n1 !== "고쳐 쓴 전사", "never a transcript from after that version");
+}
+
 console.log("\nthe roster stays cheap enough to arrive");
 {
   // 목록이 안 뜨는 것보다 나쁜 건 없다 / nothing is worse than the list not arriving. Counting

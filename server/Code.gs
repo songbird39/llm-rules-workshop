@@ -21,7 +21,7 @@
 // across several rows and an old deployment cannot reassemble them, so analysis saves
 // appear to work and then will not load. The client compares this against what it needs
 // and says so plainly instead of leaving you to guess.
-var VERSION = '2026-09-08b';
+var VERSION = '2026-09-08c';
 
 var SHEET_NAME = 'responses';
 // 관리자 해석(sensemaking) 레코드는 'sm:' 접두어가 붙은 별도 키로 저장한다.
@@ -96,6 +96,8 @@ function doGet(e) {
     out = { ok: true, participants: roster_() };
   } else if (p.versions) {
     out = { ok: true, participant: p.versions, versions: versions_(p.versions, Number(p.every) || 120000) };
+  } else if (p.txat) {
+    out = { ok: true, participant: p.txat, state: txAt_(p.txat, p.at) };
   } else if (p.smlist) {
     out = { ok: true, analyses: smList_() };
   } else if (p.head) {
@@ -274,6 +276,55 @@ function versions_(pid, everyMs) {
   }
   for (var m = 0; m < out.length; m++) { delete out[m].whole; delete out[m].stamp; }
   return out;
+}
+
+/** 그 시점의 전사 / the transcripts as they stood at a moment.
+ *  전사는 보드와 다른 기록에 산다. 그래서 옛 판본을 열면 메모 상자는 돌아오지만 그 안의 말은
+ *  돌아오지 않는다 — 판본에 담겨 있지 않기 때문이다.
+ *  Transcripts live in their own record, which is what keeps the frequently-rewritten board
+ *  record small. The cost is that an old analysis version carries the note boxes but not the
+ *  words in them. This hands back the newest transcript record written at or before that
+ *  version, so travelling into history shows what was actually being read at the time.
+ */
+function txAt_(pid, at) {
+  var sh = sheet_();
+  var last = sh.getLastRow();
+  if (last < 2) return null;
+  var when = at ? new Date(at).getTime() : 0;
+  var vals = sh.getRange(2, 1, last - 1, 2).getValues();   // receivedAt, participant
+  var jsonCol = sh.getRange(2, 10, last - 1, 1).getValues();
+  var key = TX_PREFIX + pid;
+  var groups = {}, order = [], whole = null;
+  for (var i = 0; i < vals.length; i++) {
+    if (String(vals[i][1] || '').trim() !== key) continue;
+    var t = vals[i][0] ? new Date(vals[i][0]).getTime() : 0;
+    if (when && t > when) break;            // 그 시점 이후는 보지 않는다 / nothing after it
+    var body = null;
+    try { body = JSON.parse(jsonCol[i][0]); } catch (e) { continue; }
+    if (!body) continue;
+    if (body.parts) {
+      var g = groups[body.stamp] || (groups[body.stamp] = { parts: body.parts, s: {}, seen: i });
+      g.s[body.part] = (body.payload && body.payload.chunk) || '';
+      g.seen = i;
+      if (order.indexOf(String(body.stamp)) < 0) order.push(String(body.stamp));
+    } else if (body.payload && body.payload.state) {
+      whole = body.payload.state;
+    }
+  }
+  order.sort(function (a, b) { return groups[b].seen - groups[a].seen; });
+  for (var n = 0; n < order.length; n++) {
+    var grp = groups[order[n]], joined = '', ok = true;
+    for (var q = 0; q < grp.parts; q++) {
+      if (grp.s[q] === undefined) { ok = false; break; }
+      joined += grp.s[q];
+    }
+    if (!ok) continue;
+    try {
+      var st = JSON.parse(joined);
+      if (st && st.texts && Object.keys(st.texts).length) return st;
+    } catch (e) {}
+  }
+  return whole && whole.texts && Object.keys(whole.texts).length ? whole : null;
 }
 
 /** 해석이 저장된 참여자 전부 / every participant with an analysis record, and whether it can

@@ -135,7 +135,7 @@ async function realServer(page, { seed } = {}) {
   const { loadServer } = require("../gasnode");
   const srv = loadServer();
   if (seed) seed(srv);
-  const posts = [];
+  const posts = [], gets = [];
   // route() 는 기다려야 한다 / await it: an unawaited route can miss the first navigation,
   // and the page then talks to nothing at all
   await page.route("**/macros/s/**", async (route) => {
@@ -150,6 +150,7 @@ async function realServer(page, { seed } = {}) {
     }
     const params = {};
     u.searchParams.forEach((v, k) => { params[k] = v; });
+    gets.push(u.search);          // 무엇을 물었는지도 본다 / what was ASKED, not just answered
     // 서버가 JSONP 를 만들게 둔다 / let the server build the JSONP itself, callback and all —
     // wrapping it here would skip the very code the browser depends on
     let body, ok = true;
@@ -160,7 +161,7 @@ async function realServer(page, { seed } = {}) {
       body: ok ? body : JSON.stringify({ ok: false, error: body }),
     });
   });
-  return { srv, posts };
+  return { srv, posts, gets };
 }
 
 module.exports = { realServer, say, APP, SHOTS, chromium, tally, check, near, boardCards,

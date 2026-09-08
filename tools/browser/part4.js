@@ -126,7 +126,7 @@ module.exports = async function (browser) {
       cards: [{ id: "c1", type: "act", title: "학습 계획", desc: "", dia: null, collapsed: false, w: 352, x: 300, y: 400 }],
       notes: [], arrows: [], seq: 5, panelW: 566,
     };
-    const { srv } = await realServer(page, {
+    const { srv, gets } = await realServer(page, {
       seed: (s) => s.post({ participant: "P9", kind: "autosave", payload: { participant: "P9", state: board } }),
     });
     page.on("dialog", (d) => d.accept("1차 코딩 완료"));   // 저장점 이름 / the checkpoint name
@@ -186,6 +186,12 @@ module.exports = async function (browser) {
     });
     await page.waitForTimeout(1600);
     check(await nSm() === 2, "going back to it restores that moment's analysis", ` (${await nSm()})`);
+    // 전사도 같이 돌아와야 한다 / the transcripts have to come back with it. They live in a
+    // separate record, so a version of the board holds the note boxes and not the words —
+    // without fetching them, history is a wall of empty boxes that reads as lost writing.
+    const asked = gets.filter((q) => /txat=/.test(q));
+    check(asked.length > 0, "and it asks the server for the transcripts of that moment",
+      ` (${asked.length} txat requests)`);
     check(await page.evaluate(() => document.body.innerText.includes("기록 보는 중")), "and saving is paused");
     // 참여자 보드는 건드리지 않는다 / the participant's own card is still there, untouched
     check(await page.evaluate(() => {

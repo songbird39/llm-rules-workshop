@@ -671,12 +671,12 @@ const TX_PREFIX = 'tx:';
 // 이 클라이언트가 요구하는 서버 버전 / the deployment this client needs. An older one cannot
 // reassemble a sliced record, so analysis work would save and then fail to load — with no
 // error anywhere, because the POST is no-cors. Check it and say so.
-const SERVER_MIN = '2026-09-08b';
+const SERVER_MIN = '2026-09-08c';
 // 이 페이지의 판 / which build this page is. It sits where the step label goes on the sign-in
 // screen, so anyone reporting a problem can read it off without opening anything — "it does
 // not load" is a very different report from someone on last week's page than from someone
 // on today's. Bump it with any change worth telling apart.
-const APP_VERSION = '2026-09-08e';
+const APP_VERSION = '2026-09-08f';
 // 분석 메모는 두 종류 / two kinds of note in analysis mode, told apart by colour: the
 // gold one is the admin's own remark and matches the rest of the sensemaking layer;
 // the slate one holds transcript, which is somebody else's words, not the admin's.
@@ -1400,18 +1400,28 @@ class Component extends DCLogic {
     this.jsonp('row=' + encodeURIComponent(v.row)).then((res) => {
       if (!res || !res.ok || !res.state) { this.setState({ hist: 'error' }); return; }
       if (who === 'sense') {
-        // 참여자 보드는 그대로 두고 해석 레이어만 갈아 끼운다 / swap ONLY the analysis layer;
-        // the participant's board underneath is not part of this history and must not
-        // move a pixel because the admin looked at an older version of their own work
-        const tag = (arr) => (arr || []).map((o) => Object.assign({}, o, { sm: true }));
-        const st = res.state;
-        this.setState((s) => ({
-          travel: { row: v.row, at: v.at, sense: true }, hist: null,
-          cards: s.cards.filter((c) => !c.sm).concat(tag(st.cards)),
-          notes: (s.notes || []).filter((n) => !n.sm).concat(tag(st.notes)),
-          arrows: (s.arrows || []).filter((a) => !a.sm).concat(tag(st.arrows)),
-          strokes: (s.strokes || []).filter((k) => !k.sm).concat(tag(st.strokes))
-        }));
+        // 전사는 다른 기록에 있다 / the transcripts are in a different record, so a version of
+        // the board carries the note boxes and not the words in them. Fetch the transcripts
+        // as they stood at that moment, or history shows a wall of empty boxes and looks
+        // like the writing was lost.
+        const base = this.state.viewPid;
+        this.jsonp('txat=' + encodeURIComponent(base) + '&at=' + encodeURIComponent(v.at || '')).then((tr) => {
+          const texts = (tr && tr.ok && tr.state && tr.state.texts) || {};
+          // 참여자 보드는 그대로 두고 해석 레이어만 갈아 끼운다 / swap ONLY the analysis layer;
+          // the participant's board underneath is not part of this history and must not
+          // move a pixel because the admin looked at an older version of their own work
+          const tag = (arr) => (arr || []).map((o) => Object.assign({}, o, { sm: true }));
+          const st = res.state;
+          const notes = tag(st.notes).map((n) => (texts[n.id] !== undefined && !n.text
+            ? Object.assign({}, n, { text: texts[n.id] }) : n));
+          this.setState((s) => ({
+            travel: { row: v.row, at: v.at, sense: true }, hist: null,
+            cards: s.cards.filter((c) => !c.sm).concat(tag(st.cards)),
+            notes: (s.notes || []).filter((n) => !n.sm).concat(notes),
+            arrows: (s.arrows || []).filter((a) => !a.sm).concat(tag(st.arrows)),
+            strokes: (s.strokes || []).filter((k) => !k.sm).concat(tag(st.strokes))
+          }));
+        });
         return;
       }
       this.setState({ travel: { row: v.row, at: v.at }, hist: null });
