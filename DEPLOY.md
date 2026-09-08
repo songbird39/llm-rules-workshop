@@ -219,6 +219,20 @@ an analysis record silently. Run all three: `test_ui_scale.js`, `test_server.js`
 insists on). **Bump the app version on every change**; `tools/build.py` prints all three on
 every build and shouts if the client demands a newer server than Code.gs claims to be.
 
+## Both halves have to match, and both directions are named
+
+`APP_VERSION` (the page), `VERSION` (Code.gs), `SERVER_MIN` (the server the page insists
+on). Every JSONP reply carries the deployment's version, and the page compares on each one:
+
+- **server older than `SERVER_MIN`** → "Apps Script가 오래되었습니다", deploy Code.gs.
+- **server newer than `SERVER_MIN`** → "이 페이지가 오래되었습니다", republish the page.
+
+The second direction is not cosmetic. A cached page reads fields a newer server has stopped
+sending, and `undefined` is not `false`: when the analysis counts moved off `?list=1`, an
+older page read every missing `smReadable` as a broken record and reported **열리지 않음 for
+every participant** against a server that was perfectly healthy. Anywhere a field can be
+absent because of a version skew, absent must mean *unknown*, never *bad*.
+
 ## The roster must arrive
 
 `?list=1` is drawn before anything else works, so it stays cheap: one scan, and the only

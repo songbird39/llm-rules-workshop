@@ -778,6 +778,15 @@ console.log("\nthe loading gate");
     "a failed read is not evidence about the deployment either way");
   check(/const stale = !res\.version \|\| res\.version < SERVER_MIN;/.test(doc),
     "and a real answer with no version at all is what an old deployment looks like");
+  // 반대 방향 / and the other direction, which is the one that actually bit: a cached page
+  // against a newer server reads fields the server has stopped sending, and every
+  // participant came out "열리지 않음" because missing was being read as broken
+  check(/const behind = !!res\.version && res\.version > SERVER_MIN;/.test(doc),
+    "a server newer than this page means the PAGE is the stale half");
+  check(/oldPage: !!this\.state\.oldPage && !!this\.state\.admin/.test(doc), "and it says so");
+  // 없는 값은 고장이 아니다 / a missing field is unknown, never broken
+  check(/r\.smReadable === undefined \? t\.smSaves \+ r\.smRows/.test(doc),
+    "a count that has not arrived reads as unknown, not as a broken record");
   check(/window\[cb\] = \(res\) => \{ this\._noteVersion\(res\); finish/.test(doc),
     "so the banner clears itself after a redeploy");
   // 클라이언트가 요구하는 서버 판 / the server the client needs, and Code.gs's own claim, must

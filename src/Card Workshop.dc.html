@@ -159,6 +159,18 @@
     </div>
   </sc-if>
 
+  <!-- 페이지가 뒤처졌다 / the page is the stale half. Deploying the server first is the right
+       order, so this is advice rather than an alarm — but it must be said, because an old
+       page reading a new server's replies gets quietly wrong answers. -->
+  <sc-if value="{{ oldPage }}" hint-placeholder-val="{{ false }}">
+    <div style="flex:0 0 auto;display:flex;flex-wrap:wrap;align-items:center;gap:10px;padding:8px 18px;background:#f7f0dc;border-bottom:1px solid #e6dcc0">
+      <span style="font-size:12.5px;font-weight:600;color:#8a6a1f">{{ t.oldPageTitle }}</span>
+      <span style="font-size:12.5px;color:#8a6a1f">{{ t.oldPageBody }}</span>
+      <div style="flex:1"></div>
+      <button onClick="{{ onReload }}" style="padding:6px 12px;border:1px solid transparent;border-radius:7px;background:#1b1a17;color:#faf8f3;font-size:12.5px;cursor:pointer">{{ t.reloadBtn }}</button>
+    </div>
+  </sc-if>
+
   <sc-if value="{{ oldServer }}" hint-placeholder-val="{{ false }}">
     <div style="flex:0 0 auto;display:flex;flex-wrap:wrap;align-items:center;gap:10px;padding:8px 18px;background:#f7e6e3;border-bottom:1px solid #e8cdc7">
       <span style="font-size:12.5px;font-weight:600;color:#8f342a">{{ t.oldSrvTitle }}</span>
@@ -661,7 +673,7 @@ const SERVER_MIN = '2026-09-08a';
 // screen, so anyone reporting a problem can read it off without opening anything — "it does
 // not load" is a very different report from someone on last week's page than from someone
 // on today's. Bump it with any change worth telling apart.
-const APP_VERSION = '2026-09-08c';
+const APP_VERSION = '2026-09-08d';
 // 분석 메모는 두 종류 / two kinds of note in analysis mode, told apart by colour: the
 // gold one is the admin's own remark and matches the rest of the sensemaking layer;
 // the slate one holds transcript, which is somebody else's words, not the admin's.
@@ -883,6 +895,7 @@ const I18N = {
       conflictTitle: '다른 사람이 이 해석을 저장했습니다 ·',
       conflictBody2: '내 저장은 멈춰 있습니다. 상대 버전을 불러오거나, 내 것으로 덮어쓸 수 있습니다.',
       takeTheirs: '상대 버전 불러오기', keepMine: '내 것으로 덮어쓰기',
+      oldPageTitle: '이 페이지가 오래되었습니다 ·', oldPageBody: '서버에는 더 새 버전이 배포되어 있습니다. 목록의 숫자가 잘못 보일 수 있으니 새로고침 해 주세요.', reloadBtn: '새로고침',
       oldSrvTitle: 'Apps Script가 오래되었습니다 ·', oldSrvBody: '해석 작업이 저장은 되어도 다시 열리지 않습니다. 배포 관리 ▸ 편집 ▸ 버전: 새 버전으로 다시 배포해 주세요.',
       tooBigTitle: '저장되지 않았습니다 ·', tooBigBody: '해석 기록이 너무 큽니다. 전사 메모를 나누거나 줄여 주세요. 마지막으로 저장된 내용은 그대로 있습니다.',
       descMode: '설명 편집', hideMode: '숨기기',
@@ -1015,6 +1028,7 @@ const I18N = {
       conflictTitle: 'Someone else saved this analysis ·',
       conflictBody2: 'Your saving is paused. Load their version, or overwrite it with yours.',
       takeTheirs: 'Load theirs', keepMine: 'Overwrite with mine',
+      oldPageTitle: 'This page is out of date ·', oldPageBody: 'A newer version is deployed on the server. Numbers in the list may be wrong — reload.', reloadBtn: 'Reload',
       oldSrvTitle: 'The Apps Script is out of date ·', oldSrvBody: 'Analysis work will save but will not load again. Redeploy it: Manage deployments ▸ Edit ▸ Version: New.',
       tooBigTitle: 'Not saved ·', tooBigBody: 'This analysis record is too large to store. Shorten or split the transcription notes. What was saved before is still there.',
       descMode: 'Descriptions', hideMode: 'Hide',
@@ -1049,7 +1063,7 @@ const I18N = {
 class Component extends DCLogic {
   constructor(props) {
     super(props);
-    this.state = { sync: '', step: 0, lang: 'ko', rules: [], pid: '', loginPid: '', cards: [], notes: [], arrows: [], arrowMode: false, pendingArrow: null, pen: null, strokes: [], selArrow: null, noteMode: false, noteKind: 'memo', panelOff: false, rosterMode: '', histWho: 'board', conflict: null, marked: '', senseDirty: false, recover: null, loading: null, importMsg: '', undoDepth: 0, focusNote: null, pan: { x: 0, y: 0 }, zoom: 1, ghost: null, seq: 1, panelW: panelCap(), sel: [], marquee: null, finish: null, tab: 'flow', hist: null, histList: [], travel: null, senseOn: true, admin: false, viewPid: '', roster: [], rosterMsg: '' };
+    this.state = { sync: '', step: 0, lang: 'ko', rules: [], pid: '', loginPid: '', cards: [], notes: [], arrows: [], arrowMode: false, pendingArrow: null, pen: null, strokes: [], selArrow: null, noteMode: false, noteKind: 'memo', panelOff: false, rosterMode: '', histWho: 'board', conflict: null, marked: '', senseDirty: false, recover: null, loading: null, importMsg: '', oldPage: false, undoDepth: 0, focusNote: null, pan: { x: 0, y: 0 }, zoom: 1, ghost: null, seq: 1, panelW: panelCap(), sel: [], marquee: null, finish: null, tab: 'flow', hist: null, histList: [], travel: null, senseOn: true, admin: false, viewPid: '', roster: [], rosterMsg: '' };
     this.canvasRef = React.createRef();
     this.drag = null;
   }
@@ -3220,7 +3234,14 @@ class Component extends DCLogic {
         // deployment carries a version, so its ABSENCE on one is what "old" looks like.
         if (!res || !res.ok) return;
         const stale = !res.version || res.version < SERVER_MIN;
+        // 반대 방향도 있다 / it goes the other way too, and that direction bit hard: a
+        // deployment NEWER than the page this build was written against means a newer page
+        // exists and this one is cached. The roster then reads fields the server has stopped
+        // sending — every participant came out "열리지 않음" because a missing field was being
+        // read as a broken record.
+        const behind = !!res.version && res.version > SERVER_MIN;
         if (!!this.state.oldServer !== stale) this.setState({ oldServer: stale });
+        if (!!this.state.oldPage !== behind) this.setState({ oldPage: behind });
       };
       window[cb] = (res) => { this._noteVersion(res); finish(res || null); };
       s.onerror = () => finish(null);
@@ -3806,6 +3827,8 @@ class Component extends DCLogic {
         onOpen: () => this.travelTo(v)
       })),
       oldServer: !!this.state.oldServer && !!this.state.admin,
+      oldPage: !!this.state.oldPage && !!this.state.admin,
+      onReload: () => window.location.reload(true),
       senseBig: !!this.state.senseBig,
       senseBigLabel: t.tooBigTitle,
       senseBigBody: t.tooBigBody,

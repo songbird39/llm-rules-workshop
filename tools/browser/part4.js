@@ -625,8 +625,28 @@ module.exports = async function (browser) {
     });
     await page.getByText("새로고침", { exact: false }).click();
     await page.waitForTimeout(1400);
-    check(!(await page.evaluate(() => document.body.innerText.includes("오래되었습니다"))),
+    check(!(await page.evaluate(() => document.body.innerText.includes("Apps Script가 오래되었습니다"))),
       "and it clears itself once the deployment is current, without a page reload");
+
+    // 반대로 서버가 더 새로우면 페이지가 뒤처진 것 / a server NEWER than this page means the page
+    // is the stale half. That is the direction that actually bit: a cached page read fields
+    // the new server had stopped sending, and every participant came out "열리지 않음".
+    await page.unroute("**/macros/s/**");
+    await page.route("**/macros/s/**", async (route) => {
+      const u = new URL(route.request().url());
+      if (route.request().method() === "POST") return route.fulfill({ status: 200, body: "{}" });
+      const cb = u.searchParams.get("callback");
+      const out = u.searchParams.get("list")
+        ? { ok: true, version: "2099-01-01", participants: [{ participant: "P9", rows: 3, submits: 1, lastAt: "2026-08-29T10:00:00Z" }] }
+        : { ok: true, version: "2099-01-01", state: null };
+      return route.fulfill({ status: 200, contentType: "application/javascript", body: cb + "(" + JSON.stringify(out) + ");" });
+    });
+    await page.getByText("새로고침", { exact: true }).first().click();
+    await page.waitForTimeout(1200);
+    check(await page.evaluate(() => document.body.innerText.includes("이 페이지가 오래되었습니다")),
+      "a newer server tells the page it is the one out of date");
+    check(!(await page.evaluate(() => document.body.innerText.includes("Apps Script가 오래되었습니다"))),
+      "and does not blame the deployment for it");
     check(errors.length === 0, "no console errors", errors.length ? ` (${errors[0]})` : "");
     await page.close();
   }
