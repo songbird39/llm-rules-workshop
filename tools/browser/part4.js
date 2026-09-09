@@ -487,6 +487,64 @@ module.exports = async function (browser) {
     await page.close();
   }
 
+  // ------------------------------- the transcripts arriving before the analysis
+  /* 순서를 보장할 수 없다 / neither read is awaited by the other any more, so the transcripts
+     can land BEFORE the analysis whose notes they belong to. A one-shot pass over the notes
+     then on screen would fill nothing and drop the text for the rest of the session — the
+     board arrives seconds later, empty, over an interview that is safely on the sheet. */
+  say("\nthe transcripts may arrive before the analysis they belong to");
+  {
+    const EP = "https://script.google.com/macros/s/FAKE/exec";
+    const page = await browser.newPage({ viewport: { width: 1700, height: 1000 } });
+    const errors = [];
+    page.on("pageerror", (e) => errors.push(e.message));
+    const board = {
+      savedAt: Date.now(), pid: "P9", step: 2, lang: "ko", rules: [],
+      cards: [{ id: "c1", type: "act", title: "학습 계획", desc: "", dia: null, collapsed: false, w: 352, x: 300, y: 400 }],
+      notes: [], arrows: [], seq: 5, panelW: 566,
+    };
+    const analysis = {
+      savedAt: Date.now(), pid: "sm:P9", step: 2, lang: "ko", rules: [],
+      cards: [], arrows: [], strokes: [], seq: 9,
+      notes: [{ id: "n200", x: 900, y: 250, text: "", kind: "tx", sm: true, src: "a" },
+              { id: "n201", x: 900, y: 500, text: "", kind: "tx", sm: true, src: "a" }],
+    };
+    const transcript = "참여자가 말한 긴 전사입니다. ".repeat(30);
+    const { srv } = await realServer(page, {
+      seed: (s) => {
+        s.post({ participant: "P9", kind: "autosave", payload: { participant: "P9", state: board } });
+        s.post({ participant: "sm:P9", kind: "sensemaking", payload: { participant: "sm:P9", state: analysis } });
+        s.post({ participant: "tx:P9", kind: "transcript",
+                 payload: { participant: "tx:P9", state: { texts: { n200: transcript, n201: "두 번째 전사" }, cards: [] } } });
+      },
+    });
+    // 해석만 늦춘다 / hold the ANALYSIS back, so the transcripts win the race
+    await page.route("**/macros/s/**", async (route) => {
+      const who = new URL(route.request().url()).searchParams.get("participant") || "";
+      if (who.indexOf("sm:") === 0) await new Promise((go) => setTimeout(go, 2500));
+      return route.fallback();
+    });
+    await page.goto(APP + "?sync=" + encodeURIComponent(EP), { waitUntil: "load", timeout: 120000 });
+    await page.waitForSelector('input[placeholder="P0000"]', { timeout: 120000 });
+    await page.fill('input[placeholder="P0000"]', "admin");
+    await page.getByText("시작하기", { exact: false }).click();
+    await page.waitForTimeout(900);
+    await page.getByText("P9", { exact: true }).first().click();
+    await page.waitForTimeout(6000);
+    const shown = await page.evaluate(() => {
+      const L = [...document.querySelectorAll("div")].find((d) => d.style.width === "5000px");
+      return [...L.querySelectorAll(':scope > [data-obj="note"] textarea')].map((t) => t.value);
+    });
+    check(shown.length === 2, "the analysis is on screen", ` (${shown.length} notes)`);
+    check(shown.some((v) => v.includes("참여자가 말한 긴 전사입니다")),
+      "and the transcript that arrived first is in it");
+    check(shown.some((v) => v.includes("두 번째 전사")), "and so is the other");
+    check(!(await page.evaluate(() => document.body.innerText.includes("전사를 불러오지 못했습니다"))),
+      "with nothing said about a failure");
+    check(errors.length === 0, "no console errors", errors.length ? ` (${errors[0]})` : "");
+    await page.close();
+  }
+
   // ------------------------------------------------- a save that never lands
   // 이게 실제로 일어난 일이다 / this is the failure that actually happened: the server refuses
   // or cannot store the analysis, the POST is no-cors so nothing says so, and the work

@@ -774,7 +774,7 @@ const SERVER_MIN = '2026-09-09a';
 // screen, so anyone reporting a problem can read it off without opening anything — "it does
 // not load" is a very different report from someone on last week's page than from someone
 // on today's. Bump it with any change worth telling apart.
-const APP_VERSION = '2026-09-09f';
+const APP_VERSION = '2026-09-09g';
 // 분석 메모는 두 종류 / two kinds of note in analysis mode, told apart by colour: the
 // gold one is the admin's own remark and matches the rest of the sensemaking layer;
 // the slate one holds transcript, which is somebody else's words, not the admin's.
@@ -1729,7 +1729,7 @@ class Component extends DCLogic {
       this.offerLocal(pid, st.savedAt || 0);
       this.setState((s) => ({
         cards: s.cards.concat(tag(st.cards)),
-        notes: (s.notes || []).concat(tag(st.notes)),
+        notes: (s.notes || []).concat(this.withTexts(tag(st.notes))),
         arrows: (s.arrows || []).concat(tag(st.arrows)),
         strokes: (s.strokes || []).concat(tag(st.strokes)),
         seq: Math.max(s.seq || 1, st.seq || 1)
@@ -1753,21 +1753,32 @@ class Component extends DCLogic {
          every other note's text. Only a real answer counts as an answer. */
       if (!txr || !txr.ok) { this._txLoaded = false; this.setState({ txFail: true }); return; }
       this._txLoaded = true;
-      const texts = (txr.state && txr.state.texts) || {};
-      // 비어 있는 쪽지에만 채운다 / fill only the notes that are still empty, so anything typed
-      // while the read was in flight is not overwritten by the version on the sheet
+      /* 어느 쪽이 먼저 와도 된다 / either read may land first. Now that they are no longer
+         awaited together, the transcripts can arrive before the analysis they belong to —
+         and a one-shot pass over the notes then present would fill nothing and throw the
+         text away for the rest of the session. So the map is KEPT, and both paths merge
+         from it: whichever arrives second does the joining. */
+      this._texts = (txr.state && txr.state.texts) || {};
       this._tsig = undefined;
       this._ssig = undefined;
       this.setState((s) => ({
         txFail: false,
-        notes: (s.notes || []).map((n) => (n.sm && texts[n.id] !== undefined && !n.text
-          ? Object.assign({}, n, { text: texts[n.id] }) : n))
+        notes: this.withTexts(s.notes || [])
       }), () => {
         this._ssig = this.senseSig();
         this._tsig = JSON.stringify(this.txMap());
         this._txSaved = '{}';
       });
     });
+  }
+
+  /* 비어 있는 쪽지에만 채운다 / fill only the notes that are still empty, so anything typed
+     while the read was in flight is not overwritten by the copy that finally arrives */
+  withTexts(notes) {
+    const texts = this._texts;
+    if (!texts) return notes;
+    return (notes || []).map((n) => (n.sm && texts[n.id] !== undefined && !n.text
+      ? Object.assign({}, n, { text: texts[n.id] }) : n));
   }
 
   // 이 기기에 남은 해석 / the analysis this device still holds for a participant
@@ -1935,12 +1946,9 @@ class Component extends DCLogic {
       if (this.state.viewPid !== pid) return;
       if (!txr || !txr.ok) { this._txLoaded = false; this.setState({ txFail: true }); return; }
       this._txLoaded = true;
-      const texts = (txr.state && txr.state.texts) || {};
-      this.setState((st) => ({
-        txFail: false,
-        notes: (st.notes || []).map((n) => (n.sm && texts[n.id] !== undefined && !n.text
-          ? Object.assign({}, n, { text: texts[n.id] }) : n))
-      }), () => { this._tsig = JSON.stringify(this.txMap()); });
+      this._texts = (txr.state && txr.state.texts) || {};
+      this.setState((st) => ({ txFail: false, notes: this.withTexts(st.notes || []) }),
+        () => { this._tsig = JSON.stringify(this.txMap()); });
     });
   }
 
@@ -2426,6 +2434,7 @@ class Component extends DCLogic {
     this._hadContent = false;
     this._clearing = false;
     this._txLoaded = false;
+    this._texts = null;
     this.setState({
       viewPid: pid, rosterMsg: 'loading',
       loading: { done: 0, total: 3, label: '', pid: pid }
