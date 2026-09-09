@@ -823,6 +823,38 @@ console.log("\nthe loading gate");
      change colour with it, which a colour stored on the code at creation cannot do. */
   check(/codeColor\(c\) \{/.test(doc), "a code's colour is worked out, not stored");
 
+  /* 폴더 색은 한눈에 갈라져야 한다 / folder colours must separate at a glance. The first palette
+     sat every entry at one lightness on a similar chroma and put two hues twenty degrees
+     apart — colour-coding you have to squint at is worse than none, because it still looks
+     like it means something. */
+  {
+    const pal = (doc.match(/const CODE_COLORS = \[([\s\S]*?)\];/) || [])[1] || "";
+    const hue = (v) => Number(String(v).replace(/oklch\([\d.]+ [\d.]+ ([\d.]+)\)/, "$1"));
+    const lum = (v) => Number(String(v).replace(/oklch\(([\d.]+).*/, "$1"));
+    const cols = (pal.match(/oklch\([^)]+\)/g) || []);
+    check(cols.length >= 8, "there are enough folder colours to go round", ` (${cols.length})`);
+    const hs = cols.map(hue).sort((a, b) => a - b);
+    let closest = 360;
+    for (let i = 1; i < hs.length; i++) closest = Math.min(closest, hs[i] - hs[i - 1]);
+    closest = Math.min(closest, 360 - (hs[hs.length - 1] - hs[0]));
+    check(closest >= 30, "no two of them sit on neighbouring hues", ` (closest ${closest}°)`);
+    // 색상만으로 갈리면 색각 이상에서 무너진다 / hue alone collapses for the commonest colour
+    // vision deficiencies, so the palette must move in lightness too
+    const ls = cols.map(lum);
+    check(Math.max(...ls) - Math.min(...ls) >= 0.2,
+      "and they differ in lightness as well, not hue alone",
+      ` (${Math.min(...ls)}–${Math.max(...ls)})`);
+    check(cols.every((c) => lum(c) <= 0.7),
+      "while staying dark enough to read as text on paper");
+  }
+
+  /* 지운 코드는 보드에서 사라져야 한다 / deleting a code leaves its codings on the sheet on
+     purpose, and the promise was that the board stops drawing them. The tag fell back to
+     the code's id instead, so a deleted code came back as a pill reading its own id. */
+  check(/if \(!live\[g\.code\]\) return;/.test(doc), "a coding whose code was deleted is not drawn");
+  check(/\.filter\(\(k\) => by\[k\]\.codes\.length\)/.test(doc),
+    "and a set with no live code left loses its square too");
+
   /* 태그는 네모에 걸쳐 있다 / the tags lap over the square's corner. A leader line is for a
      label that could belong to anything; these belong to exactly one square, so the line
      was explaining what the position already said. */

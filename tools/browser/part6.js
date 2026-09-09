@@ -328,6 +328,45 @@ module.exports = async function (browser) {
     check(srv.get({ codes: "P9" }).codings.length === before - 1, "and then the ✗ does",
       ` (${srv.get({ codes: "P9" }).codings.length})`);
 
+    /* 지운 코드는 보드에서 사라진다 / a code that has been deleted stops being drawn. Its
+       codings stay on the sheet — that is the point, they are evidence of what was read —
+       but the tag fell back to the code's own id, so a deleted code came back as a pill
+       reading `kmttsq87ucu8`. Kept in the record, gone from the board. */
+    const tagTexts = () => page.evaluate(() =>
+      [...document.querySelectorAll("text")].map((t) => t.textContent.trim()));
+    const squares = () => page.evaluate(() =>
+      [...document.querySelectorAll("rect")].filter((x) => (x.getAttribute("stroke-dasharray") || "") === "3 5").length);
+    await add("임시/버릴 코드");
+    await pickAll();                       // 아직 코드가 없는 묶음 / a set with no code on it yet
+    await page.getByText("버릴 코드", { exact: true }).first().click();
+    await page.waitForTimeout(700);
+    const withTemp = await squares();
+    check((await tagTexts()).includes("버릴 코드"), "a live code is drawn on the board");
+    const codingsBefore = srv.get({ codes: "P9" }).codings.length;
+
+    // 이름을 비우면 지워진다 / clearing the name in the rename box deletes it. 두 번 묻는다 —
+    // the rename box, then the confirm about codings already made
+    const twice = (d) => d.accept("");
+    page.on("dialog", twice);
+    await page.evaluate(() => {
+      // 이름 글자에서 위로 올라간다 / walk up from the name itself: the span sits in the apply
+      // button, whose parent is the row, whose second button is the rename one
+      const sp = [...document.querySelectorAll("span")].find((x) => x.textContent.trim() === "버릴 코드");
+      const row = sp && sp.closest("button") && sp.closest("button").parentElement;
+      if (row) [...row.querySelectorAll(":scope > button")][1].click();
+    });
+    await page.waitForTimeout(900);
+    page.off("dialog", twice);
+    const after = await tagTexts();
+    check(!after.includes("버릴 코드"), "deleting it takes its tag off the board");
+    check(!after.some((t) => /^k[a-z0-9]{8,}$/.test(t)),
+      "and it does not come back as its own id", ` (${JSON.stringify(after.slice(0, 6))})`);
+    check((await squares()) === withTemp - 1,
+      "the square it was the only code on goes with it", ` (${withTemp} -> ${await squares()})`);
+    check(srv.get({ codes: "P9" }).codings.length === codingsBefore,
+      "while the coding itself stays on the sheet, which is the whole point",
+      ` (${codingsBefore} -> ${srv.get({ codes: "P9" }).codings.length})`);
+
     // 다시 열어도 그대로 / and it is all still there on the next visit
     await enter();
     await page.waitForTimeout(600);

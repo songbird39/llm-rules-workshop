@@ -782,11 +782,25 @@ const CODE_INK = 'oklch(0.52 0.115 305)', CODE_PAD = 18, CODE_TAG_LAP = 10;
    stored one goes stale the moment a code is renamed into a different folder.
    폴더 없는 코드는 회색 / a code with no folder gets a neutral ink, which also makes an
    unfiled code visible as unfiled. */
+/* 폴더끼리는 확실히 달라야 한다 / folders have to be told apart at a glance, which the first
+   palette did not manage: every entry sat at the same lightness on a similar chroma, and
+   two of them (305 and 285) were barely twenty degrees apart. Colour-coding that has to be
+   squinted at is worse than none, because it looks like it means something.
+   이제 색상은 멀리, 밝기와 채도도 함께 움직인다 / the hues are now spread around the wheel with
+   no two neighbours closer than 45°, and lightness and chroma vary alongside them, so the
+   colours differ on three axes rather than one — which also keeps them apart for the
+   commonest colour-vision deficiencies, where hue alone would collapse. */
 const CODE_COLORS = [
-  'oklch(0.52 0.115 305)', 'oklch(0.55 0.110 250)', 'oklch(0.52 0.105 160)',
-  'oklch(0.58 0.115 62)', 'oklch(0.52 0.130 20)', 'oklch(0.45 0.060 285)',
-  'oklch(0.50 0.100 200)', 'oklch(0.55 0.120 120)', 'oklch(0.48 0.115 340)',
-  'oklch(0.56 0.100 90)'
+  'oklch(0.53 0.190 20)',    // 빨강 / red
+  'oklch(0.63 0.150 55)',    // 주황 / orange
+  'oklch(0.50 0.120 90)',    // 올리브 / olive
+  'oklch(0.58 0.150 125)',   // 초록 / green
+  'oklch(0.45 0.110 160)',   // 짙은 초록 / deep green
+  'oklch(0.62 0.110 195)',   // 청록 / teal
+  'oklch(0.55 0.155 230)',   // 파랑 / blue
+  'oklch(0.40 0.100 265)',   // 남색 / navy
+  'oklch(0.47 0.170 300)',   // 보라 / purple
+  'oklch(0.58 0.180 335)'    // 자홍 / magenta
 ];
 const CODE_NO_FOLDER = 'oklch(0.58 0.012 100)';
 // 이 클라이언트가 요구하는 서버 버전 / the deployment this client needs. An older one cannot
@@ -797,7 +811,7 @@ const SERVER_MIN = '2026-09-09b';
 // screen, so anyone reporting a problem can read it off without opening anything — "it does
 // not load" is a very different report from someone on last week's page than from someone
 // on today's. Bump it with any change worth telling apart.
-const APP_VERSION = '2026-09-09u';
+const APP_VERSION = '2026-09-10b';
 // 분석 메모는 두 종류 / two kinds of note in analysis mode, told apart by colour: the
 // gold one is the admin's own remark and matches the rest of the sensemaking layer;
 // the slate one holds transcript, which is somebody else's words, not the admin's.
@@ -2418,7 +2432,7 @@ class Component extends DCLogic {
     (this.state.codings || []).forEach((g) => {
       if ((g.members || []).slice().sort().join(',') === key) on[g.code] = true;
     });
-    return on;
+    return on;   // 지운 코드는 코드북에 없으니 어차피 줄이 없다 / a deleted code has no row anyway
   }
 
   /* 코딩이 감싼 것을 그대로 고른다 / select exactly the set a coding was made over. That set
@@ -2499,14 +2513,24 @@ class Component extends DCLogic {
   }
 
   codeGroups() {
+    /* 지운 코드는 그리지 않는다 / a coding whose CODE has been deleted is not drawn. Deleting a
+       code deliberately leaves its codings on the sheet — they are evidence of what was
+       read, and erasing them would rewrite history — and the promise was that the board
+       simply stops drawing them. It did not: the tag fell back to the code's id, so a
+       deleted code came back as a pill reading `kmttsq87ucu8`. Kept in the record, gone
+       from the board, which is what deleting a code was always supposed to mean. */
+    const live = {};
+    (this.state.codebook || []).forEach((c) => { live[c.id] = true; });
     const by = {};
     (this.state.codings || []).forEach((g) => {
+      if (!live[g.code]) return;
       const key = (g.members || []).slice().sort().join(',');
       const r = this.codingRect(g);
       if (!r) return;                       // 멤버가 사라졌다 / its members are gone
       (by[key] || (by[key] = { key: key, rect: r, codes: [] })).codes.push(g);
     });
-    return Object.keys(by).map((k) => by[k]);
+    // 코드가 하나도 남지 않은 묶음은 네모도 없다 / a set with no live code left has no square
+    return Object.keys(by).filter((k) => by[k].codes.length).map((k) => by[k]);
   }
 
   // ── 참여자 항목 숨김 · 설명 / hide a record, and say whose it is ──────────
