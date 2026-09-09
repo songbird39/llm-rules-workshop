@@ -264,6 +264,9 @@
                 <div style="min-width:0;display:flex;align-items:baseline;gap:12px;text-align:left">
                   <span style="font-size:14px;font-weight:700;letter-spacing:-0.01em;min-width:64px">{{ r.label }}</span>
                   <span style="font-size:12px;color:#7a776f">{{ r.meta }}</span>
+                  <sc-if value="{{ r.hasCode }}" hint-placeholder-val="{{ false }}">
+                    <span style="font-size:11.5px;padding:1px 7px;border:1px dashed oklch(0.52 0.115 305);border-radius:9px;background:#f7f3fb;color:oklch(0.45 0.115 305);white-space:nowrap">{{ r.codeLabel }}</span>
+                  </sc-if>
                   <sc-if value="{{ r.hasSm }}" hint-placeholder-val="{{ false }}">
                     <span style="font-size:11.5px;padding:1px 7px;border:1px dashed {{ r.smBd }};border-radius:9px;background:{{ r.smBg }};color:{{ r.smColor }};white-space:nowrap">{{ r.smLabel }}</span>
                   </sc-if>
@@ -343,6 +346,40 @@
           </sc-for>
         </div>
       </sc-for>
+
+      <!-- 조합 찾기 / find a combination. 어떤 코드들이 같은 묶음에 함께 걸렸는지 — 그게 코딩에서
+           실제로 묻고 싶은 질문이다. Which codes were applied to the SAME set: co-occurrence is
+           the question coding is actually for, and it cannot be read off a list of counts. -->
+      <div style="border-top:1px solid #ece9e1;margin-top:6px;padding:14px 16px 20px;display:flex;flex-direction:column;gap:10px">
+        <div style="font-size:12.5px;font-weight:700;letter-spacing:-0.01em">{{ t.findTitle }}</div>
+        <div style="font-size:12px;line-height:1.6;color:#7a776f">{{ t.findHint }}</div>
+        <sc-for list="{{ findFolders }}" as="f" hint-placeholder-count="0">
+          <div style="display:flex;flex-direction:column;gap:4px">
+            <span style="font-size:11px;font-weight:700;letter-spacing:0.02em;color:#8a877e">{{ f.name }}</span>
+            <div style="display:flex;flex-wrap:wrap;gap:5px 10px">
+              <sc-for list="{{ f.codes }}" as="c" hint-placeholder-count="0">
+                <label style="display:inline-flex;align-items:center;gap:5px;font-size:12px;color:#44423b;cursor:pointer;white-space:nowrap">
+                  <input type="checkbox" checked="{{ c.on }}" onChange="{{ c.onPick }}" style="margin:0;cursor:pointer" />
+                  <span style="width:8px;height:8px;border-radius:2px;background:{{ c.color }}"></span>{{ c.name }}
+                </label>
+              </sc-for>
+            </div>
+          </div>
+        </sc-for>
+        <div style="display:flex;gap:6px;align-items:center;padding-top:2px">
+          <button onClick="{{ onFind }}" style="padding:7px 14px;border:1px solid transparent;border-radius:8px;background:#1b1a17;color:#faf8f3;font-size:12.5px;cursor:pointer">{{ t.findBtn }}</button>
+          <button onClick="{{ onFindClear }}" style="padding:7px 10px;border:1px solid #d6d3ca;border-radius:8px;background:#fff;font-size:12.5px;cursor:pointer">{{ t.findClear }}</button>
+          <span style="flex:1"></span>
+          <span style="font-size:11.5px;color:#7a776f">{{ findSummary }}</span>
+        </div>
+        <sc-for list="{{ findHits }}" as="r" hint-placeholder-count="0">
+          <button onClick="{{ r.onOpen }}" style="display:flex;align-items:center;gap:10px;text-align:left;padding:7px 10px;border:1px solid #e2dfd7;border-radius:9px;background:{{ r.bg }};cursor:pointer" style-hover="border-color:oklch(0.52 0.115 305)">
+            <span style="font-size:12.5px;font-weight:700;min-width:56px">{{ r.pid }}</span>
+            <span style="flex:1;min-width:0;font-size:11.5px;color:#7a776f;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ r.desc }}</span>
+            <span style="font-size:11.5px;color:oklch(0.45 0.115 305);white-space:nowrap">{{ r.hits }}</span>
+          </button>
+        </sc-for>
+      </div>
       </sc-if>
 
       <sc-if value="{{ showFlow }}" hint-placeholder-val="{{ true }}">
@@ -472,7 +509,7 @@
               <div onDoubleClick="{{ n.onFold }}" style="flex:1;min-height:0;display:flex;align-items:center;font-size:11.5px;line-height:1.3;color:{{ n.fg }};white-space:nowrap;overflow:hidden;text-overflow:ellipsis;padding:5px 2px 0">{{ n.head }}</div>
             </sc-if>
             <sc-if value="{{ n.open }}" hint-placeholder-val="{{ true }}">
-              <textarea value="{{ n.text }}" onChange="{{ n.onText }}" autoFocus="{{ n.autoFocus }}" data-grow="1" class="{{ n.cls }}" placeholder="{{ n.ph }}" rows="3" style="width:100%;flex:{{ n.taFlex }};height:{{ n.taH }};min-height:{{ n.taMin }};overflow:{{ n.ov }};resize:none;border:1px dashed {{ n.field }};border-radius:7px;background:rgba(255,254,251,0.7);font-size:12px;line-height:1.55;font-style:{{ n.slant }};color:#44423b;outline:none;padding:8px 10px;font-family:{{ n.font }};pointer-events:{{ n.tpe }}" style-focus="border-color:oklch(0.51 0.08 253);background:#fffefb"></textarea>
+              <textarea value="{{ n.text }}" onChange="{{ n.onText }}" autoFocus="{{ n.autoFocus }}" data-grow="1" class="{{ n.cls }}" placeholder="{{ n.ph }}" rows="3" style="width:100%;flex:{{ n.taFlex }};height:{{ n.taH }};min-height:{{ n.taMin }};overflow:{{ n.ov }};resize:none;border:1px dashed {{ n.field }};border-radius:7px;background:rgba(255,254,251,0.7);font-size:{{ n.fs }};line-height:1.5;font-style:{{ n.slant }};color:#44423b;outline:none;padding:8px 10px;font-family:{{ n.font }};pointer-events:{{ n.tpe }}" style-focus="border-color:oklch(0.51 0.08 253);background:#fffefb"></textarea>
             </sc-if>
             <!-- 오른쪽 끝은 손잡이 자리 / the right end of this row is the grip's corner, so
                  the buttons stop short of it. They were sitting on top of each other. -->
@@ -721,7 +758,7 @@ const SERVER_MIN = '2026-09-09a';
 // screen, so anyone reporting a problem can read it off without opening anything — "it does
 // not load" is a very different report from someone on last week's page than from someone
 // on today's. Bump it with any change worth telling apart.
-const APP_VERSION = '2026-09-09a';
+const APP_VERSION = '2026-09-09b';
 // 분석 메모는 두 종류 / two kinds of note in analysis mode, told apart by colour: the
 // gold one is the admin's own remark and matches the rest of the sensemaking layer;
 // the slate one holds transcript, which is somebody else's words, not the admin's.
@@ -924,6 +961,7 @@ const I18N = {
       hiddenNote: '기록은 지워지지 않았습니다. 목록에서만 빠져 있습니다.',
       metaPh: '설명 (누구의 기록인지 적어 두세요)',
       smPrefix: '해석 ', smTx: '전사 ', smBroken: '해석 있음 · 열리지 않음', smSaves: '해석 저장 ',
+      codeTag: '코드 ', codeKinds: '종',
       panelHide: '덱 접기', panelShow: '덱 펼치기',
       upSense: '↑ 파일에서', upSenseTip: '내려받은 해석 JSON 파일을 이 참여자의 해석으로 불러오기', upBad: '읽을 수 없음', upDone: '불러옴 · ',
       downSense: '↓ 해석 파일', downSenseTip: '지금 해석을 JSON 파일로 내려받기 (전사 포함)',
@@ -962,6 +1000,8 @@ const I18N = {
       codeNew: '새 코드 (폴더/이름)', codeAdd: '추가', codeNoFolder: '폴더 없음',
       codeApplyTip: '선택한 요소에 이 코드 걸기 / 다시 누르면 해제', codeOffTip: '눌러서 코드 해제',
       codeNoSel: '먼저 보드에서 요소를 선택해 주세요.',
+      findTitle: '코드 조합 찾기', findHint: '함께 걸린 코드를 고르세요. 한 묶음에 고른 코드가 모두 걸린 경우만 셉니다.',
+      findBtn: '찾기', findClear: '지우기', findFound: '명', findNone: '해당하는 참여자가 없습니다.', findSets: '묶음',
       codeRename: '코드 이름 (폴더/이름)', codeDelBody: '이 코드는 %n곳에 걸려 있습니다. 코드를 지워도 걸어 둔 표시는 남습니다. 계속할까요?',
       hintFlow: '내가 학습하는 순서대로 ① 활동 태그를 왼쪽에서 오른쪽으로 놓아 보세요. 활동 전 → 활동 중 → 활동 후 흐름이면 좋고, 길어지거나 갈래가 나뉘면 줄을 바꿔도 됩니다. 각 활동 옆에 ② 수단을 붙여 무엇으로 하는지 적어 주세요.',
       hintGuard: '각 활동 아래에 ③ 시점 · 조건 카드와 ④ 유도 카드를 놓아, 시스템이 언제 어떻게 개입하면 좋을지 정해 보세요. 카드 위 글자는 눌러서 직접 고칠 수 있습니다.',
@@ -1063,6 +1103,7 @@ const I18N = {
       hiddenNote: 'Nothing was deleted. These are only out of the list.',
       metaPh: 'Description (who this code belongs to)',
       smPrefix: 'analysis ', smTx: 'transcripts ', smBroken: 'analysis saved · will not open', smSaves: 'analysis saves ',
+      codeTag: 'coded ', codeKinds: ' kinds',
       panelHide: 'Fold the deck away', panelShow: 'Bring the deck back',
       upSense: '↑ From file', upSenseTip: 'Load a downloaded analysis JSON into this participant', upBad: 'unreadable', upDone: 'loaded · ',
       downSense: '↓ Analysis file', downSenseTip: 'Download the analysis as JSON, transcripts included',
@@ -1101,6 +1142,8 @@ const I18N = {
       codeNew: 'New code (folder/name)', codeAdd: 'Add', codeNoFolder: 'No folder',
       codeApplyTip: 'Code the current selection / press again to remove', codeOffTip: 'click to uncode',
       codeNoSel: 'Select something on the board first.',
+      findTitle: 'Find a combination', findHint: 'Check codes that were applied together. Only sets carrying every checked code count.',
+      findBtn: 'Find', findClear: 'Clear', findFound: ' participants', findNone: 'No participant has that combination.', findSets: ' sets',
       codeRename: 'Code name (folder/name)', codeDelBody: 'This code is applied in %n places. Deleting it leaves those marks in place. Continue?',
       hintFlow: 'Lay ① activity tags left to right in the order you study — before → during → after works well, and you can start a new row if it gets long or branches. Add ② means beside each activity to say what you do it with.',
       hintGuard: 'Place ③ timing · condition cards and ④ nudge cards under each activity to decide when and how the system should step in. Tap any text on a card to edit it.',
@@ -1124,7 +1167,8 @@ class Component extends DCLogic {
   constructor(props) {
     super(props);
     this.state = { sync: '', step: 0, lang: 'ko', rules: [], pid: '', loginPid: '', cards: [], notes: [], arrows: [], arrowMode: false, pendingArrow: null, pen: null, strokes: [], selArrow: null, noteMode: false, noteKind: 'memo', panelOff: false, rosterMode: '', histWho: 'board', conflict: null, marked: '', senseDirty: false, recover: null, loading: null, importMsg: '', oldPage: false,
-      codebook: [], codings: [], allCodings: [], codeFolder: '', codeMsg: '', undoDepth: 0, focusNote: null, pan: { x: 0, y: 0 }, zoom: 1, ghost: null, seq: 1, panelW: panelCap(), sel: [], marquee: null, finish: null, tab: 'flow', hist: null, histList: [], travel: null, senseOn: true, admin: false, viewPid: '', roster: [], rosterMsg: '' };
+      codebook: [], codings: [], allCodings: [], codeFolder: '', codeMsg: '',
+      findPick: {}, findHits: null, undoDepth: 0, focusNote: null, pan: { x: 0, y: 0 }, zoom: 1, ghost: null, seq: 1, panelW: panelCap(), sel: [], marquee: null, finish: null, tab: 'flow', hist: null, histList: [], travel: null, senseOn: true, admin: false, viewPid: '', roster: [], rosterMsg: '' };
     this.canvasRef = React.createRef();
     this.drag = null;
   }
@@ -2030,6 +2074,31 @@ class Component extends DCLogic {
   // 만들지 않고도 한 겹 폴더가 생긴다.
   // A slash names the folder: "정확성/검증 회피" files it under 정확성. One level, typed
   // rather than dragged, which is the whole of the folder UI.
+  /* 코드 조합 찾기 / find where checked codes were applied TOGETHER.
+     한 묶음(같은 요소들)에 고른 코드가 모두 걸려 있어야 맞는 것으로 센다. 참여자가 그 코드들을
+     제각각 다른 곳에 썼다면 그건 다른 질문의 답이다. */
+  findCombo() {
+    const want = Object.keys(this.state.findPick || {});
+    if (!want.length) { this.setState({ findHits: [] }); return; }
+    const sets = {};
+    (this.state.allCodings || []).forEach((g) => {
+      const key = g.participant + '|' + (g.members || []).slice().sort().join(',');
+      (sets[key] || (sets[key] = { pid: g.participant, codes: {} })).codes[g.code] = 1;
+    });
+    const per = {};
+    Object.keys(sets).forEach((k) => {
+      const st = sets[k];
+      if (!want.every((id) => st.codes[id])) return;
+      per[st.pid] = (per[st.pid] || 0) + 1;
+    });
+    const desc = {};
+    (this.state.roster || []).forEach((r) => { desc[r.participant] = r.desc || ''; });
+    const hits = Object.keys(per)
+      .map((pid) => ({ pid: pid, n: per[pid], desc: desc[pid] || '' }))
+      .sort((a, b) => b.n - a.n || a.pid.localeCompare(b.pid));
+    this.setState({ findHits: hits });
+  }
+
   addCode() {
     const raw = (this.state.codeDraft || '').trim();
     if (!raw) return;
@@ -2226,6 +2295,12 @@ class Component extends DCLogic {
         // request. Reading every record back is what it costs to count the objects in one,
         // and doing that before the list could be drawn pushed ?list=1 past the timeout —
         // the roster then failed entirely, to say how much analysis it could not show.
+        // 코드도 같이 / the codes come with it: the list wants to say how much coding each
+        // participant carries, and the codes sheet is small enough to ask for up front
+        this.jsonp('codes=' + encodeURIComponent('all')).then((cs) => {
+          if (!cs || !cs.ok || !this.state.admin) return;
+          this.setState({ codebook: cs.codebook || [], allCodings: cs.codings || [] });
+        });
         this.jsonp('smlist=1').then((sm) => {
           if (!sm || !sm.ok || !sm.analyses || !this.state.admin) return;
           const by = {};
@@ -3949,6 +4024,15 @@ class Component extends DCLogic {
           meta: (r.rows || 0) + t.rowsSuffix + (r.submits ? ' · ' + t.submittedTag : ''),
           // 해석이 있는지, 열리는지 / whether there is analysis and whether it opens. An entry
           // with rows but nothing readable is the case worth seeing from the list.
+          // 코드 몇 개, 몇 종류 / how many codings this participant carries and how many
+          // distinct codes they use — the second is the more telling number
+          hasCode: (this.state.allCodings || []).some((g) => g.participant === r.participant),
+          codeLabel: (() => {
+            const mine = (this.state.allCodings || []).filter((g) => g.participant === r.participant);
+            const kinds = {};
+            mine.forEach((g) => { kinds[g.code] = 1; });
+            return t.codeTag + mine.length + ' · ' + Object.keys(kinds).length + t.codeKinds;
+          })(),
           hasSm: (r.smRows || 0) > 0,
           // 개수는 나중에 도착한다 / the counts arrive a moment later, so until they do the row
           // says only that there IS analysis rather than guessing at how much
@@ -4034,6 +4118,49 @@ class Component extends DCLogic {
       showGuard: this.state.step === 2 && this.state.tab === 'guard',
       panelHint: this.state.step === 1 ? t.hintFlow : t.hintGuard,
       onTabCode: () => this.setState({ tab: 'code' }),
+      // 조합 찾기 / the combination search. 같은 묶음에 함께 걸린 코드를 찾는다 — 참여자마다
+      // 따로 걸린 게 아니라, 한 묶음이 그 코드들을 모두 지고 있는 경우.
+      // A hit is a coded SET carrying every checked code — not a participant who happens to
+      // use all of them in different places. Co-occurrence is the question; anything looser
+      // would answer a different one and look like the same answer.
+      findFolders: (() => {
+        const groups = {}, order = [];
+        (this.state.codebook || []).forEach((c) => {
+          const f = c.folder || '';
+          if (!groups[f]) { groups[f] = []; order.push(f); }
+          groups[f].push(c);
+        });
+        order.sort((a, b) => (a === '' ? 1 : b === '' ? -1 : a.localeCompare(b)));
+        return order.map((f) => ({
+          key: 'ff' + f,
+          name: f || t.codeNoFolder,
+          codes: groups[f].map((c) => ({
+            key: 'fp' + c.id,
+            name: c.name,
+            color: c.color || CODE_INK,
+            on: !!(this.state.findPick || {})[c.id],
+            onPick: () => this.setState((st) => {
+              const pick = Object.assign({}, st.findPick);
+              if (pick[c.id]) delete pick[c.id]; else pick[c.id] = 1;
+              return { findPick: pick, findHits: null };
+            })
+          }))
+        }));
+      })(),
+      onFind: () => this.findCombo(),
+      onFindClear: () => this.setState({ findPick: {}, findHits: null }),
+      findSummary: this.state.findHits === null ? ''
+        : this.state.findHits.length
+          ? (this.state.findHits.length + t.findFound)
+          : t.findNone,
+      findHits: (this.state.findHits || []).map((r) => ({
+        key: 'fh' + r.pid,
+        pid: r.pid,
+        desc: r.desc,
+        hits: r.n + t.findSets,
+        bg: r.pid === this.state.viewPid ? '#f7f3fb' : '#fffefb',
+        onOpen: () => this.openParticipant(r.pid)
+      })),
       showCodes: this.state.tab === 'code' && viewing,
       tabCodeBd: this.state.tab === 'code' ? '#1b1a17' : '#ece9e1',
       tabCodeBg: this.state.tab === 'code' ? '#fffefb' : 'transparent',
@@ -4290,6 +4417,9 @@ class Component extends DCLogic {
           slant: n.edited ? 'italic' : 'normal',
           field: n.sm && tx ? '#c3cbd8' : '#c2beb2',
           font: tx ? 'ui-monospace, SFMono-Regular, Menlo, monospace' : 'inherit',
+          // 전사는 작게 / transcript is set smaller: it is read zoomed in, and at the memo's
+          // size a quotation of any length stops fitting anywhere sensible on the board
+          fs: tx ? '10.5px' : '12px',
           ph: tx ? t.txPh : t.notePh,
           isTx: tx && own,
           folded: !!n.collapsed,

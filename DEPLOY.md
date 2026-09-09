@@ -239,6 +239,14 @@ Deleting a code leaves the codings that used it: they are evidence of what was r
 erasing them silently would rewrite the history. The board simply stops drawing a tag whose
 code is gone.
 
+**Finding a combination** — the checkboxes at the foot of the tab — means codes applied to
+the **same set**, not a participant who happens to use all of them in different places. That
+distinction is the whole point: co-occurrence is what coding is for, and the looser answer
+would look identical to the right one. Results are links straight to the participant.
+
+The roster carries `코드 N · M종` — how many codings a participant has, and how many distinct
+codes they use. The second is usually the more telling number.
+
 ## Both halves have to match, and both directions are named
 
 `APP_VERSION` (the page), `VERSION` (Code.gs), `SERVER_MIN` (the server the page insists

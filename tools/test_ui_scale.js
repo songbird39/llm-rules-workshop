@@ -860,6 +860,35 @@ console.log("\nzoom is anchored to the pointer");
     "and the buttons hold the middle of the board");
 }
 
+// ---- 6s. the coding layer ----
+console.log("\ncodes: counted, combined, and searched by co-occurrence");
+{
+  // 코드북은 전체에 하나 / the codebook is global, so it does not live in a log keyed by
+  // participant. Counting a code across everyone is the only way the number means anything.
+  check(/var CODE_SHEET = 'codes'/.test(gs), "the codebook has a sheet of its own");
+  check(/if \(body\.kind === 'code' \|\| body\.kind === 'coding'\)/.test(gs),
+    "and writes to it never touch the responses log");
+  // 사각형은 멤버에서 다시 계산된다 / recomputed from its members every render, which is what
+  // makes it FOLLOW them. A region that stops matching what it encloses is a decoration.
+  check(/codingRect\(g\) \{/.test(doc), "a coded region is computed from its members");
+  check(/x: x0 - CODE_PAD, y: y0 - CODE_PAD/.test(doc), "with air around them");
+  check(/codeGroups\(\) \{/.test(doc), "and several codes on one set share one square");
+  check(/codeLayer: RO \? this\.codeLayer\(\) : null/.test(doc), "the layer draws in admin only");
+
+  // 조합은 같은 묶음에서 함께 걸린 것 / a combination means codes on the SAME set. A participant
+  // who used them all in different places is the answer to a different question.
+  check(/const key = g\.participant \+ '\|' \+ \(g\.members \|\| \[\]\)\.slice\(\)\.sort\(\)\.join\(','\)/.test(doc),
+    "the search groups codings by the set they were applied to");
+  check(/if \(!want\.every\(\(id\) => st\.codes\[id\]\)\) return;/.test(doc),
+    "and a hit is a set carrying every checked code");
+  check(/onOpen: \(\) => this\.openParticipant\(r\.pid\)/.test(doc), "results open the participant");
+  // 목록에도 숫자가 있어야 / the roster says how much coding each participant carries
+  check(/codeTag \+ mine\.length \+ ' · ' \+ Object\.keys\(kinds\)\.length/.test(doc),
+    "the roster shows codings and how many distinct codes they use");
+  // 전사는 작게 / transcript is set smaller than a memo: it is read zoomed in
+  check(/fs: tx \? '10\.5px' : '12px'/.test(doc), "transcript is set smaller than a memo");
+}
+
 // ---- 7. view mode must not be able to write ----
 // The whole point: viewing P01 must never produce a localStorage write or a sheet
 // POST, because latestState_() takes the newest row and would adopt the accident.
