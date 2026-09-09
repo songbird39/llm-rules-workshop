@@ -43,8 +43,8 @@ module.exports = async function (browser) {
     // 코드 탭은 관리자에게만 / the tab exists only here
     await page.getByText("코드", { exact: true }).click();
     await page.waitForTimeout(400);
-    // placeholder 는 innerText 에 없다 / a placeholder is not innerText; look at the hint
-    check(await page.evaluate(() => document.body.innerText.includes("보드에서 요소를 고른 뒤")),
+    // 설명문은 없앴다 / the explanation was removed; the input is the tab's own tell
+    check(await page.evaluate(() => !!document.querySelector('input[placeholder*="새 코드"]')),
       "the 코드 tab opens a codebook");
 
     // 폴더는 슬래시로 / a slash names the folder
@@ -90,7 +90,7 @@ module.exports = async function (browser) {
     await page.evaluate(() => {
       // 그 코드의 줄에 있는 고치기 버튼 / the edit button on THAT code's row, not the first one
       const row = [...document.querySelectorAll("div")].filter((d) =>
-        (d.innerText || "").indexOf("검증 회피") === 0 && d.querySelectorAll("button").length === 3).pop();
+        (d.innerText || "").indexOf("검증 회피") === 0 && d.querySelectorAll("button").length === 2).pop();
       row.querySelectorAll("button")[1].click();
     });
     await page.waitForTimeout(600);
@@ -151,7 +151,7 @@ module.exports = async function (browser) {
       const out = {};
       [...document.querySelectorAll("button")].forEach((b) => {
         const sp = b.querySelectorAll(":scope > span");
-        if (sp.length !== 4) return;                       // 표시 · 색 · 이름 · 횟수
+        if (sp.length !== 3) return;                       // 표시 · 색 · 이름
         out[sp[2].textContent.trim()] = sp[0].textContent.trim();
       });
       return out;

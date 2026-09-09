@@ -329,11 +329,13 @@
         </div>
       </sc-if>
       <div style="flex:1;min-height:0;overflow-y:auto">
-      <div style="padding:14px 16px 12px;font-size:13px;line-height:1.65;color:#7a776f;border-bottom:1px solid #ece9e1">{{ panelHint }}</div>
+      <!-- 없으면 줄도 없다 / no hint, no strip: an empty one still drew its padding and rule -->
+      <sc-if value="{{ hasPanelHint }}" hint-placeholder-val="{{ false }}">
+        <div style="padding:14px 16px 12px;font-size:13px;line-height:1.65;color:#7a776f;border-bottom:1px solid #ece9e1">{{ panelHint }}</div>
+      </sc-if>
 
       <sc-if value="{{ showCodes }}" hint-placeholder-val="{{ false }}">
       <div style="padding:14px 16px 10px;display:flex;flex-direction:column;gap:10px">
-        <div style="font-size:12.5px;line-height:1.6;color:#7a776f">{{ t.codeHint }}</div>
         <div style="display:flex;gap:6px">
           <input value="{{ codeDraft }}" onChange="{{ onCodeDraft }}" onKeyDown="{{ onCodeKey }}" placeholder="{{ t.codeNew }}" style="flex:1;min-width:0;padding:7px 10px;border:1px solid #dedbd3;border-radius:8px;background:#fdfcf9;font-size:13px;outline:none;font-family:inherit" style-focus="border-color:oklch(0.51 0.08 253)" />
           <button onClick="{{ onCodeAdd }}" style="padding:7px 12px;border:1px solid transparent;border-radius:8px;background:#1b1a17;color:#faf8f3;font-size:13px;cursor:pointer">{{ t.codeAdd }}</button>
@@ -350,19 +352,19 @@
           <span style="flex:1;height:1px;background:#ece9e1"></span>
           <span style="font-size:11px;color:#a7a49b">{{ f.count }}</span>
         </div>
-        <div style="display:flex;flex-direction:column;gap:5px;padding:4px 16px 12px">
+        <!-- 두 칸으로 / two columns: a codebook is a list to scan, not to read, and half the
+             rows on screen at once is the difference between finding a code and hunting it -->
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:5px;padding:4px 16px 12px">
           <sc-for list="{{ f.codes }}" as="c" hint-placeholder-count="0">
-            <div style="display:flex;align-items:center;gap:8px;padding:7px 9px;border:1px solid #e2dfd7;border-radius:9px;background:{{ c.bg }}" style-hover="border-color:#d6d3ca">
-              <button onClick="{{ c.onApply }}" title="{{ t.codeApplyTip }}" style="flex:1;min-width:0;display:flex;align-items:center;gap:8px;border:none;background:transparent;text-align:left;cursor:pointer;padding:0">
+            <div style="display:flex;align-items:center;gap:6px;padding:6px 7px;border:{{ c.rowBorder }};border-radius:9px;background:{{ c.rowBg }}" style-hover="border-color:#d6d3ca">
+              <button onClick="{{ c.onApply }}" title="{{ t.codeApplyTip }}" style="flex:1;min-width:0;display:flex;align-items:center;gap:6px;border:none;background:transparent;text-align:left;cursor:pointer;padding:0">
                 <!-- 자리는 늘 잡아 둔다 / the tick keeps its slot whether or not it is there, so
                      the names stay on one left edge as the selection changes -->
-                <span style="flex:none;width:13px;font-size:11px;line-height:1;color:#3f7a4f">{{ c.mark }}</span>
+                <span style="flex:none;width:13px;font-size:11px;line-height:1;color:{{ c.markFg }}">{{ c.mark }}</span>
                 <span style="flex:none;width:10px;height:10px;border-radius:3px;background:{{ c.color }}"></span>
-                <span style="flex:1;min-width:0;font-size:13px;font-weight:600;color:{{ c.nameFg }};white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ c.name }}</span>
-                <span style="flex:none;font-size:11px;font-family:ui-monospace,Menlo,monospace;color:{{ c.countColor }}">{{ c.count }}</span>
+                <span style="flex:1;min-width:0;font-size:12.5px;font-weight:{{ c.nameWeight }};color:{{ c.nameFg }};white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ c.name }}</span>
               </button>
-              <button onClick="{{ c.onEdit }}" title="{{ t.editTip }}" style="flex:none;width:22px;height:22px;border:none;border-radius:5px;background:transparent;color:#bfbcb3;font-size:11px;cursor:pointer;padding:0" style-hover="color:#1b1a17">✎</button>
-              <button onClick="{{ c.onDel }}" title="{{ t.delTip }}" style="flex:none;width:22px;height:22px;border:none;border-radius:5px;background:transparent;color:#bfbcb3;font-size:11px;cursor:pointer;padding:0" style-hover="color:#b03f34">✕</button>
+              <button onClick="{{ c.onEdit }}" title="{{ t.editTip }}" style="flex:none;width:18px;height:18px;border:none;border-radius:5px;background:transparent;color:#bfbcb3;font-size:11px;cursor:pointer;padding:0" style-hover="color:#1b1a17">✎</button>
             </div>
           </sc-for>
         </div>
@@ -790,7 +792,7 @@ const SERVER_MIN = '2026-09-09b';
 // screen, so anyone reporting a problem can read it off without opening anything — "it does
 // not load" is a very different report from someone on last week's page than from someone
 // on today's. Bump it with any change worth telling apart.
-const APP_VERSION = '2026-09-09q';
+const APP_VERSION = '2026-09-09r';
 // 분석 메모는 두 종류 / two kinds of note in analysis mode, told apart by colour: the
 // gold one is the admin's own remark and matches the rest of the sensemaking layer;
 // the slate one holds transcript, which is somebody else's words, not the admin's.
@@ -1029,16 +1031,15 @@ const I18N = {
       consentPdf: '동의서 PDF', consentPng: '동의서 이미지', consentPage: '{n} / {total} 쪽', consentLast: '마지막 장 — 서명용',
       step0: '참여자 로그인', loginTitle: '참여자 코드를 입력해 주세요', loginSub: '작업은 참여자 코드별로 자동 저장됩니다. 같은 코드로 다시 들어오면 이어서 할 수 있습니다.', start: '시작하기 →', continueAs: '이어서 하기', logout: '나가기',
       tabFlow: '규칙', tabGuard: '가드레일', tabCode: '코드',
-      codeHint: '보드에서 요소를 고른 뒤 코드를 누르면, 고른 것들을 감싸는 영역으로 표시됩니다. 한 묶음에 여러 코드를 걸 수 있습니다.',
       codeNew: '새 코드 (폴더/이름)', codeAdd: '추가', codeNoFolder: '폴더 없음',
       codeApplyTip: '선택한 요소에 이 코드 걸기 / 다시 누르면 해제', codeOffTip: '눌러서 코드 고르기',
       codeBoxTip: '테두리를 눌러서 이 묶음 선택', codeDropTip: '이 코드 떼기',
       codeNoSel: '먼저 보드에서 요소를 선택해 주세요.',
       findTitle: '코드 조합 찾기', findHint: '함께 걸린 코드를 고르세요. 한 묶음에 고른 코드가 모두 걸린 경우만 셉니다.',
       findBtn: '찾기', findClear: '지우기', findFound: '명', findNone: '해당하는 참여자가 없습니다.', findSets: '묶음',
-      codeRename: '코드 이름 (폴더/이름)', codeDelBody: '이 코드는 %n곳에 걸려 있습니다. 코드를 지워도 걸어 둔 표시는 남습니다. 계속할까요?',
+      codeRename: '코드 이름 (폴더/이름) · 비우면 삭제', codeDelBody: '이 코드는 %n곳에 걸려 있습니다. 코드를 지워도 걸어 둔 표시는 남습니다. 계속할까요?',
       hintFlow: '내가 학습하는 순서대로 ① 활동 태그를 왼쪽에서 오른쪽으로 놓아 보세요. 활동 전 → 활동 중 → 활동 후 흐름이면 좋고, 길어지거나 갈래가 나뉘면 줄을 바꿔도 됩니다. 각 활동 옆에 ② 수단을 붙여 무엇으로 하는지 적어 주세요.',
-      hintGuard: '각 활동 아래에 ③ 시점 · 조건 카드와 ④ 유도 카드를 놓아, 시스템이 언제 어떻게 개입하면 좋을지 정해 보세요. 카드 위 글자는 눌러서 직접 고칠 수 있습니다.',
+      hintGuard: '',
       cardName: '카드 이름', descPh: '설명', notePh: '메모 쓰기…',
       actCards: '활동', actCardsSub: '무엇을 하나요? (타임라인)', meansCards: '수단', meansCardsSub: '무엇으로 하나요?',
       conCards: '유도', conCardsSub: '시스템이 어떻게 개입하나요?',
@@ -1173,16 +1174,15 @@ const I18N = {
       consentPdf: 'Consent PDF', consentPng: 'Consent image', consentPage: 'Page {n} of {total}', consentLast: 'Last page — for signing',
       step0: 'Participant sign-in', loginTitle: 'Enter your participant code', loginSub: 'Work is saved automatically per participant code. Come back with the same code to continue where you left off.', start: 'Start →', continueAs: 'Continue as', logout: 'Exit',
       tabFlow: 'Rules', tabGuard: 'Guardrails', tabCode: 'Codes',
-      codeHint: 'Select elements on the board, then press a code to draw a region around them. One set can carry several codes.',
       codeNew: 'New code (folder/name)', codeAdd: 'Add', codeNoFolder: 'No folder',
       codeApplyTip: 'Code the current selection / press again to remove', codeOffTip: 'click to select this code',
       codeBoxTip: 'click the edge to select this set', codeDropTip: 'remove this code',
       codeNoSel: 'Select something on the board first.',
       findTitle: 'Find a combination', findHint: 'Check codes that were applied together. Only sets carrying every checked code count.',
       findBtn: 'Find', findClear: 'Clear', findFound: ' participants', findNone: 'No participant has that combination.', findSets: ' sets',
-      codeRename: 'Code name (folder/name)', codeDelBody: 'This code is applied in %n places. Deleting it leaves those marks in place. Continue?',
+      codeRename: 'Code name (folder/name) · clear it to delete', codeDelBody: 'This code is applied in %n places. Deleting it leaves those marks in place. Continue?',
       hintFlow: 'Lay ① activity tags left to right in the order you study — before → during → after works well, and you can start a new row if it gets long or branches. Add ② means beside each activity to say what you do it with.',
-      hintGuard: 'Place ③ timing · condition cards and ④ nudge cards under each activity to decide when and how the system should step in. Tap any text on a card to edit it.',
+      hintGuard: '',
       cardName: 'Card name', descPh: 'Description', notePh: 'Write a note…',
       actCards: 'Activity', actCardsSub: 'what you do (timeline)', meansCards: 'Means', meansCardsSub: 'what you do it with',
       conCards: 'Nudge', conCardsSub: 'how the system steps in',
@@ -2294,8 +2294,15 @@ class Component extends DCLogic {
   renameCode(c) {
     const L = I18N[this.state.lang] || I18N.ko;
     const cur = (c.folder ? c.folder + '/' : '') + c.name;
-    const raw = (window.prompt(L.ui.codeRename, cur) || '').trim();
-    if (!raw || raw === cur) return;
+    /* 지우기는 여기로 들어왔다 / deleting moved in here. The ✕ on every row was one slip from
+       losing a code, and it is not what a codebook row is for — but a code typed wrong
+       still has to be removable, so CLEARING the name and confirming deletes it. Cancel
+       gives null and does nothing; an empty box is a deliberate act. */
+    const typed = window.prompt(L.ui.codeRename, cur);
+    if (typed === null) return;
+    const raw = typed.trim();
+    if (!raw) { this.removeCode(c); return; }
+    if (raw === cur) return;
     const cut = raw.indexOf('/');
     const folder = cut > 0 ? raw.slice(0, cut).trim() : '';
     const name = (cut > 0 ? raw.slice(cut + 1) : raw).trim();
@@ -4505,6 +4512,7 @@ class Component extends DCLogic {
       showFlow: this.state.step === 1 || this.state.tab === 'flow',
       showGuard: this.state.step === 2 && this.state.tab === 'guard',
       panelHint: this.state.step === 1 ? t.hintFlow : t.hintGuard,
+      hasPanelHint: !!(this.state.step === 1 ? t.hintFlow : t.hintGuard),
       onTabCode: () => this.setState({ tab: 'code' }),
       // 조합 찾기 / the combination search. 같은 묶음에 함께 걸린 코드를 찾는다 — 참여자마다
       // 따로 걸린 게 아니라, 한 묶음이 그 코드들을 모두 지고 있는 경우.
@@ -4563,10 +4571,8 @@ class Component extends DCLogic {
       // 폴더 한 겹 / one level of folders: a code sits in a named folder or at the top, which
       // is enough to group a codebook by theme without a tree to drag things around in
       codeFolders: (() => {
-        const counts = {};
-        (this.state.allCodings || []).forEach((g) => { counts[g.code] = (counts[g.code] || 0) + 1; });
-        const here = {};
-        (this.state.codings || []).forEach((g) => { here[g.code] = (here[g.code] || 0) + 1; });
+        // 횟수는 목록 화면에 있다 / the counts live on the roster, where they are a summary of
+        // the whole study. On a row they were noise beside the one thing a row is for
         const groups = {}, order = [];
         (this.state.codebook || []).forEach((c) => {
           const f = c.folder || '';
@@ -4584,16 +4590,17 @@ class Component extends DCLogic {
             key: c.id,
             name: c.name,
             color: this.codeColor(c),
-            // 고른 묶음에 이미 붙어 있으면 표시 / a tick when this exact selection already carries it
+            /* 걸려 있는 코드는 한눈에 / a code already on this selection is marked by the whole
+               row, not by a tick alone: its own colour on the border, a tinted ground and a
+               heavier name. A checkmark 13px wide is easy to miss in a two-column grid. */
             mark: applied && applied[c.id] ? '✓' : '',
+            markFg: this.codeColor(c),
             nameFg: applied && applied[c.id] ? '#1b1a17' : '#44423b',
-            // 이 참여자에게 몇 번, 전체로 몇 번 / how many times here, and everywhere
-            count: (here[c.id] || 0) + ' / ' + (counts[c.id] || 0),
-            countColor: here[c.id] ? '#7a5a1f' : '#a7a49b',
-            bg: here[c.id] ? '#fdfbf5' : '#fffefb',
+            nameWeight: applied && applied[c.id] ? '700' : '600',
+            rowBorder: applied && applied[c.id] ? ('2px solid ' + this.codeColor(c)) : '1px solid #e2dfd7',
+            rowBg: applied && applied[c.id] ? '#fdf6e6' : '#fffefb',
             onApply: () => this.applyCode(c.id),
-            onEdit: () => this.renameCode(c),
-            onDel: () => this.removeCode(c)
+            onEdit: () => this.renameCode(c)
           }))
         }));
       })(),

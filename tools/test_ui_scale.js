@@ -823,6 +823,18 @@ console.log("\nthe loading gate");
      change colour with it, which a colour stored on the code at creation cannot do. */
   check(/codeColor\(c\) \{/.test(doc), "a code's colour is worked out, not stored");
 
+  /* 코드북 줄은 고르기 위한 것 / a codebook row exists to be pressed. The counts belong on the
+     roster, where they summarise the study; on a row they were noise. And a ✕ on every row
+     was one slip from losing a code — clearing the name in the rename box does it instead. */
+  check(/grid-template-columns:1fr 1fr/.test(doc), "the codebook reads in two columns");
+  check(!/\{\{ c\.count \}\}/.test(doc), "with no per-row counts");
+  check(!/onDel: \(\) => this\.removeCode/.test(doc), "and no delete button on a row");
+  check(/if \(!raw\) \{ this\.removeCode\(c\); return; \}/.test(doc),
+    "clearing the name in the rename box is what deletes a code");
+  check(/if \(typed === null\) return;/.test(doc), "while cancelling does nothing");
+  check(/rowBorder: applied && applied\[c\.id\] \? \('2px solid ' \+ this\.codeColor\(c\)\)/.test(doc),
+    "a code already on the selection marks its whole row, not just a 13px tick");
+
   /* 열면 작업이 보여야 한다 / opening a board must land on the work. The view was put at the
      origin every time, and a board sits wherever it was left — one of these has its cards
      at y ≈ -2500 — so it came up blank and had to be found by dragging. */
