@@ -759,7 +759,7 @@ const NOTE_W = 168, NOTE_MIN_W = 132, NOTE_MIN_H = 64, NOTE_FOLD_H = 30;
 // sharing a stamp and reassembled on read. CELL_SAFE leaves room for the envelope around
 // each slice and for JSON escaping inside it; the actual size is measured, not assumed.
 // SENSE_PARTS_MAX is a backstop, not a target: past it something has gone wrong.
-const CELL_MAX = 50000, CELL_SAFE = 34000, SENSE_PARTS_MAX = 40;
+const CELL_MAX = 50000, CELL_SAFE = 34000, SENSE_PARTS_MAX = 96;
 // 전사는 따로 산다 / transcript lives in its own record, keyed 'tx:' + participant. The
 // board record is rewritten on every drag and every keystroke in a memo; transcript is
 // pasted once and then mostly read. Keeping the two apart means the frequent save stays
@@ -792,7 +792,7 @@ const SERVER_MIN = '2026-09-09b';
 // screen, so anyone reporting a problem can read it off without opening anything — "it does
 // not load" is a very different report from someone on last week's page than from someone
 // on today's. Bump it with any change worth telling apart.
-const APP_VERSION = '2026-09-09r';
+const APP_VERSION = '2026-09-09s';
 // 분석 메모는 두 종류 / two kinds of note in analysis mode, told apart by colour: the
 // gold one is the admin's own remark and matches the rest of the sensemaking layer;
 // the slate one holds transcript, which is somebody else's words, not the admin's.
@@ -1019,7 +1019,8 @@ const I18N = {
       takeTheirs: '상대 버전 불러오기', keepMine: '내 것으로 덮어쓰기',
       oldPageTitle: '이 페이지가 오래되었습니다 ·', oldPageBody: '서버에는 더 새 버전이 배포되어 있습니다. 목록의 숫자가 잘못 보일 수 있으니 새로고침 해 주세요.', reloadBtn: '새로고침',
       oldSrvTitle: 'Apps Script가 오래되었습니다 ·', oldSrvBody: '해석 작업이 저장은 되어도 다시 열리지 않습니다. 배포 관리 ▸ 편집 ▸ 버전: 새 버전으로 다시 배포해 주세요.',
-      tooBigTitle: '저장되지 않았습니다 ·', tooBigBody: '해석 기록이 너무 큽니다. 전사 메모를 나누거나 줄여 주세요. 마지막으로 저장된 내용은 그대로 있습니다.',
+      tooBigTitle: '저장되지 않았습니다 ·', tooBigBody: '해석 기록이 한 번에 저장할 수 있는 크기를 넘었습니다 (%s). 마지막으로 저장된 내용은 그대로 있습니다.',
+      holdTitle: '저장을 잠시 멈췄습니다 ·', holdBody: '해석이 비어 보입니다. 불러오기가 끝나지 않았을 수 있어, 지금 저장하면 저장된 작업을 덮어쓰게 됩니다. 새로고침해서 다시 불러와 주세요. 마지막으로 저장된 내용은 그대로 있습니다.',
       descMode: '설명 편집', hideMode: '숨기기',
       descBanner: '설명 편집 중입니다. 코드가 누구의 기록인지 적어 두세요.',
       hideBanner: '숨기기 모드입니다. 목록에서 뺄 항목을 고르세요. 기록은 지워지지 않습니다.',
@@ -1162,7 +1163,8 @@ const I18N = {
       takeTheirs: 'Load theirs', keepMine: 'Overwrite with mine',
       oldPageTitle: 'This page is out of date ·', oldPageBody: 'A newer version is deployed on the server. Numbers in the list may be wrong — reload.', reloadBtn: 'Reload',
       oldSrvTitle: 'The Apps Script is out of date ·', oldSrvBody: 'Analysis work will save but will not load again. Redeploy it: Manage deployments ▸ Edit ▸ Version: New.',
-      tooBigTitle: 'Not saved ·', tooBigBody: 'This analysis record is too large to store. Shorten or split the transcription notes. What was saved before is still there.',
+      tooBigTitle: 'Not saved ·', tooBigBody: 'This analysis record is past the size that can be stored in one go (%s). What was saved before is still there.',
+      holdTitle: 'Saving held ·', holdBody: 'The analysis looks empty. The load may not have finished, so saving now would write over the work that is stored. Reload to fetch it again. What was saved before is still there.',
       descMode: 'Descriptions', hideMode: 'Hide',
       descBanner: 'Editing descriptions. Note whose record each code is.',
       hideBanner: 'Hiding. Choose what to take out of the list; nothing is deleted.',
@@ -1969,8 +1971,12 @@ class Component extends DCLogic {
     if (!this._senseLoaded) return;
     const nowEmpty = !this.state.cards.some((c) => c.sm) && !(this.state.notes || []).some((n) => n.sm)
       && !(this.state.arrows || []).some((a) => a.sm) && !(this.state.strokes || []).some((k) => k.sm);
+    /* 비어 보인다고 크기 문제는 아니다 / an analysis that has gone empty is NOT a size problem,
+       and it wore the size banner — which told someone to shorten their transcripts when
+       nothing was too long and nothing needed shortening. Same refusal to save, two very
+       different reasons, and only the right one can be acted on. */
     if (nowEmpty && this._hadContent && !this._clearing) {
-      this.setState({ senseBig: true });
+      this.setState({ senseBig: 'hold' });
       return;
     }
     const key = 'sm:' + pid;
@@ -1986,7 +1992,7 @@ class Component extends DCLogic {
     const stamp = Date.now();
     const at = new Date().toISOString();
     const slices = this.sliceState(json, key, stamp, at);
-    if (!slices) { this.setState({ senseBig: true }); return; }
+    if (!slices) { this.setState({ senseBig: 'size', senseBigAt: json.length }); return; }
     this.setState({ senseBig: false, senseDirty: false, senseParts: slices.length });
     this._head = stamp;      // 방금 쓴 것이 head / what we just wrote IS the head now
     // 조각은 순서대로, 그러나 기다리지 않는다 / the slices go in order and are not awaited:
@@ -2061,8 +2067,9 @@ class Component extends DCLogic {
     this._txSaved = JSON.stringify(this.txMap());
     const key = TX_PREFIX + pid;
     const stamp = Date.now(), at = new Date().toISOString();
-    const slices = this.sliceState(JSON.stringify({ texts: this.txMap(), cards: [] }), key, stamp, at, 'transcript');
-    if (!slices) { this.setState({ senseBig: true }); return; }
+    const txJson = JSON.stringify({ texts: this.txMap(), cards: [] });
+    const slices = this.sliceState(txJson, key, stamp, at, 'transcript');
+    if (!slices) { this.setState({ senseBig: 'size', senseBigAt: txJson.length }); return; }
     try {
       slices.forEach((b) => fetch(url, {
         method: 'POST', mode: 'no-cors',
@@ -2086,8 +2093,9 @@ class Component extends DCLogic {
     const state = this.senseState();
     const stamp = Date.now(), at = new Date().toISOString();
     if (JSON.stringify(this.txMap()) !== this._txSaved) this.pushTx();
-    const slices = this.sliceState(JSON.stringify(state), key, stamp, at, 'checkpoint', label);
-    if (!slices) { this.setState({ senseBig: true }); return; }
+    const ckJson = JSON.stringify(state);
+    const slices = this.sliceState(ckJson, key, stamp, at, 'checkpoint', label);
+    if (!slices) { this.setState({ senseBig: 'size', senseBigAt: ckJson.length }); return; }
     try {
       slices.forEach((b) => fetch(url, {
         method: 'POST', mode: 'no-cors',
@@ -4705,8 +4713,9 @@ class Component extends DCLogic {
       oldPage: !!this.state.oldPage && !!this.state.admin,
       onReload: () => window.location.reload(true),
       senseBig: !!this.state.senseBig,
-      senseBigLabel: t.tooBigTitle,
-      senseBigBody: t.tooBigBody,
+      senseBigLabel: this.state.senseBig === 'hold' ? t.holdTitle : t.tooBigTitle,
+      senseBigBody: this.state.senseBig === 'hold' ? t.holdBody
+        : t.tooBigBody.replace('%s', Math.round((this.state.senseBigAt || 0) / 1024) + 'KB'),
       senseBigBg: '#f7e6e3',
       senseBigBd: '#e8cdc7',
       senseBigFg: '#8f342a',

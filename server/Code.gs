@@ -21,7 +21,7 @@
 // across several rows and an old deployment cannot reassemble them, so analysis saves
 // appear to work and then will not load. The client compares this against what it needs
 // and says so plainly instead of leaving you to guess.
-var VERSION = '2026-09-09b';
+var VERSION = '2026-09-09c';
 
 var SHEET_NAME = 'responses';
 // 코드북은 참여자 기록과 다른 시트에 산다 / the codebook lives on its own sheet. It is GLOBAL —
@@ -567,18 +567,19 @@ function latestState_(pid) {
   var sh = sheet_();
   var last = sh.getLastRow();
   if (last < 2) return null;
-  var pidCol = sh.getRange(2, 2, last - 1, 1).getValues();   // participant
-  var kindCol = sh.getRange(2, 3, last - 1, 1).getValues();  // kind
-  var jsonAt = new LazyJson_(sh, pidCol.length);
+  // 두 칸은 한 번에 / both narrow columns in ONE call. They are adjacent, and a round trip
+  // to the sheet costs far more than the cells in it — this was two trips for no reason.
+  var meta = sh.getRange(2, 2, last - 1, 2).getValues();     // participant, kind
+  var jsonAt = new LazyJson_(sh, meta.length);
 
   /* 새것부터 거슬러 올라간다 / newest first, and the slices of one save were appended in a
      row, so a sliced record completes itself within a few rows of where it starts. The
      old pass gathered every group in the whole sheet before looking at any of them. */
   var groups = {};
   var firstEmpty = null;
-  for (var i = pidCol.length - 1; i >= 0; i--) {
-    if (String(pidCol[i][0]) !== String(pid)) continue;
-    var kind = String(kindCol[i][0]);
+  for (var i = meta.length - 1; i >= 0; i--) {
+    if (String(meta[i][0]) !== String(pid)) continue;
+    var kind = String(meta[i][1]);
     // 이중 안전장치 / belt and braces: even if a sensemaking row were somehow written
     // under a bare participant id, never hand it back as that participant's board.
     if (kind === 'sensemaking' && String(pid).indexOf(SENSE_PREFIX) !== 0) continue;

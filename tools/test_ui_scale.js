@@ -1209,8 +1209,20 @@ console.log("\nview mode cannot write");
   check(/if \(body\.length > CELL_MAX\) \{ ok = false; break; \}/.test(doc),
     "and the slice size is measured against the real cell limit, not guessed");
   check(/size = Math\.floor\(size \/ 2\)/.test(doc), "halving until it fits");
-  check(/if \(!slices\) \{ this\.setState\(\{ senseBig: true \}\); return; \}/.test(doc),
+  check(/if \(!slices\) \{ this\.setState\(\{ senseBig: 'size', senseBigAt: json\.length \}\); return; \}/.test(doc),
     "and if even that fails, it says so instead of posting into the void");
+  /* 거절하는 이유가 둘인데 문구는 하나였다 / two different refusals wore ONE banner: a record too
+     big, and a save held back because the analysis had gone empty. The second told the
+     reader to shorten their transcripts when nothing was too long — advice that cannot be
+     acted on, about a problem they did not have. */
+  check(/this\.setState\(\{ senseBig: 'hold' \}\);/.test(doc),
+    "a save held back is not reported as a record being too large");
+  check(/senseBigLabel: this\.state\.senseBig === 'hold' \? t\.holdTitle : t\.tooBigTitle/.test(doc),
+    "each refusal says its own thing");
+  check(/holdBody: '해석이 비어 보입니다/.test(doc) && /holdBody: 'The analysis looks empty/.test(doc),
+    "in both languages");
+  check(/t\.tooBigBody\.replace\('%s', Math\.round\(\(this\.state\.senseBigAt \|\| 0\) \/ 1024\) \+ 'KB'\)/.test(doc),
+    "and a record that really is too big says how big it got");
   // 전사는 따로 / transcript lives in its own record, so the frequent save stays small
   check(/const TX_PREFIX = 'tx:'/.test(src), "transcript has a key of its own");
   check(/n\.kind === 'tx' \? Object\.assign\(\{\}, n, \{ text: '' \}\) : n/.test(doc),
