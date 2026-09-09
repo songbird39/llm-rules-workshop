@@ -769,7 +769,12 @@ const TX_PREFIX = 'tx:';
 // 코드 칠 / the ink a coded region is drawn in, and how much air it leaves around what it
 // encloses. Deliberately unlike a card, a note or the participant-region box: a coding is a
 // reading laid OVER the board, not another thing on it.
-const CODE_INK = 'oklch(0.52 0.115 305)', CODE_PAD = 18, CODE_TAG_GAP = 26;
+/* 태그는 네모에 붙어 있어야 한다 / the tags belong ON the square. They used to stand 26px off
+   it with a leader line drawn back to the corner, which is the right answer when a label
+   could be anyone's — but these sit beside exactly one square and nothing else, so the line
+   was explaining a relationship the position already made obvious. Tuck their left end
+   inside the border instead and the line has nothing left to say. */
+const CODE_INK = 'oklch(0.52 0.115 305)', CODE_PAD = 18, CODE_TAG_LAP = 10;
 /* 색은 폴더의 것 / the colour belongs to the FOLDER, not to the code. A folder is the
    dimension being read for, so two codes in one folder are two readings of the same thing
    and should look like it; a code moved to another folder should change colour with it.
@@ -792,7 +797,7 @@ const SERVER_MIN = '2026-09-09b';
 // screen, so anyone reporting a problem can read it off without opening anything — "it does
 // not load" is a very different report from someone on last week's page than from someone
 // on today's. Bump it with any change worth telling apart.
-const APP_VERSION = '2026-09-09t';
+const APP_VERSION = '2026-09-09u';
 // 분석 메모는 두 종류 / two kinds of note in analysis mode, told apart by colour: the
 // gold one is the admin's own remark and matches the rest of the sensemaking layer;
 // the slate one holds transcript, which is somebody else's words, not the admin's.
@@ -3214,13 +3219,9 @@ class Component extends DCLogic {
         style: { pointerEvents: 'stroke', cursor: 'pointer' },
         onPointerDown: (ev) => { ev.stopPropagation(); ev.preventDefault(); this.pickSet(grp); }
       }, h('title', null, (I18N[this.state.lang] || I18N.ko).ui.codeBoxTip)));
-      // 태그는 오른쪽 위에 쌓는다 / the tags stack at the top right, on one line back to the
-      // corner, so several codes on one set read as one act of coding
-      const tx = r.x + r.w + CODE_TAG_GAP, ty = r.y;
-      kids.push(h('line', {
-        key: grp.key + 'lead', x1: r.x + r.w, y1: r.y + 12, x2: tx, y2: ty + 12,
-        stroke: ink, strokeWidth: 1.2, opacity: 0.8
-      }));
+      // 태그는 오른쪽 위 모서리에 걸친다 / the tags stack at the top right corner, their left
+      // end lapped over the border, so several codes on one set read as one act of coding
+      const tx = r.x + r.w - CODE_TAG_LAP, ty = r.y;
       codes.forEach((g, i) => {
         const c = book[g.code] || { name: g.code };
         const cink = this.codeColor(book[g.code]);

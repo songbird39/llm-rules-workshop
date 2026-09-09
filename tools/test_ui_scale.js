@@ -823,6 +823,13 @@ console.log("\nthe loading gate");
      change colour with it, which a colour stored on the code at creation cannot do. */
   check(/codeColor\(c\) \{/.test(doc), "a code's colour is worked out, not stored");
 
+  /* 태그는 네모에 걸쳐 있다 / the tags lap over the square's corner. A leader line is for a
+     label that could belong to anything; these belong to exactly one square, so the line
+     was explaining what the position already said. */
+  check(/const tx = r\.x \+ r\.w - CODE_TAG_LAP, ty = r\.y;/.test(doc),
+    "a code tag laps over the square rather than standing off it");
+  check(!/grp\.key \+ 'lead'/.test(doc), "and there is no leader line left to draw");
+
   /* 코드북 줄은 고르기 위한 것 / a codebook row exists to be pressed. The counts belong on the
      roster, where they summarise the study; on a row they were noise. And a ✕ on every row
      was one slip from losing a code — clearing the name in the rename box does it instead. */
