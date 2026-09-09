@@ -114,10 +114,10 @@ console.log("\npatch sites");
 // drawn sits at an offset from the cursor. The element's painted-over-layout width is the
 // effective scale whatever the browser decided, so every conversion asks it.
 [
-  ["toCanvas measures the scale", "((cx - r.left) / s - this.state.pan.x) / z"],
+  ["toCanvas measures the scale", "((cx - o.left) / o.s - this.state.pan.x) / z"],
   ["panel resize measures it too", "d.pw + (e.clientX - d.sx) / this.scaleOf("],
   ["pan measures it too", "d.px + (e.clientX - d.sx) / ps"],
-  ["ghost converts from the snapped board coordinate", "(r.left / s) + bx * z + this.state.pan.x"],
+  ["ghost converts from the snapped board coordinate", "(o.left / s) + bx * z + this.state.pan.x"],
   ["and the measurement comes from the element itself", "el.getBoundingClientRect().width / w"],
   ["with UI as the fallback when the answer is nonsense", "s > 0.2 && s < 5 ? s : UI"],
   ["drop reuses the ghost's own coordinate", "d.bx !== undefined ? d.bx :"],
@@ -801,6 +801,21 @@ console.log("\nthe loading gate");
   /* 9초는 타임아웃이 아니라 동전 던지기였다 / against the live sheet one read measured 8-9
      seconds, so a 9-second timeout scored requests as failures while they were still in
      flight. The gate must outlast the request it waits on, or it fires first every time. */
+  /* 스크롤된 컨테이너는 좌표를 통째로 밀어 버린다 / a scrolled container shifts everything
+     drawn while leaving the container's own rect and the pan untouched — so the maths must
+     subtract it, and the guard must stop it happening at all. Belt and braces, because the
+     failure is invisible to every other measurement. */
+  check(/origin\(el\) \{/.test(doc), "the board origin is a thing the app computes");
+  check(/left: r\.left - \(el\.scrollLeft \|\| 0\) \* s, top: r\.top - \(el\.scrollTop \|\| 0\) \* s/.test(doc),
+    "and it subtracts the container's own scroll");
+  check(/const o = this\.origin\(el\);/.test(doc), "which is what toCanvas measures from");
+  check(/if \(el\.scrollTop\) el\.scrollTop = 0;/.test(doc), "a scrolled board is put straight back");
+  check(/window\.addEventListener\('scroll', this\._unscroll, true\);/.test(doc),
+    "caught in the capture phase, wherever it came from");
+  check(/window\.removeEventListener\('scroll', this\._unscroll, true\);/.test(doc), "and released on unmount");
+  check(/canvasScroll: el \? \[el\.scrollLeft, el\.scrollTop\] : null/.test(doc),
+    "and reported, since nothing was watching it");
+
   check(/const JSONP_MS = 20000;/.test(doc), "a read is given twenty seconds, not nine");
 
   /* 더한 카드는 보이는 곳에 / a card added by double-click must land where it can be seen.

@@ -478,6 +478,44 @@ module.exports = async function (browser) {
     await page.close();
   }
 
+  // ------------------------------------------- 3e-quater. the board must not scroll
+  /* overflow:hidden 은 스크롤을 막지 않는다 / overflow:hidden hides the bars; it does NOT stop
+     the container being scrolled. The browser scrolls it on its own to reveal a focused
+     field, and the app focuses a card's title the moment the card appears. Everything that
+     measures the board then lies in the same direction: the container's rect does not move,
+     the pan does not change, and every object paints hundreds of pixels from where its
+     coordinate says. This is what "cards drop way up high" turned out to be — reported with
+     a trace showing board [3120, -1776] computed correctly and the card painted 907px above
+     it, with the pan and the rect both unchanged. */
+  say("\nthe board container never scrolls");
+  {
+    const { page, errors } = await boot(browser, { width: 1700, height: 1100 });
+    await toBoard(page, "T92");
+    const el = 'div[style*="radial-gradient"]';
+    // 브라우저가 하는 짓 그대로 / exactly what the browser does to reveal a focused field
+    const snapped = await page.evaluate((sel) => {
+      const c = document.querySelector(sel);
+      c.scrollTop = 700; c.scrollLeft = 40;
+      return new Promise((go) => setTimeout(() => go([c.scrollLeft, c.scrollTop]), 120));
+    }, el);
+    check(snapped[0] === 0 && snapped[1] === 0, "a scroll of the board is put straight back",
+      ` (${snapped})`);
+    // 그리고 진짜 원인 / and the real cause: focusing a field that is out of view
+    const afterFocus = await page.evaluate((sel) => {
+      const c = document.querySelector(sel);
+      const L = [...document.querySelectorAll("div")].find((d) => d.style.width === "5000px");
+      const card = [...L.children].find((x) => x.tagName === "DIV" && x.querySelector("input"));
+      const inp = card.querySelector("input");
+      card.style.top = (c.clientHeight + 300) + "px";
+      inp.focus();
+      return new Promise((go) => setTimeout(() => go([c.scrollLeft, c.scrollTop]), 150));
+    }, el);
+    check(afterFocus[0] === 0 && afterFocus[1] === 0,
+      "and focusing a field out of view does not leave it scrolled", ` (${afterFocus})`);
+    check(errors.length === 0, "no console errors", errors.length ? ` (${errors[0]})` : "");
+    await page.close();
+  }
+
   // ------------------------------------------------- 3f. arrows to anything
   say("\narrows attach to cards, notes and empty space");
   {

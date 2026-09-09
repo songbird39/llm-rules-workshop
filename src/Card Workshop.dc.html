@@ -775,7 +775,7 @@ const SERVER_MIN = '2026-09-09b';
 // screen, so anyone reporting a problem can read it off without opening anything — "it does
 // not load" is a very different report from someone on last week's page than from someone
 // on today's. Bump it with any change worth telling apart.
-const APP_VERSION = '2026-09-09j';
+const APP_VERSION = '2026-09-09k';
 // 분석 메모는 두 종류 / two kinds of note in analysis mode, told apart by colour: the
 // gold one is the admin's own remark and matches the rest of the sensemaking layer;
 // the slate one holds transcript, which is somebody else's words, not the admin's.
@@ -1269,6 +1269,8 @@ class Component extends DCLogic {
         offset: el ? { w: el.offsetWidth, h: el.offsetHeight } : null,
         zoom: this.state.zoom, pan: this.state.pan,
         scrollY: window.scrollY, bodyScroll: document.body.scrollTop,
+        // 이것이 범인이었다 / THIS was the culprit, and nothing was watching it
+        canvasScroll: el ? [el.scrollLeft, el.scrollTop] : null,
         cssZoom: el ? getComputedStyle(el).zoom : null,
         /* 마지막으로 놓은 것 / the LAST drop, recorded as it happened: where the cursor was,
            what board point that became, where the object was put, and where it then
@@ -1279,6 +1281,18 @@ class Component extends DCLogic {
       console.log('[workshop] ' + JSON.stringify(d));
       return d;
     };
+    /* 스크롤되면 되돌린다 / put it straight back. The layer is placed by a transform, so any
+       scroll of the container is pure error — there is nothing down there to reach. The
+       browser does it on its own when it decides a focused field needs revealing, which is
+       what dropping a card near an edge causes. Listening in the capture phase and on the
+       container itself catches it before a frame is painted at the wrong offset. */
+    this._unscroll = (e) => {
+      const el = this.canvasRef.current;
+      if (!el) return;
+      if (el.scrollTop) el.scrollTop = 0;
+      if (el.scrollLeft) el.scrollLeft = 0;
+    };
+    window.addEventListener('scroll', this._unscroll, true);
     this._blur = (e) => this.blurUnlessTarget(e);
     window.addEventListener('pointerdown', this._blur, true);
     window.addEventListener('pointermove', this._move);
@@ -1303,6 +1317,7 @@ class Component extends DCLogic {
 
   componentWillUnmount() {
     window.removeEventListener('error', this._scriptErr, true);
+    window.removeEventListener('scroll', this._unscroll, true);
     window.removeEventListener('pointerdown', this._blur, true);
     window.removeEventListener('pointermove', this._move);
     window.removeEventListener('pointerup', this._up);
@@ -2521,24 +2536,37 @@ class Component extends DCLogic {
     const g = this.state.ghost;
     const el = this.canvasRef.current;
     if (!g || !el) return { x: 0, y: 0 };
-    const r = el.getBoundingClientRect();
+    const o = this.origin(el);
     const z = this.state.zoom;
-    const s = this.scaleOf(el);
+    const s = o.s;
     // 스냅은 onMove 에서 이미 끝났다 / the snap already happened on the move; only convert
     const bx = g.bx, by = g.by;
     if (bx === undefined) return { x: g.x / s, y: g.y / s };
     return {
-      x: (r.left / s) + bx * z + this.state.pan.x,
-      y: (r.top / s) + by * z + this.state.pan.y
+      x: (o.left / s) + bx * z + this.state.pan.x,
+      y: (o.top / s) + by * z + this.state.pan.y
     };
+  }
+
+  /* overflow:hidden 은 스크롤을 막지 않는다 / overflow:hidden does NOT stop a container being
+     scrolled — it only hides the bars. The browser still scrolls it to reveal a focused
+     field, and a card dropped near an edge focuses its title the moment it appears. The
+     board then slides under everything that measures it: getBoundingClientRect on the
+     container does not move, the pan does not change, and yet every object paints hundreds
+     of pixels away from where its coordinate says. That is what "cards drop way up high"
+     was — the coordinate was right the whole time, the drawing had moved.
+     원점은 스크롤을 뺀 자리 / the origin is the container's corner MINUS its own scroll. */
+  origin(el) {
+    const r = el.getBoundingClientRect();
+    const s = this.scaleOf(el);
+    return { left: r.left - (el.scrollLeft || 0) * s, top: r.top - (el.scrollTop || 0) * s, s: s };
   }
 
   toCanvas(cx, cy) {
     const el = this.canvasRef.current;
-    const r = el.getBoundingClientRect();
+    const o = this.origin(el);
     const z = this.state.zoom;
-    const s = this.scaleOf(el);
-    return { x: ((cx - r.left) / s - this.state.pan.x) / z, y: ((cy - r.top) / s - this.state.pan.y) / z };
+    return { x: ((cx - o.left) / o.s - this.state.pan.x) / z, y: ((cy - o.top) / o.s - this.state.pan.y) / z };
   }
   fix(v) { return (this.props.snapToGrid ?? true) ? Math.round(v / 24) * 24 : Math.round(v); }
 
@@ -3378,7 +3406,8 @@ class Component extends DCLogic {
       board: [Math.round(bx), Math.round(by)],
       zoom: this.state.zoom, pan: { x: Math.round(this.state.pan.x), y: Math.round(this.state.pan.y) },
       scale: el ? +this.scaleOf(el).toFixed(4) : null,
-      rectTop: r ? Math.round(r.top) : null, rectLeft: r ? Math.round(r.left) : null
+      rectTop: r ? Math.round(r.top) : null, rectLeft: r ? Math.round(r.left) : null,
+      canvasScroll: el ? [el.scrollLeft, el.scrollTop] : null
     };
     this._drop = rec;
     setTimeout(() => {
@@ -3390,6 +3419,8 @@ class Component extends DCLogic {
       // 놓은 뒤 보드가 움직였는가 / did the board itself shift after the drop? A header that
       // rewraps moves everything and the drop takes the blame for it
       rec.boardMoved = r2 && r ? [Math.round(r2.left - r.left), Math.round(r2.top - r.top)] : null;
+      // 컨테이너가 스스로 스크롤됐는가 / did the container scroll itself between the two?
+      rec.scrolledAfter = el2 ? [el2.scrollLeft, el2.scrollTop] : null;
       rec.offCursor = gr ? [Math.round(gr.left - e.clientX), Math.round(gr.top - e.clientY)] : null;
     }, 60);
   }
