@@ -794,16 +794,20 @@ const CODE_INK = 'oklch(0.52 0.115 305)', CODE_PAD = 18, CODE_TAG_LAP = 10;
    colours differ on three axes rather than one — which also keeps them apart for the
    commonest colour-vision deficiencies, where hue alone would collapse. */
 const CODE_COLORS = [
-  'oklch(0.53 0.190 20)',    // 빨강 / red
+  /* 앞의 넷이 쓰이는 색 / the first four are the ones that get used, in the order folders
+     sort — 분홍 · 주황 · 초록 · 파랑. The rest carry the same families further out, still no
+     two hues closer than 30° and lightness moving with them, so a fifth folder does not
+     arrive as a near-repeat of one already on screen. */
+  'oklch(0.62 0.165 350)',   // 분홍 / pink
   'oklch(0.63 0.150 55)',    // 주황 / orange
-  'oklch(0.50 0.120 90)',    // 올리브 / olive
-  'oklch(0.58 0.150 125)',   // 초록 / green
-  'oklch(0.45 0.110 160)',   // 짙은 초록 / deep green
-  'oklch(0.62 0.110 195)',   // 청록 / teal
-  'oklch(0.55 0.155 230)',   // 파랑 / blue
-  'oklch(0.40 0.100 265)',   // 남색 / navy
-  'oklch(0.47 0.170 300)',   // 보라 / purple
-  'oklch(0.58 0.180 335)'    // 자홍 / magenta
+  'oklch(0.52 0.140 145)',   // 초록 / green
+  'oklch(0.52 0.150 250)',   // 파랑 / blue
+  'oklch(0.45 0.170 320)',   // 자주 / magenta
+  'oklch(0.68 0.140 85)',    // 호박 / amber
+  'oklch(0.58 0.110 190)',   // 청록 / teal
+  'oklch(0.42 0.140 285)',   // 남보라 / indigo
+  'oklch(0.55 0.185 20)',    // 다홍 / red
+  'oklch(0.50 0.120 115)'    // 연두 / lime
 ];
 const CODE_NO_FOLDER = 'oklch(0.58 0.012 100)';
 // 이 클라이언트가 요구하는 서버 버전 / the deployment this client needs. An older one cannot
@@ -814,7 +818,7 @@ const SERVER_MIN = '2026-09-09b';
 // screen, so anyone reporting a problem can read it off without opening anything — "it does
 // not load" is a very different report from someone on last week's page than from someone
 // on today's. Bump it with any change worth telling apart.
-const APP_VERSION = '2026-09-10e';
+const APP_VERSION = '2026-09-10f';
 // 분석 메모는 두 종류 / two kinds of note in analysis mode, told apart by colour: the
 // gold one is the admin's own remark and matches the rest of the sensemaking layer;
 // the slate one holds transcript, which is somebody else's words, not the admin's.
