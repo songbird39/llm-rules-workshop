@@ -811,7 +811,7 @@ const SERVER_MIN = '2026-09-09b';
 // screen, so anyone reporting a problem can read it off without opening anything — "it does
 // not load" is a very different report from someone on last week's page than from someone
 // on today's. Bump it with any change worth telling apart.
-const APP_VERSION = '2026-09-10b';
+const APP_VERSION = '2026-09-10c';
 // 분석 메모는 두 종류 / two kinds of note in analysis mode, told apart by colour: the
 // gold one is the admin's own remark and matches the rest of the sensemaking layer;
 // the slate one holds transcript, which is somebody else's words, not the admin's.
@@ -2409,8 +2409,8 @@ class Component extends DCLogic {
     const pid = this.state.viewPid;
     const sel = (this.state.sel || []).filter((id) => this.codeMemberOk(id));
     if (!pid || !sel.length) { this.setState({ codeMsg: 'nosel' }); setTimeout(() => this.setState({ codeMsg: '' }), 2200); return; }
-    const key = sel.slice().sort().join(',');
-    const already = (this.state.codings || []).find((g) => g.code === codeId && g.members.slice().sort().join(',') === key);
+    const key = this.liveKey(sel);
+    const already = (this.state.codings || []).find((g) => g.code === codeId && this.liveKey(g.members) === key);
     if (already) { this.putCoding(Object.assign({}, already, { deleted: true })); return; }
     this.putCoding({
       id: 'g' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6),
@@ -2427,10 +2427,10 @@ class Component extends DCLogic {
   appliedToSel() {
     const sel = (this.state.sel || []).filter((id) => this.codeMemberOk(id));
     if (!sel.length) return null;
-    const key = sel.slice().sort().join(',');
+    const key = this.liveKey(sel);
     const on = {};
     (this.state.codings || []).forEach((g) => {
-      if ((g.members || []).slice().sort().join(',') === key) on[g.code] = true;
+      if (this.liveKey(g.members) === key) on[g.code] = true;
     });
     return on;   // 지운 코드는 코드북에 없으니 어차피 줄이 없다 / a deleted code has no row anyway
   }
@@ -2440,9 +2440,28 @@ class Component extends DCLogic {
      back into the selection is what lets another code be added to the same group, or the
      panel's ticks be read against it. */
   pickSet(grp) {
-    const ids = (grp.codes[0] && grp.codes[0].members ? grp.codes[0].members : []).filter((id) => this.codeMemberOk(id));
+    // 여러 코딩이 한 묶음을 이루므로 살아 있는 멤버의 합집합 / several codings share one group, so
+    // take the union of what still exists rather than one coding's stored list
+    const seen = {}, ids = [];
+    (grp.codes || []).forEach((g) => (g.members || []).forEach((id) => {
+      if (seen[id] || !this.codeMemberOk(id)) return;
+      seen[id] = 1; ids.push(id);
+    }));
     if (!ids.length) return;
     this.setState({ sel: ids.slice(), selArrow: null, codeSel: null });
+  }
+
+  /* 코딩의 신원은 살아 있는 멤버로 / a coding is identified by its member SET, and that set has
+     to be read as what still exists. Delete one element of a coded group and the stored
+     members still name it, so the set no longer matches anything that can be selected:
+     the square kept drawing over the survivors, but a second code applied to those same
+     survivors made a NEW group sitting on top of the old one, and nothing could ever join
+     the first again. Comparing on the surviving members makes the two agree.
+     저장된 것은 건드리지 않는다 / the stored members are left alone. A missing id may only be
+     missing for the moment — mid-load, before the board has arrived — and pruning the
+     record on that basis would throw away a set that was about to be whole again. */
+  liveKey(ids) {
+    return (ids || []).filter((id) => this.codeMemberOk(id)).slice().sort().join(',');
   }
 
   // 코딩할 수 있는 것 / what a coding may enclose: anything on the board that has a rect
@@ -2524,7 +2543,7 @@ class Component extends DCLogic {
     const by = {};
     (this.state.codings || []).forEach((g) => {
       if (!live[g.code]) return;
-      const key = (g.members || []).slice().sort().join(',');
+      const key = this.liveKey(g.members);
       const r = this.codingRect(g);
       if (!r) return;                       // 멤버가 사라졌다 / its members are gone
       (by[key] || (by[key] = { key: key, rect: r, codes: [] })).codes.push(g);

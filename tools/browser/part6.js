@@ -328,6 +328,43 @@ module.exports = async function (browser) {
     check(srv.get({ codes: "P9" }).codings.length === before - 1, "and then the ✗ does",
       ` (${srv.get({ codes: "P9" }).codings.length})`);
 
+    /* 원소를 지우면 묶음도 줄어야 한다 / delete one element of a coded group and the group has
+       to shrink with it. A coding is identified by its member SET, and the stored set still
+       named the deleted one — so the set no longer matched anything that could be selected.
+       The square kept drawing over the survivors, but a second code applied to those same
+       survivors made a NEW group sitting on top of the old one, and nothing could ever join
+       the first again. */
+    await pickAll();
+    await page.getByText("스스로 먼저", { exact: true }).first().click();
+    await page.waitForTimeout(600);
+    const squaresNow = () => page.evaluate(() =>
+      [...document.querySelectorAll("rect")].filter((x) => (x.getAttribute("stroke-dasharray") || "") === "3 5").length);
+    const had = await squaresNow();
+    // 해석 복제본 하나를 지운다 / delete one of the analysis copies, which is deletable here
+    const gone = await page.evaluate(() => {
+      const L = [...document.querySelectorAll("div")].find((d) => d.style.width === "5000px");
+      const el = [...L.querySelectorAll(':scope > [data-obj="card"]')].find((c) => /(^|\s)cd-s/.test(c.className));
+      if (!el) return null;
+      const id = (/(?:^|\s)cd-([A-Za-z0-9_-]+)/.exec(el.className) || [])[1];
+      const btn = [...el.querySelectorAll("button")].pop();
+      btn.dispatchEvent(new PointerEvent("pointerdown", { bubbles: true }));
+      return id;
+    });
+    await page.waitForTimeout(700);
+    check(gone !== null, "an analysis copy is deleted from a coded set", ` (${gone})`);
+    check((await squaresNow()) === had, "the square survives on what is left of the set",
+      ` (${had} -> ${await squaresNow()})`);
+    // 남은 것들에 코드를 하나 더 / another code onto exactly what remains
+    await pickAll();
+    await page.getByText("검증 회피", { exact: true }).first().click();
+    await page.waitForTimeout(700);
+    check((await squaresNow()) === had,
+      "and a code added to the survivors JOINS that square instead of drawing a second",
+      ` (${had} -> ${await squaresNow()})`);
+    const bothOn = await ticks();
+    check(bothOn["스스로 먼저"] === "✓" && bothOn["검증 회피"] === "✓",
+      "with both codes ticked against the one set", ` (${JSON.stringify(bothOn)})`);
+
     /* 지운 코드는 보드에서 사라진다 / a code that has been deleted stops being drawn. Its
        codings stay on the sheet — that is the point, they are evidence of what was read —
        but the tag fell back to the code's own id, so a deleted code came back as a pill
@@ -337,7 +374,25 @@ module.exports = async function (browser) {
     const squares = () => page.evaluate(() =>
       [...document.querySelectorAll("rect")].filter((x) => (x.getAttribute("stroke-dasharray") || "") === "3 5").length);
     await add("임시/버릴 코드");
-    await pickAll();                       // 아직 코드가 없는 묶음 / a set with no code on it yet
+    /* 아직 코드가 없는 원소를 찾아 쓴다 / find an element that carries NO code yet. It needs a
+       set of its own, or deleting the throwaway later leaves a square standing on somebody
+       else's code and proves nothing. */
+    const spots = await page.evaluate(() => {
+      const L = [...document.querySelectorAll("div")].find((d) => d.style.width === "5000px");
+      return [...L.querySelectorAll(':scope > [data-obj="card"], :scope > [data-obj="note"]')]
+        .map((el) => { const r = el.getBoundingClientRect(); return { x: r.x + 4, y: r.y + r.height - 4 }; });
+    });
+    let lone = null;
+    for (const sp of spots) {
+      await page.mouse.click(boardBox.x + boardBox.width - 30, boardBox.y + boardBox.height - 30);
+      await page.waitForTimeout(180);
+      await page.mouse.click(sp.x, sp.y);
+      await page.waitForTimeout(220);
+      const t = await ticks();
+      if ((await page.evaluate(() => window.__wsDiag().sel)).length === 1 &&
+          Object.values(t).every((v) => v === "")) { lone = sp; break; }
+    }
+    check(lone !== null, "an element with no code on it yet was found to try this on");
     await page.getByText("버릴 코드", { exact: true }).first().click();
     await page.waitForTimeout(700);
     const withTemp = await squares();
