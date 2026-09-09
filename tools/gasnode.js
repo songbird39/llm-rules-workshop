@@ -14,7 +14,12 @@ const vm = require("vm");
 // ── 시트 흉내 / the thinnest sheet that Code.gs actually uses ────────────────
 function makeSheet() {
   const rows = [];   // rows[0] is the header once appendRow puts it there
+  // 읽은 칸 수 / cells touched by reads. The json column is the expensive one — 50,000
+  // characters a row — and reading it whole is what made every request take nine seconds.
+  const counters = { cells: 0, jsonCells: 0 };
   const sh = {
+    __counters: counters,
+    __resetCounters() { counters.cells = 0; counters.jsonCells = 0; },
     appendRow(v) {
       // 셀 상한 / a Sheets cell holds 50,000 characters. The whole board rides in one
       // cell, so this is a real ceiling for a transcript-heavy analysis record.
@@ -26,6 +31,10 @@ function makeSheet() {
     getLastRow: () => rows.length,
     setFrozenRows() {},
     getRange(r, c, nr, nc) {
+      // 읽은 칸을 센다 / count the cells a read actually touches, so a test can tell whether
+      // the sheet is being read whole
+      counters.cells += (nr || 1) * (nc || 1);
+      if (c <= 10 && c + (nc || 1) - 1 >= 10) counters.jsonCells += (nr || 1);
       return {
         getValues() {
           const out = [];
@@ -118,7 +127,8 @@ function loadServer() {
     Object.keys(params || {}).forEach((k) => { if (k !== "callback") p2[k] = params[k]; });
     return JSON.parse(getText(p2));
   };
-  return { sh, sheets, post, get, getText, ctx: sandbox };
+  return { sh, sheets, post, get, getText, ctx: sandbox, counters: sh.__counters,
+    reset: () => { sh.__resetCounters(); Object.keys(sheets).forEach((k) => sheets[k].__resetCounters()); } };
 }
 
 

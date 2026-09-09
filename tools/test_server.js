@@ -567,5 +567,44 @@ console.log("\nthe rescue script reads a record the app cannot");
   fs2.rmSync(dir, { recursive: true, force: true });
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+/* 시트를 통째로 읽지 않는다 / a read must not pull the whole json column.
+   그 칸은 한 줄에 5만 자 / that column holds up to 50,000 characters a row, so reading it
+   whole means dragging every state anyone ever saved across the wire to answer one
+   question about one record. Against the live sheet that measured 8-9 seconds — sitting
+   right on the client's 9-second timeout, so whichever request lost the race came back as
+   a failure and the transcripts "did not load". This is the check that keeps it fixed. */
+console.log("\na read costs the rows it needs, not the whole sheet");
+{
+  const srv = loadServer();
+  const big = "가".repeat(4000);
+  // 여러 참여자가 오래 쓴 시트 / a sheet several participants have been working in for a while
+  for (let r = 0; r < 40; r++) {
+    for (const who of ["P1", "P2", "P3"]) {
+      srv.post({ participant: who, kind: "autosave",
+        payload: { participant: who, state: { savedAt: Date.now(), pid: who, cards: [{ id: "c1", title: big }], notes: [], arrows: [] } } });
+    }
+  }
+  srv.post({ participant: "tx:P1", kind: "transcript",
+    payload: { participant: "tx:P1", state: { texts: { n1: big }, cards: [] } } });
+  const rows = srv.sh.getLastRow() - 1;
+  srv.reset();
+  const got = srv.get({ participant: "tx:P1" });
+  const cost = srv.counters.jsonCells;
+  check(got.ok && got.state && got.state.texts.n1 === big, "the record still comes back whole");
+  check(cost < rows / 4, "and reading it does not touch the whole json column",
+    ` (${cost} json cells for a sheet of ${rows} rows)`);
+  srv.reset();
+  srv.get({ participant: "P3" });
+  check(srv.counters.jsonCells < rows / 4, "nor does reading a board",
+    ` (${srv.counters.jsonCells} of ${rows})`);
+  // 폴링되는 것이라 더 중요하다 / head_ is POLLED, so its cost is paid over and over
+  srv.reset();
+  const hd = srv.get({ head: "P3" });
+  check(hd.ok && hd.head && hd.head.stamp, "the polled head check still answers");
+  check(srv.counters.jsonCells < rows / 4, "and it too reads only what it needs",
+    ` (${srv.counters.jsonCells} of ${rows})`);
+}
+
 console.log(failures ? `\n${failures} FAILURE(S)` : "\nall passed");
 process.exit(failures ? 1 : 0);

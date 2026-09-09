@@ -21,7 +21,7 @@
 // across several rows and an old deployment cannot reassemble them, so analysis saves
 // appear to work and then will not load. The client compares this against what it needs
 // and says so plainly instead of leaving you to guess.
-var VERSION = '2026-09-09a';
+var VERSION = '2026-09-09b';
 
 var SHEET_NAME = 'responses';
 // 코드북은 참여자 기록과 다른 시트에 산다 / the codebook lives on its own sheet. It is GLOBAL —
@@ -493,11 +493,12 @@ function head_(pid) {
   var last = sh.getLastRow();
   if (last < 2) return null;
   var vals = sh.getRange(2, 1, last - 1, 2).getValues();   // receivedAt, participant
-  var jsonCol = sh.getRange(2, 10, last - 1, 1).getValues();
+  // 폴링으로 반복해서 부른다 / this one is POLLED, so it must not read the sheet whole
+  var jsonAt = new LazyJson_(sh, vals.length);
   for (var i = vals.length - 1; i >= 0; i--) {
     if (String(vals[i][1] || '').trim() !== String(pid)) continue;
     try {
-      var b = JSON.parse(jsonCol[i][0]);
+      var b = JSON.parse(jsonAt.at(i));
       if (!b) continue;
       return {
         stamp: b.stamp || (b.payload && b.payload.state && b.payload.state.savedAt) || null,
@@ -567,53 +568,44 @@ function latestState_(pid) {
   var last = sh.getLastRow();
   if (last < 2) return null;
   var pidCol = sh.getRange(2, 2, last - 1, 1).getValues();   // participant
-  var jsonCol = sh.getRange(2, 10, last - 1, 1).getValues(); // json
-  var kindCol = sh.getRange(2, 3, last - 1, 1).getValues();   // kind
+  var kindCol = sh.getRange(2, 3, last - 1, 1).getValues();  // kind
+  var jsonAt = new LazyJson_(sh, pidCol.length);
 
-  // 조각들을 스탬프별로 모은다 / gather the slices by stamp in one pass, so a group whose
-  // rows are interleaved with other participants' autosaves still comes back whole
+  /* 새것부터 거슬러 올라간다 / newest first, and the slices of one save were appended in a
+     row, so a sliced record completes itself within a few rows of where it starts. The
+     old pass gathered every group in the whole sheet before looking at any of them. */
   var groups = {};
-  for (var g = 0; g < pidCol.length; g++) {
-    if (String(pidCol[g][0]) !== String(pid)) continue;
-    try {
-      var b = JSON.parse(jsonCol[g][0]);
-      if (!b || !b.parts) continue;
-      var key = String(b.stamp);
-      if (!groups[key]) groups[key] = { parts: b.parts, slices: {}, at: g };
-      groups[key].slices[b.part] = (b.payload && b.payload.chunk) || '';
-      groups[key].at = g;
-    } catch (err2) {}
-  }
-
-  var empties = 0, firstEmpty = null;
-  for (var i = pidCol.length - 1; i >= 0; i--) {             // newest first
+  var firstEmpty = null;
+  for (var i = pidCol.length - 1; i >= 0; i--) {
     if (String(pidCol[i][0]) !== String(pid)) continue;
+    var kind = String(kindCol[i][0]);
     // 이중 안전장치 / belt and braces: even if a sensemaking row were somehow written
     // under a bare participant id, never hand it back as that participant's board.
-    if (String(kindCol[i][0]) === 'sensemaking' && String(pid).indexOf(SENSE_PREFIX) !== 0) continue;
-    if (String(kindCol[i][0]) === 'meta') continue;   // 메타 행은 보드가 아니다 / not a board
+    if (kind === 'sensemaking' && String(pid).indexOf(SENSE_PREFIX) !== 0) continue;
+    if (kind === 'meta') continue;   // 메타 행은 보드가 아니다 / not a board
     // 전사 기록은 보드가 아니다 / a transcript record is not a board either, and must never
     // come back as one for a bare participant id
-    if (String(kindCol[i][0]) === 'transcript' && String(pid).indexOf(TX_PREFIX) !== 0) continue;
+    if (kind === 'transcript' && String(pid).indexOf(TX_PREFIX) !== 0) continue;
     try {
-      var body = JSON.parse(jsonCol[i][0]);
+      var body = JSON.parse(jsonAt.at(i));
       if (body && body.parts) {
-        var grp = groups[String(body.stamp)];
-        if (!grp) continue;
-        var joined = '', whole = true;
-        for (var k = 0; k < grp.parts; k++) {
-          if (grp.slices[k] === undefined) { whole = false; break; }
-          joined += grp.slices[k];
+        var key = String(body.stamp);
+        var grp = groups[key] || (groups[key] = { parts: body.parts, slices: {}, n: 0 });
+        if (grp.slices[body.part] === undefined) {
+          grp.slices[body.part] = (body.payload && body.payload.chunk) || '';
+          grp.n++;
         }
-        if (!whole) continue;                      // 조각이 빈다 / an incomplete save, skip it
+        if (grp.n < grp.parts) continue;   // 조각이 빈다 / not whole yet, keep walking back
+        var joined = '';
+        for (var k = 0; k < grp.parts; k++) joined += grp.slices[k];
         var st2 = JSON.parse(joined);
         // 빈 것은 건너뛴다 / skip an empty one and keep looking for something with content
-        if (st2 && isEmptyState_(st2)) { empties++; if (!firstEmpty) firstEmpty = st2; continue; }
+        if (st2 && isEmptyState_(st2)) { if (!firstEmpty) firstEmpty = st2; continue; }
         if (st2 && (st2.cards || st2.texts)) return st2;
         continue;
       }
       var st = body && body.payload && body.payload.state;
-      if (st && isEmptyState_(st)) { empties++; if (!firstEmpty) firstEmpty = st; continue; }
+      if (st && isEmptyState_(st)) { if (!firstEmpty) firstEmpty = st; continue; }
       if (st && (st.cards || st.texts)) return st;
     } catch (err) {}
   }
@@ -621,6 +613,31 @@ function latestState_(pid) {
   // is a participant whose analysis has genuinely never had anything in it
   return firstEmpty;
 }
+
+/* json 칸은 한 줄에 5만 자까지 간다 / the json cell runs to 50,000 characters, and every read
+   used to pull that column for EVERY row in the sheet — the entire history of every
+   participant, megabytes of it, to answer one question about one record. Measured against
+   the live sheet each read took 8-9 seconds, right on the client's 9-second timeout, so
+   whichever request lost the race came back as a failure. That is what "the transcripts
+   did not load" was: not a broken record, a sheet grown too big to read whole.
+   이제 필요한 줄만 읽는다 / read the rows we actually need instead. The scan runs newest
+   first and usually stops on the first one. */
+function LazyJson_(sh, n) {
+  this.sh = sh; this.reads = 0; this.bulk = null; this.n = n;
+}
+LazyJson_.prototype.at = function (i) {
+  if (this.bulk) return this.bulk[i] === undefined ? '' : this.bulk[i];
+  // 한 줄씩 읽다가 너무 잦아지면 한 번에 / one row at a time, but a key whose recent rows are
+  // all empty would cost a round trip each; past a point, read the rest in one call
+  if (this.reads >= 40) {
+    var v = this.sh.getRange(2, 10, i + 1, 1).getValues();
+    this.bulk = [];
+    for (var k = 0; k < v.length; k++) this.bulk[k] = v[k][0];
+    return this.bulk[i] === undefined ? '' : this.bulk[i];
+  }
+  this.reads++;
+  return this.sh.getRange(i + 2, 10).getValue();
+};
 
 function sheet_() {
   var ss = SpreadsheetApp.getActiveSpreadsheet();

@@ -453,7 +453,10 @@ module.exports = async function (browser) {
     check(await page.evaluate(() =>
       [...document.querySelectorAll('[data-obj="note"]')].length === 2),
       "the analysis is on screen while the transcript request is still hanging");
-    await page.waitForTimeout(9000);            // jsonp 타임아웃 / past the jsonp timeout
+    /* 끊긴 요청은 오류를 내지 않는다 / an ABORTED script raises no error event — Chromium logs
+       ERR_FAILED and stays silent — so the failure is only noticed when the timer fires.
+       That is precisely why the board must not wait on it, and why this wait is long. */
+    await page.waitForTimeout(21000);
     check(await page.evaluate(() => document.body.innerText.includes("전사를 불러오지 못했습니다")),
       "a failed transcript read is announced, not shown as emptiness");
 

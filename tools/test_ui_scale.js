@@ -796,8 +796,23 @@ console.log("\nthe loading gate");
     "so the percentage is a real count, not a timer");
   check(/z-index:80/.test(doc), "the cover sits above the board while it is up");
   // 영원히 잠기면 안 된다 / a stuck request must never lock the board for good
-  check(/this\._loadGuard = setTimeout\(\(\) => this\.setState\(\{ loading: null \}\), 20000\)/.test(doc),
+  check(/this\._loadGuard = setTimeout\(\(\) => this\.setState\(\{ loading: null \}\), JSONP_MS \+ 6000\)/.test(doc),
     "and it lifts on its own if something never comes back");
+  /* 9초는 타임아웃이 아니라 동전 던지기였다 / against the live sheet one read measured 8-9
+     seconds, so a 9-second timeout scored requests as failures while they were still in
+     flight. The gate must outlast the request it waits on, or it fires first every time. */
+  check(/const JSONP_MS = 20000;/.test(doc), "a read is given twenty seconds, not nine");
+
+  /* 더한 카드는 보이는 곳에 / a card added by double-click must land where it can be seen.
+     고정 좌표는 원점 근처 / the fixed spot it used was near the origin, and an analysis board
+     is panned thousands of pixels from there — the card went off screen and read as a drag
+     that had silently failed. */
+  check(/visibleRect\(\) \{/.test(doc), "the app knows which part of the board is on screen");
+  check(/if \(v && \(x < v\.x \|\| x > v\.x \+ v\.w - 40 \|\| y < v\.y \|\| y > v\.y \+ v\.h - 40\)\)/.test(doc),
+    "and a quick-added card only keeps the fixed column while that column is in view");
+  check(/x = Math\.round\(v\.x \+ v\.w \* 0\.18\) \+ \(n % 8\) \* 32;/.test(doc),
+    "otherwise it lands where the eyes are, stepped so they do not stack");
+  check(/setTimeout\(\(\) => finish\(null\), JSONP_MS\)/.test(doc), "and that is the number it uses");
 
   // 놓은 자리를 적어 둔다 / the drop records itself, so "it landed way off" can be read
   check(/traceDrop\(kind, e, id, bx, by\)/.test(doc), "every drop is written down");

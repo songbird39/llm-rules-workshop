@@ -730,6 +730,7 @@ const STORE = 'llm-guardrail-workshop-v4';
 // Ghost/drop offset, in screen px, down-and-right of the cursor. Used by BOTH the
 // drag preview and addCard on release so they cannot disagree.
 const GHOST_DX = 14, GHOST_DY = 12;
+const JSONP_MS = 20000;       // 요청 하나를 포기하기까지 / how long before a read is given up on
 // 복제 아이콘은 글자가 아니라 그림 / the duplicate icon is drawn, not typed: U+29C9
 // is missing from the font stack and each browser substituted its own glyph.
 
@@ -769,12 +770,12 @@ const CODE_COLORS = [
 // 이 클라이언트가 요구하는 서버 버전 / the deployment this client needs. An older one cannot
 // reassemble a sliced record, so analysis work would save and then fail to load — with no
 // error anywhere, because the POST is no-cors. Check it and say so.
-const SERVER_MIN = '2026-09-09a';
+const SERVER_MIN = '2026-09-09b';
 // 이 페이지의 판 / which build this page is. It sits where the step label goes on the sign-in
 // screen, so anyone reporting a problem can read it off without opening anything — "it does
 // not load" is a very different report from someone on last week's page than from someone
 // on today's. Bump it with any change worth telling apart.
-const APP_VERSION = '2026-09-09h';
+const APP_VERSION = '2026-09-09j';
 // 분석 메모는 두 종류 / two kinds of note in analysis mode, told apart by colour: the
 // gold one is the admin's own remark and matches the rest of the sensemaking layer;
 // the slate one holds transcript, which is somebody else's words, not the admin's.
@@ -2447,7 +2448,7 @@ class Component extends DCLogic {
     // 영원히 잠기지 않게 / never lock the board forever: jsonp resolves null after 9s, but if
     // something else goes wrong the gate lifts on its own and the work is still reachable
     clearTimeout(this._loadGuard);
-    this._loadGuard = setTimeout(() => this.setState({ loading: null }), 20000);
+    this._loadGuard = setTimeout(() => this.setState({ loading: null }), JSONP_MS + 6000);
     this.loadRemote(pid).then((remote) => {
       if (!this.state.admin || this.state.viewPid !== pid) return;
       if (!remote) { this.setState({ rosterMsg: 'nosnap', loading: null }); return; }
@@ -2777,10 +2778,34 @@ class Component extends DCLogic {
       desc: (type === 'act' || type === 'means') ? '' : (tpl.desc || ''), dia: tpl.dia || null, collapsed: false, w: (type === 'act' ? TAG_W : CARD), x: this.fix(x), y: this.fix(y) };
     this.setState((s) => ({ cards: s.cards.concat([this.mine(card)]), seq: s.seq + 1 }));
   }
+  // 지금 보이는 보드 영역 / the part of the board actually on screen, in board coordinates
+  visibleRect() {
+    const el = this.canvasRef.current;
+    if (!el) return null;
+    const r = el.getBoundingClientRect();
+    const a = this.toCanvas(r.left, r.top), b = this.toCanvas(r.right, r.bottom);
+    return { x: a.x, y: a.y, w: b.x - a.x, h: b.y - a.y };
+  }
+
+  /* 더블클릭으로 더한 카드가 화면 밖에 놓이면 안 된다 / a card added by double-clicking a tile
+     used to land at a FIXED spot near the origin — column 48/256/464, y 32 and down. On a
+     fresh board that is the tidy three-column layout it was written for. But an analysis
+     board is panned thousands of pixels away from the origin (this participant's work sits
+     at y ≈ -2500), so the card was dropped somewhere off screen entirely and looked like a
+     drag that had failed. Keep the tidy columns while they are in view; otherwise put the
+     card where the eyes are. */
   quickAdd(type, tpl) {
     const col = { rule: 48, when: 256, how: 464 }[type];
     const n = this.state.cards.filter((c) => c.type === type).length;
-    this.addCard(type, tpl, col, 32 + n * 32);
+    let x = col, y = 32 + n * 32;
+    const v = this.visibleRect();
+    if (v && (x < v.x || x > v.x + v.w - 40 || y < v.y || y > v.y + v.h - 40)) {
+      // 보이는 곳 왼쪽 위 언저리에, 겹치지 않게 계단으로 / near the top-left of what is on
+      // screen, stepped so repeated adds do not stack on one another
+      x = Math.round(v.x + v.w * 0.18) + (n % 8) * 32;
+      y = Math.round(v.y + v.h * 0.16) + (n % 8) * 32;
+    }
+    this.addCard(type, tpl, x, y);
   }
 
   /* 펜 도구 / THE PEN
@@ -3721,7 +3746,13 @@ class Component extends DCLogic {
         clearTimeout(timer);
         resolve(v);
       };
-      const timer = setTimeout(() => finish(null), 9000);
+      /* 9초는 너무 짧았다 / nine seconds was not a timeout, it was a coin toss. Measured
+         against the real sheet, one read of a participant took 8-9 seconds — the server
+         was reading the whole json column, every state anyone had ever saved, to answer
+         one question — so requests were being scored as failures while they were still on
+         their way. The server side of that is fixed; this is the margin, because a slow
+         answer is still an answer and only silence is a failure. */
+      const timer = setTimeout(() => finish(null), JSONP_MS);
       // 어느 응답이든 서버 판을 알려 준다 / EVERY reply carries the deployment's version, so
       // read it from every reply. Checking only when the roster loads meant the warning
       // stayed on screen after a redeploy had already fixed it, which is its own small
