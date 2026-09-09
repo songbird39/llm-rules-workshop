@@ -63,6 +63,42 @@ module.exports = async function (browser) {
     check(srv.get({ codes: "all" }).codebook.length === 3, "all three reached the codes sheet",
       ` (${srv.get({ codes: "all" }).codebook.length})`);
 
+    /* 색은 폴더의 것 / the colour belongs to the folder, not the code: two codes filed
+       together are two readings of the same dimension and must look like it. It is worked
+       out on every render rather than stored, so a code renamed into another folder takes
+       its new folder's colour instead of keeping the one it was born with. */
+    await add("독립성/스스로 먼저");
+    const swatches = () => page.evaluate(() => {
+      const out = {};
+      [...document.querySelectorAll("span")].forEach((sp) => {
+        const label = sp.parentElement && sp.parentElement.innerText;
+        const bg = sp.style.background;
+        if (bg && sp.style.width === "10px" && label) out[label.split("\n")[0].trim()] = bg;
+      });
+      return out;
+    });
+    const sw = await swatches();
+    check(sw["검증 회피"] && sw["검증 회피"] === sw["번역 의존"],
+      "two codes in one folder share a colour", ` (${sw["검증 회피"]})`);
+    check(sw["스스로 먼저"] && sw["스스로 먼저"] !== sw["검증 회피"],
+      "and a different folder gets a different one", ` (${sw["스스로 먼저"]})`);
+    check(sw["폴더 없는 코드"] && sw["폴더 없는 코드"] !== sw["검증 회피"] &&
+      sw["폴더 없는 코드"] !== sw["스스로 먼저"],
+      "with an unfiled code on a neutral ink of its own", ` (${sw["폴더 없는 코드"]})`);
+    // 폴더를 옮기면 색도 따라간다 / moved between folders, the colour moves with it
+    page.once("dialog", (d) => d.accept("독립성/검증 회피"));
+    await page.evaluate(() => {
+      // 그 코드의 줄에 있는 고치기 버튼 / the edit button on THAT code's row, not the first one
+      const row = [...document.querySelectorAll("div")].filter((d) =>
+        (d.innerText || "").indexOf("검증 회피") === 0 && d.querySelectorAll("button").length === 3).pop();
+      row.querySelectorAll("button")[1].click();
+    });
+    await page.waitForTimeout(600);
+    const sw2 = await swatches();
+    check(sw2["검증 회피"] === sw2["스스로 먼저"],
+      "a code moved to another folder takes that folder's colour",
+      ` (${sw2["검증 회피"]} vs ${sw2["스스로 먼저"]})`);
+
     // 아무것도 안 골랐을 때 / pressing a code with nothing selected says so, and codes nothing
     await page.getByText("검증 회피", { exact: true }).first().click();
     await page.waitForTimeout(400);
@@ -107,6 +143,117 @@ module.exports = async function (browser) {
       "and they share ONE square rather than nesting two");
     check(await page.evaluate(() => [...document.querySelectorAll("text")].some((t) => t.textContent === "번역 의존")),
       "with both tags stacked beside it");
+
+    /* 고른 묶음이 이미 뭘 달고 있는지 / which codes THIS selection already carries, said in the
+       panel rather than only out on the board. Pressing a code that is already on the set
+       takes it off, so a ticked row is exactly the row whose press will remove it. */
+    const ticks = () => page.evaluate(() => {
+      const out = {};
+      [...document.querySelectorAll("button")].forEach((b) => {
+        const sp = b.querySelectorAll(":scope > span");
+        if (sp.length !== 4) return;                       // 표시 · 색 · 이름 · 횟수
+        out[sp[2].textContent.trim()] = sp[0].textContent.trim();
+      });
+      return out;
+    });
+    const on = await ticks();
+    check(on["번역 의존"] === "✓" && on["검증 회피"] === "✓",
+      "both codes on the selection are ticked in the panel",
+      ` (${JSON.stringify(on)})`);
+    check(on["스스로 먼저"] === "" && on["폴더 없는 코드"] === "",
+      "and the ones not on it are not");
+    // 다른 것을 고르면 표시도 바뀐다 / a different selection, a different set of ticks
+    await page.mouse.click(boardBox.x + boardBox.width - 30, boardBox.y + boardBox.height - 30);
+    await page.waitForTimeout(400);
+    const none = await ticks();
+    check(Object.keys(none).length > 0 && Object.values(none).every((v) => v === ""),
+      "nothing selected, nothing ticked", ` (${JSON.stringify(none)})`);
+    await pickAll();
+    await page.waitForTimeout(300);
+    const again = await ticks();
+    check(again["검증 회피"] === "✓", "and selecting them again brings the ticks back");
+
+    /* 묶음은 테두리로 / the SET is picked up from the square's edge — that set is the
+       coding's identity, everything is filed under it, so getting it back is what lets a
+       second code join the same group. 코드는 태그로 / a code is picked from its tag, and
+       only a picked code shows the ✗ that takes it off. */
+    /* 겉모습 말고 상태를 읽는다 / read the app's OWN selection. Counting outlined elements
+       said "still two" while the selection had in fact collapsed to one — the check passed
+       and the bug stayed. */
+    const selNow = () => page.evaluate(() => window.__wsDiag().sel.slice().sort());
+    const clearSel = async () => {
+      await page.mouse.click(boardBox.x + boardBox.width - 30, boardBox.y + boardBox.height - 30);
+      await page.waitForTimeout(300);
+    };
+    await clearSel();
+    check((await ticks())["검증 회피"] === "", "with nothing selected the ticks are clear");
+    const edge = await page.evaluate(() => {
+      const r = [...document.querySelectorAll("rect")].find((x) => (x.getAttribute("stroke-dasharray") || "") === "3 5");
+      const b = r.getBoundingClientRect();
+      return { x: b.x + b.width / 2, y: b.y };      // 위쪽 변 / the top edge
+    });
+    await page.mouse.click(edge.x, edge.y);
+    await page.waitForTimeout(400);
+    const back = await ticks();
+    check(back["검증 회피"] === "✓" && back["번역 의존"] === "✓",
+      "pressing the square's edge selects the set it was made over", ` (${JSON.stringify(back)})`);
+    check(srv.get({ codes: "P9" }).codings.length === 2, "and takes nothing off");
+
+    // 태그를 누르면 그 코드가 골라진다 / a tag press picks the code, and reveals its ✗
+    const tagAt = () => page.evaluate(() => {
+      const t = [...document.querySelectorAll("text")].find((x) => x.textContent === "검증 회피");
+      const r = t.getBoundingClientRect();
+      return { x: r.x + r.width / 2, y: r.y + r.height / 2 };
+    });
+    const xMarks = () => page.evaluate(() =>
+      [...document.querySelectorAll("text")].filter((t) => t.textContent === "✗").length);
+    check((await xMarks()) === 0, "no ✗ before a code is picked");
+    const tb2 = await tagAt();
+    await page.mouse.click(tb2.x, tb2.y);
+    await page.waitForTimeout(350);
+    check((await xMarks()) === 1, "pressing a code tag picks it and offers an ✗", ` (${await xMarks()})`);
+    check(srv.get({ codes: "P9" }).codings.length === 2,
+      "and pressing it does NOT take the code off, which the plain click used to do");
+    // ✗ 를 누르면 뗀다 / the ✗ takes it off
+    const xBox = await page.evaluate(() => {
+      const t = [...document.querySelectorAll("text")].find((x) => x.textContent === "✗");
+      const r = t.getBoundingClientRect();
+      return { x: r.x + r.width / 2, y: r.y + r.height / 2 };
+    });
+    await page.mouse.click(xBox.x, xBox.y);
+    await page.waitForTimeout(700);
+    check(srv.get({ codes: "P9" }).codings.length === 1, "pressing the ✗ takes that code off",
+      ` (${srv.get({ codes: "P9" }).codings.length})`);
+    check((await xMarks()) === 0, "and the ✗ goes with it");
+
+    /* 글자를 누르는 것은 고르기가 아니다 / clicking into an element to read or fix its text must
+       not collapse the group. With the group went the very set you were about to put
+       another code on, which made coding a set of several a thing you had to redo. */
+    await page.mouse.click(edge.x, edge.y);
+    await page.waitForTimeout(350);
+    const many = await selNow();
+    check(many.length >= 2, "a set is selected", ` (${JSON.stringify(many)})`);
+    const field = await page.evaluate(() => {
+      const L = [...document.querySelectorAll("div")].find((d) => d.style.width === "5000px");
+      const el = [...L.children].find((c) => c.style.outlineWidth && c.style.outlineWidth !== "0px"
+        && (c.querySelector("input") || c.querySelector("textarea")));
+      if (!el) return null;
+      const f = el.querySelector("input") || el.querySelector("textarea");
+      const r = f.getBoundingClientRect();
+      return { x: r.x + r.width / 2, y: r.y + r.height / 2 };
+    });
+    check(field !== null, "and one of its members has a field to press");
+    const wasTicked = await ticks();
+    if (field) {
+      await page.mouse.click(field.x, field.y);
+      await page.waitForTimeout(350);
+      check(JSON.stringify(await selNow()) === JSON.stringify(many),
+        "pressing that field leaves the whole set selected",
+        ` (${JSON.stringify(many)} -> ${JSON.stringify(await selNow())})`);
+      check(JSON.stringify(await ticks()) === JSON.stringify(wasTicked),
+        "so the panel still reads against that same set",
+        ` (${JSON.stringify(wasTicked)} -> ${JSON.stringify(await ticks())})`);
+    }
 
     // 따라오는지는 움직일 수 있는 것으로 본다 / test the following with something that can
     // actually move. The participant's own cards are deliberately immovable in admin mode,
@@ -161,22 +308,31 @@ module.exports = async function (browser) {
     check(moved, "and its square follows it, being recomputed from its members",
       ` (${JSON.stringify(b1.map((b) => Math.round(b.x)))} -> ${JSON.stringify(b2.map((b) => Math.round(b.x)))})`);
 
-    // 태그를 누르면 코드가 풀린다 / clicking a tag takes that code off
+    // 고르고 나서 ✗ 로 뗀다 / pick the tag, then press its ✗ — two steps, not one slip
+    const before = srv.get({ codes: "P9" }).codings.length;
     await page.evaluate(() => {
       const g = [...document.querySelectorAll("g")].find((x) => x.textContent.includes("번역 의존"));
       const r = g.getBoundingClientRect();
       g.dispatchEvent(new PointerEvent("pointerdown", { bubbles: true, clientX: r.x + 5, clientY: r.y + 5 }));
     });
+    await page.waitForTimeout(350);
+    check(srv.get({ codes: "P9" }).codings.length === before,
+      "picking a tag on its own removes nothing");
+    await page.evaluate(() => {
+      const t = [...document.querySelectorAll("text")].find((x) => x.textContent === "✗");
+      const g = t.parentElement;
+      const r = g.getBoundingClientRect();
+      g.dispatchEvent(new PointerEvent("pointerdown", { bubbles: true, clientX: r.x + 5, clientY: r.y + 5 }));
+    });
     await page.waitForTimeout(600);
-    // 세 개 중 하나가 빠진다 / three codings by now: two on the pair, one on the copy
-    check(srv.get({ codes: "P9" }).codings.length === 2, "clicking a tag removes that coding",
+    check(srv.get({ codes: "P9" }).codings.length === before - 1, "and then the ✗ does",
       ` (${srv.get({ codes: "P9" }).codings.length})`);
 
     // 다시 열어도 그대로 / and it is all still there on the next visit
     await enter();
     await page.waitForTimeout(600);
     check((await region()) !== null, "the coding comes back on reopening");
-    check(await page.evaluate(() => [...document.querySelectorAll("text")].some((t) => t.textContent === "검증 회피")),
+    check(await page.evaluate(() => [...document.querySelectorAll("text")].some((t) => t.textContent === "폴더 없는 코드")),
       "with its code");
     check(errors.length === 0, "no console errors", errors.length ? ` (${errors[0]})` : "");
     await page.close();

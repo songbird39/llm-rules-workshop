@@ -343,8 +343,10 @@
         </sc-if>
       </div>
       <sc-for list="{{ codeFolders }}" as="f" hint-placeholder-count="0">
-        <div style="padding:6px 16px 2px;display:flex;align-items:baseline;gap:8px">
-          <span style="font-size:11.5px;font-weight:700;letter-spacing:0.02em;color:#8a877e">{{ f.name }}</span>
+        <!-- 폴더가 색을 가진다 / the FOLDER carries the colour; its codes wear it -->
+        <div style="padding:6px 16px 2px;display:flex;align-items:center;gap:8px">
+          <span style="flex:none;width:4px;height:12px;border-radius:2px;background:{{ f.color }}"></span>
+          <span style="font-size:11.5px;font-weight:700;letter-spacing:0.02em;color:{{ f.color }}">{{ f.name }}</span>
           <span style="flex:1;height:1px;background:#ece9e1"></span>
           <span style="font-size:11px;color:#a7a49b">{{ f.count }}</span>
         </div>
@@ -352,8 +354,11 @@
           <sc-for list="{{ f.codes }}" as="c" hint-placeholder-count="0">
             <div style="display:flex;align-items:center;gap:8px;padding:7px 9px;border:1px solid #e2dfd7;border-radius:9px;background:{{ c.bg }}" style-hover="border-color:#d6d3ca">
               <button onClick="{{ c.onApply }}" title="{{ t.codeApplyTip }}" style="flex:1;min-width:0;display:flex;align-items:center;gap:8px;border:none;background:transparent;text-align:left;cursor:pointer;padding:0">
+                <!-- 자리는 늘 잡아 둔다 / the tick keeps its slot whether or not it is there, so
+                     the names stay on one left edge as the selection changes -->
+                <span style="flex:none;width:13px;font-size:11px;line-height:1;color:#3f7a4f">{{ c.mark }}</span>
                 <span style="flex:none;width:10px;height:10px;border-radius:3px;background:{{ c.color }}"></span>
-                <span style="flex:1;min-width:0;font-size:13px;font-weight:600;color:#1b1a17;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ c.name }}</span>
+                <span style="flex:1;min-width:0;font-size:13px;font-weight:600;color:{{ c.nameFg }};white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ c.name }}</span>
                 <span style="flex:none;font-size:11px;font-family:ui-monospace,Menlo,monospace;color:{{ c.countColor }}">{{ c.count }}</span>
               </button>
               <button onClick="{{ c.onEdit }}" title="{{ t.editTip }}" style="flex:none;width:22px;height:22px;border:none;border-radius:5px;background:transparent;color:#bfbcb3;font-size:11px;cursor:pointer;padding:0" style-hover="color:#1b1a17">✎</button>
@@ -371,7 +376,7 @@
         <div style="font-size:12px;line-height:1.6;color:#7a776f">{{ t.findHint }}</div>
         <sc-for list="{{ findFolders }}" as="f" hint-placeholder-count="0">
           <div style="display:flex;flex-direction:column;gap:4px">
-            <span style="font-size:11px;font-weight:700;letter-spacing:0.02em;color:#8a877e">{{ f.name }}</span>
+            <span style="font-size:11px;font-weight:700;letter-spacing:0.02em;color:{{ f.color }}">{{ f.name }}</span>
             <div style="display:flex;flex-wrap:wrap;gap:5px 10px">
               <sc-for list="{{ f.codes }}" as="c" hint-placeholder-count="0">
                 <label style="display:inline-flex;align-items:center;gap:5px;font-size:12px;color:#44423b;cursor:pointer;white-space:nowrap">
@@ -763,10 +768,20 @@ const TX_PREFIX = 'tx:';
 // encloses. Deliberately unlike a card, a note or the participant-region box: a coding is a
 // reading laid OVER the board, not another thing on it.
 const CODE_INK = 'oklch(0.52 0.115 305)', CODE_PAD = 18, CODE_TAG_GAP = 26;
+/* 색은 폴더의 것 / the colour belongs to the FOLDER, not to the code. A folder is the
+   dimension being read for, so two codes in one folder are two readings of the same thing
+   and should look like it; a code moved to another folder should change colour with it.
+   That is why the colour is derived on every render rather than stored on the code — a
+   stored one goes stale the moment a code is renamed into a different folder.
+   폴더 없는 코드는 회색 / a code with no folder gets a neutral ink, which also makes an
+   unfiled code visible as unfiled. */
 const CODE_COLORS = [
   'oklch(0.52 0.115 305)', 'oklch(0.55 0.110 250)', 'oklch(0.52 0.105 160)',
-  'oklch(0.58 0.115 62)', 'oklch(0.52 0.130 20)', 'oklch(0.45 0.060 285)'
+  'oklch(0.58 0.115 62)', 'oklch(0.52 0.130 20)', 'oklch(0.45 0.060 285)',
+  'oklch(0.50 0.100 200)', 'oklch(0.55 0.120 120)', 'oklch(0.48 0.115 340)',
+  'oklch(0.56 0.100 90)'
 ];
+const CODE_NO_FOLDER = 'oklch(0.58 0.012 100)';
 // 이 클라이언트가 요구하는 서버 버전 / the deployment this client needs. An older one cannot
 // reassemble a sliced record, so analysis work would save and then fail to load — with no
 // error anywhere, because the POST is no-cors. Check it and say so.
@@ -775,7 +790,7 @@ const SERVER_MIN = '2026-09-09b';
 // screen, so anyone reporting a problem can read it off without opening anything — "it does
 // not load" is a very different report from someone on last week's page than from someone
 // on today's. Bump it with any change worth telling apart.
-const APP_VERSION = '2026-09-09k';
+const APP_VERSION = '2026-09-10f';
 // 분석 메모는 두 종류 / two kinds of note in analysis mode, told apart by colour: the
 // gold one is the admin's own remark and matches the rest of the sensemaking layer;
 // the slate one holds transcript, which is somebody else's words, not the admin's.
@@ -1016,7 +1031,8 @@ const I18N = {
       tabFlow: '규칙', tabGuard: '가드레일', tabCode: '코드',
       codeHint: '보드에서 요소를 고른 뒤 코드를 누르면, 고른 것들을 감싸는 영역으로 표시됩니다. 한 묶음에 여러 코드를 걸 수 있습니다.',
       codeNew: '새 코드 (폴더/이름)', codeAdd: '추가', codeNoFolder: '폴더 없음',
-      codeApplyTip: '선택한 요소에 이 코드 걸기 / 다시 누르면 해제', codeOffTip: '눌러서 코드 해제',
+      codeApplyTip: '선택한 요소에 이 코드 걸기 / 다시 누르면 해제', codeOffTip: '눌러서 코드 고르기',
+      codeBoxTip: '테두리를 눌러서 이 묶음 선택', codeDropTip: '이 코드 떼기',
       codeNoSel: '먼저 보드에서 요소를 선택해 주세요.',
       findTitle: '코드 조합 찾기', findHint: '함께 걸린 코드를 고르세요. 한 묶음에 고른 코드가 모두 걸린 경우만 셉니다.',
       findBtn: '찾기', findClear: '지우기', findFound: '명', findNone: '해당하는 참여자가 없습니다.', findSets: '묶음',
@@ -1159,7 +1175,8 @@ const I18N = {
       tabFlow: 'Rules', tabGuard: 'Guardrails', tabCode: 'Codes',
       codeHint: 'Select elements on the board, then press a code to draw a region around them. One set can carry several codes.',
       codeNew: 'New code (folder/name)', codeAdd: 'Add', codeNoFolder: 'No folder',
-      codeApplyTip: 'Code the current selection / press again to remove', codeOffTip: 'click to uncode',
+      codeApplyTip: 'Code the current selection / press again to remove', codeOffTip: 'click to select this code',
+      codeBoxTip: 'click the edge to select this set', codeDropTip: 'remove this code',
       codeNoSel: 'Select something on the board first.',
       findTitle: 'Find a combination', findHint: 'Check codes that were applied together. Only sets carrying every checked code count.',
       findBtn: 'Find', findClear: 'Clear', findFound: ' participants', findNone: 'No participant has that combination.', findSets: ' sets',
@@ -1186,7 +1203,7 @@ class Component extends DCLogic {
   constructor(props) {
     super(props);
     this.state = { sync: '', step: 0, lang: 'ko', rules: [], pid: '', loginPid: '', cards: [], notes: [], arrows: [], arrowMode: false, pendingArrow: null, pen: null, strokes: [], selArrow: null, noteMode: false, noteKind: 'memo', panelOff: false, rosterMode: '', histWho: 'board', conflict: null, marked: '', senseDirty: false, recover: null, loading: null, importMsg: '', oldPage: false, txFail: false,
-      codebook: [], codings: [], allCodings: [], codeFolder: '', codeMsg: '',
+      codebook: [], codings: [], allCodings: [], codeFolder: '', codeMsg: '', codeSel: null,
       findPick: {}, findHits: null, undoDepth: 0, focusNote: null, pan: { x: 0, y: 0 }, zoom: 1, ghost: null, seq: 1, panelW: panelCap(), sel: [], marquee: null, finish: null, tab: 'flow', hist: null, histList: [], travel: null, senseOn: true, admin: false, viewPid: '', roster: [], rosterMsg: '' };
     this.canvasRef = React.createRef();
     this.drag = null;
@@ -1271,6 +1288,8 @@ class Component extends DCLogic {
         scrollY: window.scrollY, bodyScroll: document.body.scrollTop,
         // 이것이 범인이었다 / THIS was the culprit, and nothing was watching it
         canvasScroll: el ? [el.scrollLeft, el.scrollTop] : null,
+        sel: (this.state.sel || []).slice(), codeSel: this.state.codeSel || null,
+        codings: (this.state.codings || []).map((g) => g.code + ':' + (g.members || []).join('+')),
         cssZoom: el ? getComputedStyle(el).zoom : null,
         /* 마지막으로 놓은 것 / the LAST drop, recorded as it happened: where the cursor was,
            what board point that became, where the object was put, and where it then
@@ -1628,6 +1647,48 @@ class Component extends DCLogic {
     this.loadRemote(pid).then((st) => { if (st) this.applyState(st); });
   }
 
+  /* 보드에 있는 것 전부를 감싸는 사각형 / the rectangle around EVERYTHING on the board */
+  contentBounds() {
+    const rs = [];
+    this.state.cards.forEach((c) => rs.push(this.cardRect(c)));
+    (this.state.notes || []).forEach((n) => rs.push(this.noteRect(n)));
+    (this.state.strokes || []).forEach((k) => {
+      for (let i = 0; i < k.pts.length; i += 2) rs.push({ x: k.pts[i] - 2, y: k.pts[i + 1] - 2, w: 4, h: 4 });
+    });
+    if (!rs.length) return null;
+    let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
+    rs.forEach((r) => {
+      x0 = Math.min(x0, r.x); y0 = Math.min(y0, r.y);
+      x1 = Math.max(x1, r.x + r.w); y1 = Math.max(y1, r.y + r.h);
+    });
+    return { x: x0, y: y0, w: x1 - x0, h: y1 - y0 };
+  }
+
+  /* 열면 작업이 보이게 / open onto the work, not onto empty board. Loading put the view at
+     the origin every time, and a board sits wherever its participant left it — one of these
+     has its cards at y ≈ -2500, thousands of pixels away — so it came up blank and had to be
+     hunted for by dragging. Fit once, on load; after that the view is the reader's and
+     nothing moves it. */
+  fitOnce() {
+    if (this._fitted) return;
+    const el = this.canvasRef.current;
+    const b = this.contentBounds();
+    if (!el || !b) return;                 // 아직 아무것도 없다 / nothing to look at yet
+    const s = this.scaleOf(el);
+    const r = el.getBoundingClientRect();
+    const vw = r.width / s, vh = r.height / s;      // 확대 전 좌표로 / in pre-zoom css px
+    if (!vw || !vh) return;
+    this._fitted = true;
+    const M = 70;
+    // 확대는 하지 않는다 / never magnify past 1: a board with one card on it should not open
+    // at 400%. Only shrink, and not past the point where nothing can be read.
+    const z = Math.max(0.15, Math.min(1, (vw - M * 2) / b.w, (vh - M * 2) / b.h));
+    this.setState({
+      zoom: z,
+      pan: { x: (vw - b.w * z) / 2 - b.x * z, y: (vh - b.h * z) / 2 - b.y * z }
+    });
+  }
+
   // ── 관리자 해석 레이어 / admin sensemaking ────────────────────────────
   // 참여자가 쓴 영역 / the rectangle enclosing the participant's own work
   senseBounds() {
@@ -1740,7 +1801,8 @@ class Component extends DCLogic {
       // 서버에 아무것도 없을 때가 가장 위험하다 / the case that matters MOST is the server
       // having nothing: that is what a run of failed saves looks like. Checking the local
       // copy only on the success path skipped exactly the situation it exists for.
-      if (!st) { this.setState({ loading: null }); this.offerLocal(pid, 0); return; }
+      // 해석이 없으면 참여자 보드에 맞춘다 / with no analysis, fit to the participant's board
+      if (!st) { this.setState({ loading: null }); this.fitOnce(); this.offerLocal(pid, 0); return; }
       if ((st.cards || []).length || (st.notes || []).length ||
           (st.arrows || []).length || (st.strokes || []).length) this._hadContent = true;
       const tag = (arr) => (arr || []).map((o) => Object.assign({}, o, { sm: true }));
@@ -1755,6 +1817,7 @@ class Component extends DCLogic {
         strokes: (s.strokes || []).concat(tag(st.strokes)),
         seq: Math.max(s.seq || 1, st.seq || 1)
       }), () => {
+        this.fitOnce();
         this._ssig = this.senseSig();
         this._tsig = JSON.stringify(this.txMap());
         // "아직 아무것도 저장돼 있지 않다" 로 둔다 / treat the transcript store as EMPTY, not as
@@ -2217,10 +2280,13 @@ class Component extends DCLogic {
     const folder = cut > 0 ? raw.slice(0, cut).trim() : '';
     const name = (cut > 0 ? raw.slice(cut + 1) : raw).trim();
     if (!name) return;
-    const used = (this.state.codebook || []).length;
+    /* 색은 저장하지 않는다 / the colour is not stored. It belongs to the folder and is worked
+       out on every render, so a code renamed into another folder takes that folder's colour
+       with it instead of keeping the one it happened to be given when it was created. The
+       sheet still has a color column; older rows fill it and nothing reads it. */
     this.putCode({
       id: 'k' + Date.now().toString(36) + Math.random().toString(36).slice(2, 5),
-      name: name, folder: folder, color: CODE_COLORS[used % CODE_COLORS.length]
+      name: name, folder: folder
     });
     this.setState({ codeDraft: '' });
   }
@@ -2318,6 +2384,33 @@ class Component extends DCLogic {
     });
   }
 
+  /* 지금 고른 것에 이미 붙어 있는 코드 / the codes already on exactly this selection.
+     코딩은 멤버 집합으로 매겨진다 / a coding is keyed by its member set, which is the same key
+     applyCode builds — so the panel can say, before you press anything, which codes this
+     particular group already carries. Without it the only way to know was to read the tags
+     out on the board, and pressing a code that was already there quietly took it off.
+     Same key, so a checked row is exactly the row whose press will remove it. */
+  appliedToSel() {
+    const sel = (this.state.sel || []).filter((id) => this.codeMemberOk(id));
+    if (!sel.length) return null;
+    const key = sel.slice().sort().join(',');
+    const on = {};
+    (this.state.codings || []).forEach((g) => {
+      if ((g.members || []).slice().sort().join(',') === key) on[g.code] = true;
+    });
+    return on;
+  }
+
+  /* 코딩이 감싼 것을 그대로 고른다 / select exactly the set a coding was made over. That set
+     is the coding's identity — it is the key everything else is filed under — so getting it
+     back into the selection is what lets another code be added to the same group, or the
+     panel's ticks be read against it. */
+  pickSet(grp) {
+    const ids = (grp.codes[0] && grp.codes[0].members ? grp.codes[0].members : []).filter((id) => this.codeMemberOk(id));
+    if (!ids.length) return;
+    this.setState({ sel: ids.slice(), selArrow: null, codeSel: null });
+  }
+
   // 코딩할 수 있는 것 / what a coding may enclose: anything on the board that has a rect
   codeMemberOk(id) {
     return this.state.cards.some((c) => c.id === id) || (this.state.notes || []).some((n) => n.id === id);
@@ -2344,6 +2437,47 @@ class Component extends DCLogic {
 
   // 같은 묶음은 사각형 하나 / one square per SET, with every code on that set stacked beside
   // it. Three codes on one selection is three codings and one box, not three boxes.
+  /* 폴더 차례 / the folders in a fixed order — alphabetical, with the unfiled ones last.
+     One order for the panel, the board, and the search, so a colour means the same thing
+     wherever it is seen. */
+  codeFolderOrder() {
+    const seen = {}, out = [];
+    (this.state.codebook || []).forEach((c) => {
+      const f = c.folder || '';
+      if (!f || seen[f]) return;
+      seen[f] = 1; out.push(f);
+    });
+    out.sort((a, b) => a.localeCompare(b));
+    return out;
+  }
+
+  // 코드의 색 = 그 폴더의 색 / a code's colour is its folder's colour
+  codeColor(c) {
+    if (!c) return CODE_NO_FOLDER;
+    const f = c.folder || '';
+    if (!f) return CODE_NO_FOLDER;
+    const i = this.codeFolderOrder().indexOf(f);
+    return i < 0 ? CODE_NO_FOLDER : CODE_COLORS[i % CODE_COLORS.length];
+  }
+
+  // 폴더 순으로, 폴더 안에서는 이름 순 / by folder, then by name inside it
+  sortCodes(list, book) {
+    const order = this.codeFolderOrder();
+    const rank = (id) => {
+      const c = book ? book[id] : null;
+      const f = (c && c.folder) || '';
+      const i = f ? order.indexOf(f) : -1;
+      return i < 0 ? order.length : i;      // 폴더 없는 것은 맨 뒤 / unfiled sinks to the bottom
+    };
+    return list.slice().sort((a, b) => {
+      const ra = rank(a.code), rb = rank(b.code);
+      if (ra !== rb) return ra - rb;
+      const na = ((book && book[a.code]) || {}).name || '';
+      const nb = ((book && book[b.code]) || {}).name || '';
+      return na.localeCompare(nb);
+    });
+  }
+
   codeGroups() {
     const by = {};
     (this.state.codings || []).forEach((g) => {
@@ -2456,6 +2590,7 @@ class Component extends DCLogic {
     this._clearing = false;
     this._txLoaded = false;
     this._texts = null;
+    this._fitted = false;      // 참여자마다 한 번 / once per participant opened
     this.setState({
       viewPid: pid, rosterMsg: 'loading',
       loading: { done: 0, total: 3, label: '', pid: pid }
@@ -2886,6 +3021,8 @@ class Component extends DCLogic {
       return;
     }
     if (this.state.selArrow) this.setState({ selArrow: null });
+    // 보드를 누르면 고른 코드도 놓는다 / a press on the board drops the picked code too
+    if (this.state.codeSel) this.setState({ codeSel: null });
     if (this.state.noteMode) {
       const p = this.toCanvas(e.clientX, e.clientY);
       const id = 'n' + this.state.seq;
@@ -3042,11 +3179,26 @@ class Component extends DCLogic {
     (this.state.codebook || []).forEach((c) => { book[c.id] = c; });
     this.codeGroups().forEach((grp) => {
       const r = grp.rect;
-      const ink = (book[grp.codes[0].code] || {}).color || CODE_INK;
+      // 폴더 순으로 쌓는다 / stacked in folder order, so a region carrying codes from two
+      // folders reads as two bands rather than whatever order they happened to be applied in
+      const codes = this.sortCodes(grp.codes, book);
+      const ink = this.codeColor(book[codes[0].code]);
       kids.push(h('rect', {
         key: grp.key + 'box', x: r.x, y: r.y, width: r.w, height: r.h, rx: 14,
-        fill: 'none', stroke: ink, strokeWidth: 1.5, strokeDasharray: '3 5', opacity: 0.9
+        fill: 'none', stroke: ink, strokeWidth: 1.5, strokeDasharray: '3 5', opacity: 0.9,
+        style: { pointerEvents: 'none' }
       }));
+      /* 눌리는 것은 이 투명한 테두리 / THIS is the edge you press: solid, transparent and
+         twelve wide. The visible outline is dashed, and pointer-events:stroke only hits
+         the painted dashes — most of a dashed border is holes, so it read as broken.
+         fill:none keeps the inside untouched, so a drag meant for what the square encloses
+         still reaches it; only the edge is the square's. */
+      kids.push(h('rect', {
+        key: grp.key + 'grab', x: r.x, y: r.y, width: r.w, height: r.h, rx: 14,
+        fill: 'none', stroke: 'transparent', strokeWidth: 12,
+        style: { pointerEvents: 'stroke', cursor: 'pointer' },
+        onPointerDown: (ev) => { ev.stopPropagation(); ev.preventDefault(); this.pickSet(grp); }
+      }, h('title', null, (I18N[this.state.lang] || I18N.ko).ui.codeBoxTip)));
       // 태그는 오른쪽 위에 쌓는다 / the tags stack at the top right, on one line back to the
       // corner, so several codes on one set read as one act of coding
       const tx = r.x + r.w + CODE_TAG_GAP, ty = r.y;
@@ -3054,17 +3206,39 @@ class Component extends DCLogic {
         key: grp.key + 'lead', x1: r.x + r.w, y1: r.y + 12, x2: tx, y2: ty + 12,
         stroke: ink, strokeWidth: 1.2, opacity: 0.8
       }));
-      grp.codes.forEach((g, i) => {
-        const c = book[g.code] || { name: g.code, color: CODE_INK };
+      codes.forEach((g, i) => {
+        const c = book[g.code] || { name: g.code };
+        const cink = this.codeColor(book[g.code]);
         const y = ty + i * 26;
         const w = Math.max(54, textPx(c.name || '') + 26);
+        /* 누르면 그 코드가 골라진다 / a press picks the CODE, and only then does the way to
+           remove it appear. Uncoding used to be the plain click itself, one slip away from
+           a tag you meant only to read — a destructive act with no step in front of it. */
+        const picked = this.state.codeSel === g.id;
         kids.push(h('g', { key: g.id, style: { pointerEvents: 'auto', cursor: 'pointer' },
-          onPointerDown: (ev) => { ev.stopPropagation(); ev.preventDefault(); this.putCoding(Object.assign({}, g, { deleted: true })); } },
+          onPointerDown: (ev) => {
+            ev.stopPropagation(); ev.preventDefault();
+            this.setState((st) => ({ codeSel: st.codeSel === g.id ? null : g.id }));
+          } },
           h('title', null, (c.name || '') + ' — ' + (I18N[this.state.lang] || I18N.ko).ui.codeOffTip),
-          h('rect', { x: tx, y: y, width: w, height: 22, rx: 11, fill: '#fffefb', stroke: c.color || CODE_INK, strokeWidth: 1.4 }),
-          h('circle', { cx: tx + 12, cy: y + 11, r: 4, fill: c.color || CODE_INK }),
+          h('rect', { x: tx, y: y, width: w, height: 22, rx: 11,
+            fill: picked ? '#fdf6e6' : '#fffefb', stroke: cink, strokeWidth: picked ? 2.4 : 1.4 }),
+          h('circle', { cx: tx + 12, cy: y + 11, r: 4, fill: cink }),
           h('text', { x: tx + 21, y: y + 15, fontSize: 11.5, fill: '#1b1a17' }, c.name || '')
         ));
+        // 고른 코드에만 뗄 수 있는 ✗ / the ✗ exists only on the code that is picked
+        if (picked) {
+          kids.push(h('g', { key: g.id + 'x', style: { pointerEvents: 'auto', cursor: 'pointer' },
+            onPointerDown: (ev) => {
+              ev.stopPropagation(); ev.preventDefault();
+              this.setState({ codeSel: null });
+              this.putCoding(Object.assign({}, g, { deleted: true }));
+            } },
+            h('title', null, (I18N[this.state.lang] || I18N.ko).ui.codeDropTip),
+            h('circle', { cx: tx + w + 11, cy: y + 11, r: 9, fill: '#fffefb', stroke: cink, strokeWidth: 1.4 }),
+            h('text', { x: tx + w + 11, y: y + 15, fontSize: 11, textAnchor: 'middle', fill: cink }, '✗')
+          ));
+        }
       });
     });
     return h('svg', {
@@ -3145,6 +3319,23 @@ class Component extends DCLogic {
   // and nothing else — that is what makes "duplicate selection" work on one element
   // instead of only on everything at once.
   pickOnly(id, e) {
+    /* 글자를 누른 것은 고르기가 아니다 / a press on a field is a request to TYPE, not to
+       select. This one set the selection unconditionally, so clicking into an element to
+       read or fix its text collapsed a whole selected group down to that one thing — and
+       with the group went the coding you were about to add another code to. The two move
+       handlers have always had this guard; this one did not.
+       Returning without preventDefault is deliberate: that is what leaves the field its
+       caret. The board's own handler stops at the same tags, so nothing is cleared. */
+    const t = e.target && e.target.tagName;
+    if (t === 'INPUT' || t === 'TEXTAREA' || t === 'BUTTON') return;
+    /* 고른 것 안을 눌렀다면 그대로 둔다 / a press INSIDE a group that is already selected leaves
+       the group alone. Guarding on the tag name is not enough on its own: a tag paints two
+       absolutely positioned spans across itself, so the press that reaches this handler is
+       often the span rather than the field under it. The rule that actually holds is about
+       intent — clicking something you have already selected is not a request to unselect
+       everything else. The movable handlers say the same thing in their own way, by
+       starting a group drag instead. */
+    if (this.isSel(id) && (this.state.sel || []).length > 1) { e.stopPropagation(); return; }
     e.stopPropagation();
     e.preventDefault();
     if (e.ctrlKey || e.metaKey) { this.toggleSel(id); return; }
@@ -3843,7 +4034,10 @@ class Component extends DCLogic {
     if (this.queuedFor(pid)) { this.flush(); return; }
     if ((remote.savedAt || 0) > (localSavedAt || 0)) {
       this.applyState(remote);
-      this.setState({ sync: 'saved' });
+      // 참여자가 돌아왔을 때도 자기 작업이 보이게 / a participant coming back to their own
+      // board should see it, not the empty corner it happens to be far away from
+      this._fitted = false;
+      this.setState({ sync: 'saved' }, () => this.fitOnce());
     }
   }
 
@@ -4328,10 +4522,11 @@ class Component extends DCLogic {
         return order.map((f) => ({
           key: 'ff' + f,
           name: f || t.codeNoFolder,
+          color: this.codeColor({ folder: f }),
           codes: groups[f].map((c) => ({
             key: 'fp' + c.id,
             name: c.name,
-            color: c.color || CODE_INK,
+            color: this.codeColor(c),
             on: !!(this.state.findPick || {})[c.id],
             onPick: () => this.setState((st) => {
               const pick = Object.assign({}, st.findPick);
@@ -4379,14 +4574,19 @@ class Component extends DCLogic {
           groups[f].push(c);
         });
         order.sort((a, b) => (a === '' ? 1 : b === '' ? -1 : a.localeCompare(b)));
+        const applied = this.appliedToSel();
         return order.map((f) => ({
           key: 'f' + f,
           name: f || t.codeNoFolder,
+          color: this.codeColor({ folder: f }),
           count: (groups[f] || []).length,
           codes: groups[f].map((c) => ({
             key: c.id,
             name: c.name,
-            color: c.color || CODE_INK,
+            color: this.codeColor(c),
+            // 고른 묶음에 이미 붙어 있으면 표시 / a tick when this exact selection already carries it
+            mark: applied && applied[c.id] ? '✓' : '',
+            nameFg: applied && applied[c.id] ? '#1b1a17' : '#44423b',
             // 이 참여자에게 몇 번, 전체로 몇 번 / how many times here, and everywhere
             count: (here[c.id] || 0) + ' / ' + (counts[c.id] || 0),
             countColor: here[c.id] ? '#7a5a1f' : '#a7a49b',

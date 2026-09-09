@@ -750,7 +750,7 @@ console.log("\nthe analysis has a copy, a signal, and a way back");
   check(/this\.offerLocal\(pid, st\.savedAt \|\| 0\)/.test(doc), "the check runs on opening a record");
   // 서버에 아무것도 없을 때가 가장 중요한 경우 / the case it exists for is the server having
   // NOTHING — a run of failed saves — and that is the path an early return skipped
-  check(/if \(!st\) \{ this\.setState\(\{ loading: null \}\); this\.offerLocal\(pid, 0\); return; \}/.test(doc),
+  check(/if \(!st\) \{ this\.setState\(\{ loading: null \}\); this\.fitOnce\(\); this\.offerLocal\(pid, 0\); return; \}/.test(doc),
     "and also when the server has no analysis at all, which is the whole point");
   check(/restoreLocal\(\)/.test(doc) && /this\.pushSense\(\);/.test(doc),
     "and restoring it pushes straight back, so the recovery is not itself one tab from gone");
@@ -817,6 +817,51 @@ console.log("\nthe loading gate");
     "and reported, since nothing was watching it");
 
   check(/const JSONP_MS = 20000;/.test(doc), "a read is given twenty seconds, not nine");
+
+  /* 색은 폴더의 것 / the colour belongs to the folder. Two codes filed together are two
+     readings of the same dimension and must look like it; a code moved between folders must
+     change colour with it, which a colour stored on the code at creation cannot do. */
+  check(/codeColor\(c\) \{/.test(doc), "a code's colour is worked out, not stored");
+
+  /* 열면 작업이 보여야 한다 / opening a board must land on the work. The view was put at the
+     origin every time, and a board sits wherever it was left — one of these has its cards
+     at y ≈ -2500 — so it came up blank and had to be found by dragging. */
+  check(/fitOnce\(\) \{/.test(doc), "a loaded board is fitted to what is on it");
+  check(/if \(this\._fitted\) return;/.test(doc), "once only, so nothing moves the view afterwards");
+  check(/this\._fitted = false;      \/\/ 참여자마다 한 번/.test(doc), "and again for the next participant opened");
+  check(/const z = Math\.max\(0\.15, Math\.min\(1, \(vw - M \* 2\) \/ b\.w, \(vh - M \* 2\) \/ b\.h\)\);/.test(doc),
+    "shrinking to fit but never magnifying past 100%");
+  check(/pan: \{ x: \(vw - b\.w \* z\) \/ 2 - b\.x \* z, y: \(vh - b\.h \* z\) \/ 2 - b\.y \* z \}/.test(doc),
+    "with the work centred in the view");
+
+  /* 코드 태그를 누르면 고를 뿐 / pressing a code tag PICKS it; only then does the way to remove
+     it appear. Uncoding used to be the plain click, one slip from a tag you meant to read. */
+  check(/codeSel: st\.codeSel === g\.id \? null : g\.id/.test(doc), "a code tag is picked by pressing it");
+
+  /* 글자를 누르는 것은 고르기가 아니다 / clicking into a field to read or fix its text must not
+     collapse the selected group — with the group goes the coding you were about to add to. */
+  check(/if \(t === 'INPUT' \|\| t === 'TEXTAREA' \|\| t === 'BUTTON'\) return;/.test(doc),
+    "pressing a field never changes the selection");
+  check(/if \(this\.isSel\(id\) && \(this\.state\.sel \|\| \[\]\)\.length > 1\) \{ e\.stopPropagation\(\); return; \}/.test(doc),
+    "and neither does pressing inside a group that is already selected");
+  check(/if \(picked\) \{/.test(doc) && /codeDropTip/.test(doc), "and only a picked code offers an ✗");
+  check(/this\.putCoding\(Object\.assign\(\{\}, g, \{ deleted: true \}\)\);\n            \} \},/.test(doc),
+    "which is the only thing on the board that takes a code off");
+  /* 묶음은 테두리로만 / the SET is selected from the square's edge only — and the edge that is
+     pressed is a solid transparent one, because a dashed stroke is mostly holes. */
+  check(/stroke: 'transparent', strokeWidth: 12,/.test(doc), "the square has a solid edge to press");
+  check(/pointerEvents: 'stroke', cursor: 'pointer' \},\n        onPointerDown: \(ev\) => \{ ev\.stopPropagation\(\); ev\.preventDefault\(\); this\.pickSet\(grp\); \}/.test(doc),
+    "and pressing it selects the set");
+  check(/fill: 'none', stroke: 'transparent'/.test(doc),
+    "with the inside left alone, so a drag still reaches what it encloses");
+  check(/const i = this\.codeFolderOrder\(\)\.indexOf\(f\);/.test(doc), "from its folder's place in one fixed order");
+  check(/if \(!f\) return CODE_NO_FOLDER;/.test(doc), "with a neutral ink for an unfiled code");
+  check(!/name: name, folder: folder, color: CODE_COLORS/.test(doc), "and a new code stores no colour of its own");
+  check(/const codes = this\.sortCodes\(grp\.codes, book\);/.test(doc),
+    "and the tags on a coded region stack in folder order");
+  check(/const ink = this\.codeColor\(book\[codes\[0\]\.code\]\);/.test(doc),
+    "the region taking the colour of the first folder on it");
+  check(/color: this\.codeColor\(\{ folder: f \}\)/.test(doc), "the folder headings wear it too");
 
   /* 더한 카드는 보이는 곳에 / a card added by double-click must land where it can be seen.
      고정 좌표는 원점 근처 / the fixed spot it used was near the origin, and an analysis board

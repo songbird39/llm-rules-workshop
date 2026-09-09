@@ -548,6 +548,61 @@ module.exports = async function (browser) {
     await page.close();
   }
 
+  // ------------------------------------ opening a board lands on the work, not on nothing
+  /* 원점에서 열면 빈 보드가 보인다 / the view was reset to the origin on every load, and a board
+     sits wherever it was left. This participant's cards are at y ≈ -2500, so opening the
+     analysis showed empty board and the work had to be found by dragging — which is also
+     how a perfectly good record comes to look like it failed to load. */
+  say("\nopening a board lands on what is on it");
+  {
+    const EP = "https://script.google.com/macros/s/FAKE/exec";
+    const page = await browser.newPage({ viewport: { width: 1600, height: 1000 } });
+    const errors = [];
+    page.on("pageerror", (e) => errors.push(e.message));
+    // 원점에서 멀리 / far from the origin, the way a real one is
+    const board = {
+      savedAt: Date.now(), pid: "P9", step: 2, lang: "ko", rules: [],
+      cards: [{ id: "c1", type: "act", title: "단어 암기 학습 계획", desc: "", dia: null, collapsed: false, w: 352, x: 77, y: -2563 },
+              { id: "c2", type: "means", title: "AI 사용 안 함", desc: "", dia: null, collapsed: false, w: 168, x: 600, y: -2300 }],
+      notes: [], arrows: [], seq: 5, panelW: 566,
+    };
+    const analysis = {
+      savedAt: Date.now(), pid: "sm:P9", step: 2, lang: "ko", rules: [],
+      cards: [], arrows: [], strokes: [], seq: 30,
+      notes: [{ id: "n30", x: 900, y: -2400, text: "해석 메모", kind: "memo", sm: true, src: "a" }],
+    };
+    await realServer(page, {
+      seed: (s) => {
+        s.post({ participant: "P9", kind: "autosave", payload: { participant: "P9", state: board } });
+        s.post({ participant: "sm:P9", kind: "sensemaking", payload: { participant: "sm:P9", state: analysis } });
+      },
+    });
+    await page.goto(APP + "?sync=" + encodeURIComponent(EP), { waitUntil: "load", timeout: 120000 });
+    await page.waitForSelector('input[placeholder="P0000"]', { timeout: 120000 });
+    await page.fill('input[placeholder="P0000"]', "admin");
+    await page.getByText("시작하기", { exact: false }).click();
+    await page.waitForTimeout(900);
+    await page.getByText("P9", { exact: true }).first().click();
+    await page.waitForTimeout(2500);
+    const seen = await page.evaluate(() => {
+      const c = document.querySelector('div[style*="radial-gradient"]');
+      const b = c.getBoundingClientRect();
+      const L = [...document.querySelectorAll("div")].find((d) => d.style.width === "5000px");
+      const els = [...L.children].filter((x) => x.tagName === "DIV" && x.getAttribute("data-obj"));
+      const inView = els.filter((x) => {
+        const r = x.getBoundingClientRect();
+        return r.right > b.left && r.left < b.right && r.bottom > b.top && r.top < b.bottom;
+      });
+      return { total: els.length, inView: inView.length, zoom: window.__wsDiag().zoom };
+    });
+    check(seen.total >= 3, "the board and its analysis are both loaded", ` (${seen.total})`);
+    check(seen.inView === seen.total, "and everything on it is in view when it opens",
+      ` (${seen.inView} of ${seen.total}, at ${Math.round(seen.zoom * 100)}%)`);
+    check(seen.zoom <= 1, "never magnified past 100%", ` (${seen.zoom})`);
+    check(errors.length === 0, "no console errors", errors.length ? ` (${errors[0]})` : "");
+    await page.close();
+  }
+
   // ------------------------------------------------- a save that never lands
   // 이게 실제로 일어난 일이다 / this is the failure that actually happened: the server refuses
   // or cannot store the analysis, the POST is no-cors so nothing says so, and the work
