@@ -783,9 +783,15 @@ console.log("\nthe loading gate");
   // half-loaded board.
   check(/loading: \{ done: 0, total: 3, label: '', pid: pid \}/.test(doc),
     "opening a participant counts three fetches");
-  check(/board\.then\(\(\) => this\.loadTick\('sense'\)\)/.test(doc)
-    && /tx\.then\(\(\) => this\.loadTick\('tx'\)\)/.test(doc),
+  check(/this\.loadTick\('sense'\);/.test(doc) && /this\.loadTick\('tx'\);/.test(doc),
     "and the bar advances per request that actually returned");
+  // 전사를 기다리며 보드를 붙잡지 않는다 / the board must not be held hostage by the transcript
+  // read: one Promise.all meant a timed-out transcript kept the whole analysis off screen
+  // for nine seconds, and a retry for twenty.
+  check(!/Promise\.all\(\[board, tx\]\)/.test(doc),
+    "and the analysis is not made to wait for the transcripts");
+  check(/board\.then\(\(res\) => \{[\s\S]{0,3000}?seq: Math\.max/.test(doc),
+    "the board is drawn from its own read alone");
   check(/loadingPct: this\.state\.loading \? Math\.round\(\(this\.state\.loading\.done \/ this\.state\.loading\.total\) \* 100\)/.test(doc),
     "so the percentage is a real count, not a timer");
   check(/z-index:80/.test(doc), "the cover sits above the board while it is up");
@@ -1122,6 +1128,25 @@ console.log("\nview mode cannot write");
   // places — the coauthor's work, destroyed by opening it.
   check(/if \(JSON\.stringify\(this\.txMap\(\)\) !== this\._txSaved\) this\.pushTx\(\);/.test(doc),
     "the transcript is written before the record that omits it");
+  // 실패와 "없음"은 다르다 / a failed read is NOT "there are none". Treating them alike showed
+  // empty boxes over an interview that was safely on the sheet, and let one edit afterwards
+  // write a transcript map missing every other note.
+  check(/if \(!txr \|\| !txr\.ok\) \{ this\._txLoaded = false; this\.setState\(\{ txFail: true \}\); return; \}/.test(doc),
+    "only a real answer counts as the transcripts having loaded");
+  // 늦게 온 전사가 방금 친 글을 덮지 않게 / text typed while the read was in flight wins over
+  // the copy that finally arrives
+  check(/n\.sm && texts\[n\.id\] !== undefined && !n\.text/.test(doc),
+    "and a late transcript fills only the notes still empty");
+  check(/if \(!this\._txLoaded\) return;/.test(doc),
+    "and a session that could not read them can never write them");
+  check(/fetchTx\(pid, tries\)/.test(doc), "the read is retried before being given up on");
+  check(/const n = tries === undefined \? 2 : tries;/.test(doc), "once more before giving up");
+  // 재시도가 끝날 때까지 입 다물고 있지 않는다 / an aborted JSONP is only noticed when its timer
+  // runs out, so waiting for the retries to finish would mean half a minute of silence
+  check(/this\._txLoaded = false;\n      if \(this\.state\.viewPid === pid\) this\.setState\(\{ txFail: true \}\);/.test(doc),
+    "and the first failure is announced while the retry runs underneath");
+  check(/txFail: !!this\.state\.txFail && !!this\.state\.viewPid/.test(doc),
+    "and a failure is said out loud rather than shown as emptiness");
   check(/this\._txSaved = '\{\}';/.test(doc),
     "and loading treats the transcript store as empty, so a migration is never skipped");
 

@@ -399,6 +399,94 @@ module.exports = async function (browser) {
     await page.close();
   }
 
+  // ------------------------------------------------- a transcript read that fails
+  // 이게 실제 신고 / the actual report: transcription notes come back empty. They were never
+  // gone — the READ failed, an empty map is indistinguishable from "no transcripts", and one
+  // edit afterwards would have written that empty map over the interview.
+  say("\na failed transcript read never looks like an empty transcript");
+  {
+    const EP = "https://script.google.com/macros/s/FAKE/exec";
+    const page = await browser.newPage({ viewport: { width: 1700, height: 1000 } });
+    const errors = [];
+    page.on("pageerror", (e) => errors.push(e.message));
+    const board = {
+      savedAt: Date.now(), pid: "P9", step: 2, lang: "ko", rules: [],
+      cards: [{ id: "c1", type: "act", title: "학습 계획", desc: "", dia: null, collapsed: false, w: 352, x: 300, y: 400 }],
+      notes: [], arrows: [], seq: 5, panelW: 566,
+    };
+    const analysis = {
+      savedAt: Date.now(), pid: "sm:P9", step: 2, lang: "ko", rules: [],
+      cards: [], arrows: [], strokes: [], seq: 9,
+      notes: [{ id: "n7", x: 900, y: 250, text: "", kind: "tx", sm: true, src: "a" },
+              { id: "n8", x: 900, y: 500, text: "", kind: "tx", sm: true, src: "a" }],
+    };
+    const transcript = "참여자가 말한 긴 전사입니다. ".repeat(40);
+    const { srv } = await realServer(page, {
+      seed: (s) => {
+        s.post({ participant: "P9", kind: "autosave", payload: { participant: "P9", state: board } });
+        s.post({ participant: "sm:P9", kind: "sensemaking", payload: { participant: "sm:P9", state: analysis } });
+        s.post({ participant: "tx:P9", kind: "transcript",
+                 payload: { participant: "tx:P9", state: { texts: { n7: transcript, n8: "두 번째 전사" }, cards: [] } } });
+      },
+    });
+    // 전사 요청만 실패시킨다 / fail ONLY the transcript read, the way a timeout does
+    let failTx = true;
+    await page.route("**/macros/s/**", async (route) => {
+      const u = new URL(route.request().url());
+      const who = u.searchParams.get("participant") || "";
+      if (failTx && who.indexOf("tx:") === 0) return route.abort();
+      return route.fallback();
+    });
+    const enter = async () => {
+      await page.goto(APP + "?sync=" + encodeURIComponent(EP), { waitUntil: "load", timeout: 120000 });
+      await page.waitForSelector('input[placeholder="P0000"]', { timeout: 120000 });
+      await page.fill('input[placeholder="P0000"]', "admin");
+      await page.getByText("시작하기", { exact: false }).click();
+      await page.waitForTimeout(900);
+      await page.getByText("P9", { exact: true }).first().click();
+      await page.waitForTimeout(3000);
+    };
+    await enter();
+    /* 보드는 전사를 기다리지 않는다 / the analysis must be on screen well before the transcript
+       request has even given up. An aborted JSONP raises no error — it is noticed only when
+       its nine-second timer fires — so anything waiting on it waits the full time. */
+    check(await page.evaluate(() =>
+      [...document.querySelectorAll('[data-obj="note"]')].length === 2),
+      "the analysis is on screen while the transcript request is still hanging");
+    await page.waitForTimeout(9000);            // jsonp 타임아웃 / past the jsonp timeout
+    check(await page.evaluate(() => document.body.innerText.includes("전사를 불러오지 못했습니다")),
+      "a failed transcript read is announced, not shown as emptiness");
+
+    // 그리고 이 상태에서 뭔가 고쳐도 전사를 덮어쓰지 않는다 / and editing now must NOT overwrite
+    await page.evaluate(() => {
+      const L = [...document.querySelectorAll("div")].find((d) => d.style.width === "5000px");
+      const ta = [...L.querySelectorAll(':scope > [data-obj="note"] textarea')][0];
+      const set = Object.getOwnPropertyDescriptor(window.HTMLTextAreaElement.prototype, "value").set;
+      set.call(ta, "관리자가 이 상태에서 친 글");
+      ta.dispatchEvent(new Event("change", { bubbles: true }));
+      ta.dispatchEvent(new Event("input", { bubbles: true }));
+    });
+    await page.waitForTimeout(6000);
+    const held = srv.get({ participant: "tx:P9" }).state;
+    check(held && held.texts && held.texts.n7 === transcript,
+      "the transcript on the sheet is untouched by an edit made while it was unreadable",
+      held && held.texts ? ` (${(held.texts.n7 || "").length} chars)` : " (LOST)");
+    check(held && held.texts.n8 === "두 번째 전사", "and so is every other note's");
+
+    // 다시 불러오면 돌아온다 / retrying brings them back
+    failTx = false;
+    await page.getByText("다시 불러오기", { exact: false }).click();
+    await page.waitForTimeout(2500);
+    check(!(await page.evaluate(() => document.body.innerText.includes("전사를 불러오지 못했습니다"))),
+      "retrying clears the warning");
+    check(await page.evaluate(() => {
+      const L = [...document.querySelectorAll("div")].find((d) => d.style.width === "5000px");
+      return [...L.querySelectorAll(':scope > [data-obj="note"] textarea')].some((t) => t.value.includes("두 번째 전사"));
+    }), "and the transcripts appear");
+    check(errors.length === 0, "no console errors", errors.length ? ` (${errors[0]})` : "");
+    await page.close();
+  }
+
   // ------------------------------------------------- a save that never lands
   // 이게 실제로 일어난 일이다 / this is the failure that actually happened: the server refuses
   // or cannot store the analysis, the POST is no-cors so nothing says so, and the work

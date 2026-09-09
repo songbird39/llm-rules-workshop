@@ -143,6 +143,18 @@
     </div>
   </sc-if>
 
+  <!-- 전사를 못 읽었다 / the transcripts did not load. Saying nothing would show a board of
+       empty boxes over an interview that is safely on the sheet, and invite an edit that
+       overwrites it. Saving them is stopped until this is settled. -->
+  <sc-if value="{{ txFail }}" hint-placeholder-val="{{ false }}">
+    <div style="flex:0 0 auto;display:flex;flex-wrap:wrap;align-items:center;gap:10px;padding:8px 18px;background:#f7e6e3;border-bottom:1px solid #e8cdc7">
+      <span style="font-size:12.5px;font-weight:600;color:#8f342a">{{ t.txFailTitle }}</span>
+      <span style="font-size:12.5px;color:#8f342a">{{ t.txFailBody }}</span>
+      <div style="flex:1"></div>
+      <button onClick="{{ onRetryTx }}" style="padding:6px 12px;border:1px solid transparent;border-radius:7px;background:#8f342a;color:#fff;font-size:12.5px;cursor:pointer">{{ t.txRetry }}</button>
+    </div>
+  </sc-if>
+
   <sc-if value="{{ recover }}" hint-placeholder-val="{{ false }}">
     <div style="flex:0 0 auto;display:flex;flex-wrap:wrap;align-items:center;gap:10px;padding:8px 18px;background:#f7f0dc;border-bottom:1px solid #e6dcc0">
       <span style="font-size:12.5px;font-weight:600;color:#8a6a1f">{{ t.recoverTitle }}</span>
@@ -762,7 +774,7 @@ const SERVER_MIN = '2026-09-09a';
 // screen, so anyone reporting a problem can read it off without opening anything — "it does
 // not load" is a very different report from someone on last week's page than from someone
 // on today's. Bump it with any change worth telling apart.
-const APP_VERSION = '2026-09-09c';
+const APP_VERSION = '2026-09-09f';
 // 분석 메모는 두 종류 / two kinds of note in analysis mode, told apart by colour: the
 // gold one is the admin's own remark and matches the rest of the sensemaking layer;
 // the slate one holds transcript, which is somebody else's words, not the admin's.
@@ -974,6 +986,7 @@ const I18N = {
       loadBoard: '참여자가 만든 보드를 가져오고 있습니다.',
       loadSense: '해석 작업을 가져오고 있습니다.',
       loadTx: '전사 메모를 가져오고 있습니다. 길면 조금 걸립니다.',
+      txFailTitle: '전사를 불러오지 못했습니다 ·', txFailBody: '전사 메모가 비어 보일 수 있습니다. 시트에는 그대로 있으며, 덮어쓰지 않도록 전사 저장을 멈춰 두었습니다.', txRetry: '다시 불러오기',
       recoverTitle: '이 기기에 더 새로운 해석이 있습니다 ·',
       recoverMid: '에 저장된 것으로, 카드 ', recoverEnd: '개가 들어 있습니다. 서버에는 이보다 예전 것만 있습니다.',
       recoverBtn: '이 기기 것으로 되살리기', recoverNo: '서버 것 그대로 두기',
@@ -1116,6 +1129,7 @@ const I18N = {
       loadBoard: 'Fetching the board the participant built.',
       loadSense: 'Fetching the analysis over it.',
       loadTx: 'Fetching the transcription notes. A long one takes a moment.',
+      txFailTitle: 'The transcripts did not load ·', txFailBody: 'Transcription notes may look empty. They are still on the sheet, and saving them is paused so nothing overwrites them.', txRetry: 'Try again',
       recoverTitle: 'This device holds newer analysis ·',
       recoverMid: ', with ', recoverEnd: ' cards. The server only has something older.',
       recoverBtn: 'Restore from this device', recoverNo: 'Keep the server version',
@@ -1170,7 +1184,7 @@ const I18N = {
 class Component extends DCLogic {
   constructor(props) {
     super(props);
-    this.state = { sync: '', step: 0, lang: 'ko', rules: [], pid: '', loginPid: '', cards: [], notes: [], arrows: [], arrowMode: false, pendingArrow: null, pen: null, strokes: [], selArrow: null, noteMode: false, noteKind: 'memo', panelOff: false, rosterMode: '', histWho: 'board', conflict: null, marked: '', senseDirty: false, recover: null, loading: null, importMsg: '', oldPage: false,
+    this.state = { sync: '', step: 0, lang: 'ko', rules: [], pid: '', loginPid: '', cards: [], notes: [], arrows: [], arrowMode: false, pendingArrow: null, pen: null, strokes: [], selArrow: null, noteMode: false, noteKind: 'memo', panelOff: false, rosterMode: '', histWho: 'board', conflict: null, marked: '', senseDirty: false, recover: null, loading: null, importMsg: '', oldPage: false, txFail: false,
       codebook: [], codings: [], allCodings: [], codeFolder: '', codeMsg: '',
       findPick: {}, findHits: null, undoDepth: 0, focusNote: null, pan: { x: 0, y: 0 }, zoom: 1, ghost: null, seq: 1, panelW: panelCap(), sel: [], marquee: null, finish: null, tab: 'flow', hist: null, histList: [], travel: null, senseOn: true, admin: false, viewPid: '', roster: [], rosterMsg: '' };
     this.canvasRef = React.createRef();
@@ -1686,37 +1700,36 @@ class Component extends DCLogic {
   // merged. A note whose text already came back inside the board record keeps it: that is
   // what an analysis record saved before this split looks like, and it must still open.
   loadSense(pid) {
-    // 각 요청이 돌아올 때마다 한 칸 / one step per request as it lands, so the bar moves for a
-    // reason rather than on a timer
+    /* 전사를 기다리느라 보드를 붙잡지 않는다 / the board no longer waits on the transcript read.
+       Both used to land in one Promise.all, so a transcript request that timed out held the
+       whole analysis off the screen for the full nine seconds — and a retry made it twenty.
+       An aborted JSONP raises no error, it is only ever noticed when its timer runs out, so
+       "slow" and "dead" look the same from here. The analysis is drawn the moment its own
+       record arrives; the transcript text is merged into the notes when it turns up, or the
+       failure is said out loud. */
     const board = this.jsonp('participant=' + encodeURIComponent('sm:' + pid));
-    const tx = this.jsonp('participant=' + encodeURIComponent(TX_PREFIX + pid));
-    board.then(() => this.loadTick('sense'));
-    tx.then(() => this.loadTick('tx'));
-    Promise.all([board, tx]).then((both) => {
-      const res = both[0], txr = both[1];
-      const st = res && res.ok && res.state;
+    board.then((res) => {
       if (this.state.viewPid !== pid) return;
-      // 서버에 아무것도 없을 때가 가장 위험하다 / the case that matters MOST is the server
-      // having nothing: that is what a run of failed saves looks like. Checking the local
-      // copy only on the success path skipped exactly the situation it exists for.
+      this.loadTick('sense');
+      const st = res && res.ok && res.state;
       // 응답을 제대로 받았을 때만 저장을 연다 / only a real answer opens the writing path. A
       // failed or timed-out read leaves it shut, so nothing can be saved over work this
       // session never managed to see.
       if (res && res.ok) this._senseLoaded = true;
+      // 서버에 아무것도 없을 때가 가장 위험하다 / the case that matters MOST is the server
+      // having nothing: that is what a run of failed saves looks like. Checking the local
+      // copy only on the success path skipped exactly the situation it exists for.
       if (!st) { this.setState({ loading: null }); this.offerLocal(pid, 0); return; }
       if ((st.cards || []).length || (st.notes || []).length ||
           (st.arrows || []).length || (st.strokes || []).length) this._hadContent = true;
-      const texts = (txr && txr.ok && txr.state && txr.state.texts) || {};
       const tag = (arr) => (arr || []).map((o) => Object.assign({}, o, { sm: true }));
-      const notes = tag(st.notes).map((n) => (texts[n.id] !== undefined && !n.text
-        ? Object.assign({}, n, { text: texts[n.id] }) : n));
       // 이 기기에 더 새로운 것이 있으면 알린다 / if this device holds something NEWER than what
       // came back, say so rather than quietly showing the older one. That gap is exactly
       // what a failed save looks like from here.
       this.offerLocal(pid, st.savedAt || 0);
       this.setState((s) => ({
         cards: s.cards.concat(tag(st.cards)),
-        notes: (s.notes || []).concat(notes),
+        notes: (s.notes || []).concat(tag(st.notes)),
         arrows: (s.arrows || []).concat(tag(st.arrows)),
         strokes: (s.strokes || []).concat(tag(st.strokes)),
         seq: Math.max(s.seq || 1, st.seq || 1)
@@ -1728,6 +1741,30 @@ class Component extends DCLogic {
         // older record, which is not in a tx: record at all. An analysis with no transcript
         // then matches and costs nothing; one with transcript gets migrated on the next
         // save. Seeding it with the loaded map instead would skip the migration entirely.
+        this._txSaved = '{}';
+      });
+    });
+    this.fetchTx(pid).then((txr) => {
+      if (this.state.viewPid !== pid) return;
+      this.loadTick('tx');
+      /* 실패와 "없음"은 다르다 / a FAILED read is not "there are no transcripts", and treating
+         them alike is how a board of empty boxes appeared over transcripts sitting safely on
+         the sheet — and worse, how one edit afterwards could write a transcript map missing
+         every other note's text. Only a real answer counts as an answer. */
+      if (!txr || !txr.ok) { this._txLoaded = false; this.setState({ txFail: true }); return; }
+      this._txLoaded = true;
+      const texts = (txr.state && txr.state.texts) || {};
+      // 비어 있는 쪽지에만 채운다 / fill only the notes that are still empty, so anything typed
+      // while the read was in flight is not overwritten by the version on the sheet
+      this._tsig = undefined;
+      this._ssig = undefined;
+      this.setState((s) => ({
+        txFail: false,
+        notes: (s.notes || []).map((n) => (n.sm && texts[n.id] !== undefined && !n.text
+          ? Object.assign({}, n, { text: texts[n.id] }) : n))
+      }), () => {
+        this._ssig = this.senseSig();
+        this._tsig = JSON.stringify(this.txMap());
         this._txSaved = '{}';
       });
     });
@@ -1870,6 +1907,43 @@ class Component extends DCLogic {
     } catch (e) {}
   }
 
+  /* 전사 읽기는 몇 번 더 시도한다 / read the transcripts with retries. This is the largest
+     thing on the wire — a whole interview, sliced across rows and reassembled server-side —
+     so it is both the likeliest to time out and the one where a timeout misread as "none"
+     does the most damage. */
+  fetchTx(pid, tries) {
+    const n = tries === undefined ? 2 : tries;
+    return this.jsonp('participant=' + encodeURIComponent(TX_PREFIX + pid)).then((r) => {
+      if (r && r.ok) { this._txLoaded = true; this.setState({ txFail: false }); return r; }
+      /* 실패는 바로 말한다 / say it at once. A dead JSONP is only noticed when its timeout
+         fires — an aborted script never raises an error event — so each attempt costs the
+         full timeout. Waiting for the retries to run out first would leave a board of empty
+         boxes for half a minute with nothing said. Warn now, retry underneath, and clear
+         the warning if it comes good. */
+      this._txLoaded = false;
+      if (this.state.viewPid === pid) this.setState({ txFail: true });
+      if (n <= 1 || this.state.viewPid !== pid) return r;
+      return new Promise((go) => setTimeout(go, 1500)).then(() => this.fetchTx(pid, n - 1));
+    });
+  }
+
+  retryTx() {
+    const pid = this.state.viewPid;
+    if (!pid) return;
+    this.setState({ txFail: false });
+    this.fetchTx(pid).then((txr) => {
+      if (this.state.viewPid !== pid) return;
+      if (!txr || !txr.ok) { this._txLoaded = false; this.setState({ txFail: true }); return; }
+      this._txLoaded = true;
+      const texts = (txr.state && txr.state.texts) || {};
+      this.setState((st) => ({
+        txFail: false,
+        notes: (st.notes || []).map((n) => (n.sm && texts[n.id] !== undefined && !n.text
+          ? Object.assign({}, n, { text: texts[n.id] }) : n))
+      }), () => { this._tsig = JSON.stringify(this.txMap()); });
+    });
+  }
+
   // 전사 본문만 모은 것 / just the transcript bodies, by note id
   txMap() {
     const out = {};
@@ -1888,6 +1962,10 @@ class Component extends DCLogic {
   pushTx() {
     const pid = this.state.viewPid, url = this.syncUrl();
     if (!this.isView() || !pid || !url || this.state.travel) return;
+    // 못 읽은 것을 덮어쓰지 않는다 / never write what this session could not read. With the
+    // transcripts unloaded the map in hand is missing every one of them, and writing it
+    // would replace an interview with nothing.
+    if (!this._txLoaded) return;
     this._txSaved = JSON.stringify(this.txMap());
     const key = TX_PREFIX + pid;
     const stamp = Date.now(), at = new Date().toISOString();
@@ -2347,6 +2425,7 @@ class Component extends DCLogic {
     this._senseLoaded = false;
     this._hadContent = false;
     this._clearing = false;
+    this._txLoaded = false;
     this.setState({
       viewPid: pid, rosterMsg: 'loading',
       loading: { done: 0, total: 3, label: '', pid: pid }
@@ -4263,6 +4342,8 @@ class Component extends DCLogic {
         ? (this.state.loading.done === 0 ? t.loadBoard
            : this.state.loading.done === 1 ? t.loadSense : t.loadTx)
         : '',
+      txFail: !!this.state.txFail && !!this.state.viewPid,
+      onRetryTx: () => this.retryTx(),
       recover: !!this.state.recover,
       recoverBody: this.state.recover
         ? (new Date(this.state.recover.at).toLocaleString() + t.recoverMid + this.state.recover.cards + t.recoverEnd)
