@@ -774,7 +774,7 @@ const SERVER_MIN = '2026-09-09a';
 // screen, so anyone reporting a problem can read it off without opening anything — "it does
 // not load" is a very different report from someone on last week's page than from someone
 // on today's. Bump it with any change worth telling apart.
-const APP_VERSION = '2026-09-09g';
+const APP_VERSION = '2026-09-09h';
 // 분석 메모는 두 종류 / two kinds of note in analysis mode, told apart by colour: the
 // gold one is the admin's own remark and matches the rest of the sensemaking layer;
 // the slate one holds transcript, which is somebody else's words, not the admin's.
@@ -1268,7 +1268,12 @@ class Component extends DCLogic {
         offset: el ? { w: el.offsetWidth, h: el.offsetHeight } : null,
         zoom: this.state.zoom, pan: this.state.pan,
         scrollY: window.scrollY, bodyScroll: document.body.scrollTop,
-        cssZoom: el ? getComputedStyle(el).zoom : null
+        cssZoom: el ? getComputedStyle(el).zoom : null,
+        /* 마지막으로 놓은 것 / the LAST drop, recorded as it happened: where the cursor was,
+           what board point that became, where the object was put, and where it then
+           painted. If the object paints away from the cursor the two disagree here, and
+           the row that is wrong says which step is wrong. */
+        drop: this._drop || null
       };
       console.log('[workshop] ' + JSON.stringify(d));
       return d;
@@ -3336,6 +3341,34 @@ class Component extends DCLogic {
     // An increment applied inside a functional updater is order-independent.
     this.drag = { kind: 'multi', lx: p.x, ly: p.y, set: set };
   }
+  /* 놓은 자리를 그대로 적어 둔다 / write the drop down exactly as it happened, so a report
+     of "it landed way off" can be read rather than guessed at. One frame later, so the
+     object has painted and its real position can be measured next to the intended one. */
+  traceDrop(kind, e, id, bx, by) {
+    const el = this.canvasRef.current;
+    const r = el ? el.getBoundingClientRect() : null;
+    const rec = {
+      kind: kind, id: id,
+      cursor: [Math.round(e.clientX), Math.round(e.clientY)],
+      board: [Math.round(bx), Math.round(by)],
+      zoom: this.state.zoom, pan: { x: Math.round(this.state.pan.x), y: Math.round(this.state.pan.y) },
+      scale: el ? +this.scaleOf(el).toFixed(4) : null,
+      rectTop: r ? Math.round(r.top) : null, rectLeft: r ? Math.round(r.left) : null
+    };
+    this._drop = rec;
+    setTimeout(() => {
+      const g = this.byId('card')[id] || this.byId('note')[id];
+      const gr = g ? g.getBoundingClientRect() : null;
+      const el2 = this.canvasRef.current;
+      const r2 = el2 ? el2.getBoundingClientRect() : null;
+      rec.painted = gr ? [Math.round(gr.left), Math.round(gr.top)] : null;
+      // 놓은 뒤 보드가 움직였는가 / did the board itself shift after the drop? A header that
+      // rewraps moves everything and the drop takes the blame for it
+      rec.boardMoved = r2 && r ? [Math.round(r2.left - r.left), Math.round(r2.top - r.top)] : null;
+      rec.offCursor = gr ? [Math.round(gr.left - e.clientX), Math.round(gr.top - e.clientY)] : null;
+    }, 60);
+  }
+
   onMove(e) {
     const d = this.drag;
     if (!d) return;
@@ -3432,7 +3465,11 @@ class Component extends DCLogic {
       return;
     }
     if (d.kind === 'marq') { this.setState({ marquee: null }); return; }
-    if (d.kind === 'move' || d.kind === 'note') { this.keepOutOfRegion(); }
+    if (d.kind === 'move' || d.kind === 'note') {
+      this.keepOutOfRegion();
+      const q = this.toCanvas(e.clientX, e.clientY);
+      this.traceDrop(d.kind, e, d.id, q.x - (d.ox || 0), q.y - (d.oy || 0));
+    }
     if (d.kind === 'multi') {
       // 드래그가 끝나면 한 번만 정수로 / round once, at the end
       this.setState((s) => ({
@@ -3460,8 +3497,11 @@ class Component extends DCLogic {
         // screen px -> canvas px: divide by board zoom and UI zoom.
         const k = (this.state.zoom || 1) * UI;
         // 이동 중에 정해진 좌표를 그대로 쓴다 / use the coordinate the ghost was drawn at
-        this.addCard(d.type, d.tpl, d.bx !== undefined ? d.bx : p.x + GHOST_DX / k,
-                                    d.by !== undefined ? d.by : p.y + GHOST_DY / k);
+        const nx = d.bx !== undefined ? d.bx : p.x + GHOST_DX / k;
+        const ny = d.by !== undefined ? d.by : p.y + GHOST_DY / k;
+        const nid = 'c' + this.state.seq;
+        this.addCard(d.type, d.tpl, nx, ny);
+        this.traceDrop('new', e, nid, nx, ny);
       }
       this.setState({ ghost: null });
     }

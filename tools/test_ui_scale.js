@@ -798,6 +798,18 @@ console.log("\nthe loading gate");
   // 영원히 잠기면 안 된다 / a stuck request must never lock the board for good
   check(/this\._loadGuard = setTimeout\(\(\) => this\.setState\(\{ loading: null \}\), 20000\)/.test(doc),
     "and it lifts on its own if something never comes back");
+
+  // 놓은 자리를 적어 둔다 / the drop records itself, so "it landed way off" can be read
+  check(/traceDrop\(kind, e, id, bx, by\)/.test(doc), "every drop is written down");
+  check(/this\.traceDrop\('new', e, nid, nx, ny\)/.test(doc), "a card dragged from the library");
+  check(/this\.traceDrop\(d\.kind, e, d\.id, q\.x - \(d\.ox \|\| 0\), q\.y - \(d\.oy \|\| 0\)\)/.test(doc),
+    "and a card or note moved on the board");
+  check(/rec\.offCursor = gr \? \[Math\.round\(gr\.left - e\.clientX\), Math\.round\(gr\.top - e\.clientY\)\]/.test(doc),
+    "measured against the cursor once it has painted");
+  // 보드가 움직인 것을 놓은 탓으로 돌리지 않게 / a header that rewraps moves the whole board, and
+  // the drop takes the blame — so record whether the board itself shifted
+  check(/rec\.boardMoved = /.test(doc), "and against a board that may have shifted underneath");
+  check(/drop: this\._drop \|\| null/.test(doc), "__wsDiag reports the last one");
   check(/clearTimeout\(this\._loadGuard\)/.test(doc), "with the guard cleared on the way out");
   // 판 번호는 눈에 보여야 한다 / the build has to be readable without opening anything: "it
   // does not load" means something different from someone on last week's page
