@@ -823,6 +823,46 @@ console.log("\nthe loading gate");
      change colour with it, which a colour stored on the code at creation cannot do. */
   check(/codeColor\(c\) \{/.test(doc), "a code's colour is worked out, not stored");
 
+  /* 탭 셋이 한 규칙을 써야 한다 / the three tabs must share one rule. 코드 was added later and
+     brought its own palette — transparent when unselected against the others' #f1efe8, a
+     different paper when selected, a different grey for its name, and a bottom rule the
+     others do not have. Two of three matching and the third not reads as meaning something
+     when it means nothing. */
+  {
+    const tok = (k) => (doc.match(new RegExp("tab" + k + ": [^\\n]*")) || [""])[0].replace(/tab\w+?(Bg|Fg|Bd): /, "");
+    ["Bg", "Fg", "Bd"].forEach((w) => {
+      const flow = tok("Flow" + w).replace("'flow'", "X");
+      const code = tok("Code" + w).replace("'code'", "X");
+      check(flow === code && flow !== "", `the 코드 tab shares the ${w} of the other two`,
+        ` (${flow} vs ${code})`);
+    });
+    // 한 깃발에 두 뜻 / the tab's existence and the deck's foldability were one flag
+    check(/hasCodeTab: viewing,/.test(doc) && /\{\{ hasCodeTab \}\}/.test(doc),
+      "and whether the tab exists is its own question, not the fold's");
+  }
+
+  /* 덱 제목 넷이 한 규칙을 따라야 한다 / the four deck headings must be built the same way.
+     They were not: ① and ② carried the numeral INSIDE a grey label with a grey swatch,
+     while ③ and ④ split the numeral out and coloured the label — and in ③ the numeral sat
+     after the swatch, so it read as belonging to 시점 alone when it leads 시점 AND 조건.
+     이제 번호 · 색점 · 이름 / numeral, then swatch, then the name in its deck's own colour. */
+  {
+    const heads = doc.match(/<span style="font-size:14px;font-weight:600;color:#6f6b62;min-width:15px">[①②③④]<\/span>/g) || [];
+    check(heads.length === 4, "all four deck headings lead with their numeral", ` (${heads.length})`);
+    check(!/">[①②③④] \{\{/.test(doc), "and none of them buries it inside the label");
+    // ③ 은 시점과 조건 둘 다를 이끈다 / the ③ leads both pairs, so it comes before the first swatch
+    const third = doc.slice(doc.indexOf("③"), doc.indexOf("t.guardHeadSub"));
+    check(third.indexOf("t.whenCards") < third.indexOf("t.trigCards"), "③ still names 시점 then 조건");
+    check(third.indexOf("③") < third.indexOf("background:oklch(0.62 0.100 68)"),
+      "with the numeral ahead of the first swatch, since it leads both");
+    // 이름은 그 덱의 색 / each name wears its own deck's colour
+    ["t.actCards", "t.meansCards", "t.whenCards", "t.conCards"].forEach((k) => {
+      const at = doc.indexOf("{{ " + k + " }}");
+      const span = doc.slice(doc.lastIndexOf("<span", at), at);
+      check(/color:(#6f6b62|oklch)/.test(span), "the " + k + " label is coloured, not left bare");
+    });
+  }
+
   /* 폴더 색은 한눈에 갈라져야 한다 / folder colours must separate at a glance. The first palette
      sat every entry at one lightness on a similar chroma and put two hues twenty degrees
      apart — colour-coding you have to squint at is worse than none, because it still looks

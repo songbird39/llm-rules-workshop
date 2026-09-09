@@ -318,11 +318,12 @@
         <div style="display:flex;gap:0;border-bottom:1px solid #ece9e1">
           <button onClick="{{ onTabFlow }}" style="flex:1;padding:10px 8px;border:none;border-bottom:2px solid {{ tabFlowBd }};background:{{ tabFlowBg }};color:{{ tabFlowFg }};font-size:12.5px;font-weight:600;cursor:pointer">{{ t.tabFlow }}</button>
           <button onClick="{{ onTabGuard }}" style="flex:1;padding:10px 8px;border:none;border-bottom:2px solid {{ tabGuardBd }};background:{{ tabGuardBg }};color:{{ tabGuardFg }};font-size:12.5px;font-weight:600;cursor:pointer">{{ t.tabGuard }}</button>
-          <!-- 접기는 덱 옆에 붙어 있어야 한다 / the fold belongs beside the thing it folds,
-               not adrift in the toolbar with the export buttons -->
-          <sc-if value="{{ canFold }}" hint-placeholder-val="{{ false }}">
+          <!-- 코드 탭은 관리자에게만 / the codes tab belongs to the admin view alone -->
+          <sc-if value="{{ hasCodeTab }}" hint-placeholder-val="{{ false }}">
             <button onClick="{{ onTabCode }}" style="flex:1;padding:10px 8px;border:none;border-bottom:2px solid {{ tabCodeBd }};background:{{ tabCodeBg }};color:{{ tabCodeFg }};font-size:12.5px;font-weight:600;cursor:pointer">{{ t.tabCode }}</button>
           </sc-if>
+          <!-- 접기는 덱 옆에 붙어 있어야 한다 / the fold belongs beside the thing it folds,
+               not adrift in the toolbar with the export buttons -->
           <sc-if value="{{ canFold }}" hint-placeholder-val="{{ false }}">
             <button onClick="{{ onTogglePanel }}" title="{{ t.panelHide }}" style="flex:0 0 30px;border:none;border-bottom:2px solid #ece9e1;background:transparent;color:#98958c;font-size:12px;line-height:1;cursor:pointer;padding:0" style-hover="color:#1b1a17;background:#f1efe8">◀</button>
           </sc-if>
@@ -407,8 +408,9 @@
 
       <sc-if value="{{ showFlow }}" hint-placeholder-val="{{ true }}">
       <div style="padding:16px 16px 4px;display:flex;align-items:baseline;gap:8px">
-        <span style="width:9px;height:9px;border-radius:2px;background:#8a877e;align-self:center"></span>
-        <span style="font-size:14px;font-weight:600;color:#6f6b62">① {{ t.actCards }}</span>
+        <span style="font-size:14px;font-weight:600;color:#6f6b62;min-width:15px">①</span>
+        <span style="width:9px;height:9px;border-radius:2px;background:#6f6b62;align-self:center"></span>
+        <span style="font-size:14px;font-weight:600;color:#6f6b62">{{ t.actCards }}</span>
         <span style="font-size:11.5px;color:#a7a49b">{{ t.actCardsSub }}</span>
       </div>
       <div style="display:flex;flex-direction:column;gap:8px;padding:8px 16px 18px">
@@ -422,8 +424,9 @@
         </sc-for>
       </div>
       <div style="padding:8px 16px 4px;display:flex;align-items:baseline;gap:8px;border-top:1px solid #ece9e1">
-        <span style="width:9px;height:9px;border-radius:2px;background:#8a877e;align-self:center"></span>
-        <span style="font-size:14px;font-weight:600;color:#6f6b62">② {{ t.meansCards }}</span>
+        <span style="font-size:14px;font-weight:600;color:#6f6b62;min-width:15px">②</span>
+        <span style="width:9px;height:9px;border-radius:2px;background:#6f6b62;align-self:center"></span>
+        <span style="font-size:14px;font-weight:600;color:#6f6b62">{{ t.meansCards }}</span>
         <span style="font-size:11.5px;color:#a7a49b">{{ t.meansCardsSub }}</span>
       </div>
       <div style="display:flex;flex-wrap:wrap;gap:8px;padding:8px 16px 18px">
@@ -437,8 +440,8 @@
       </sc-if>
       <sc-if value="{{ showGuard }}" hint-placeholder-val="{{ false }}">
       <div style="padding:8px 16px 4px;display:flex;align-items:baseline;gap:8px;border-top:1px solid #ece9e1">
+        <span style="font-size:14px;font-weight:600;color:#6f6b62;min-width:15px">③</span>
         <span style="width:9px;height:9px;border-radius:2px;background:oklch(0.62 0.100 68);align-self:center"></span>
-        <span style="font-size:14px;font-weight:600;color:#6f6b62">③</span>
         <span style="font-size:14px;font-weight:600;color:oklch(0.62 0.100 68)">{{ t.whenCards }}</span>
         <span style="font-size:14px;font-weight:600;color:#c9c6bd">·</span>
         <span style="width:9px;height:9px;border-radius:2px;background:oklch(0.45 0.100 32);align-self:center"></span>
@@ -474,8 +477,8 @@
         </sc-for>
       </div>
       <div style="padding:8px 16px 4px;display:flex;align-items:baseline;gap:8px;border-top:1px solid #ece9e1">
+        <span style="font-size:14px;font-weight:600;color:#6f6b62;min-width:15px">④</span>
         <span style="width:9px;height:9px;border-radius:2px;background:oklch(0.53 0.100 160);align-self:center"></span>
-        <span style="font-size:14px;font-weight:600;color:#6f6b62">④</span>
         <span style="font-size:14px;font-weight:600;color:oklch(0.53 0.100 160)">{{ t.conCards }}</span>
         <span style="font-size:11.5px;color:#a7a49b">{{ t.conCardsSub }}</span>
       </div>
@@ -811,7 +814,7 @@ const SERVER_MIN = '2026-09-09b';
 // screen, so anyone reporting a problem can read it off without opening anything — "it does
 // not load" is a very different report from someone on last week's page than from someone
 // on today's. Bump it with any change worth telling apart.
-const APP_VERSION = '2026-09-10c';
+const APP_VERSION = '2026-09-10e';
 // 분석 메모는 두 종류 / two kinds of note in analysis mode, told apart by colour: the
 // gold one is the admin's own remark and matches the rest of the sensemaking layer;
 // the slate one holds transcript, which is somebody else's words, not the admin's.
@@ -4613,9 +4616,19 @@ class Component extends DCLogic {
         onOpen: () => this.openParticipant(r.pid)
       })),
       showCodes: this.state.tab === 'code' && viewing,
-      tabCodeBd: this.state.tab === 'code' ? '#1b1a17' : '#ece9e1',
-      tabCodeBg: this.state.tab === 'code' ? '#fffefb' : 'transparent',
-      tabCodeFg: this.state.tab === 'code' ? '#1b1a17' : '#8a877e',
+      // 탭이 있느냐와 덱을 접을 수 있느냐는 다른 질문 / whether the tab exists and whether the
+      // deck can be folded are two questions, and they were riding on one flag
+      hasCodeTab: viewing,
+      /* 탭 셋은 한 규칙이어야 한다 / the three tabs must share one rule. 코드 was added later
+         and brought its own palette with it — a different ground when unselected
+         (transparent against #f1efe8), a different paper when selected, a different grey
+         for its name, and a visible bottom rule where the others have none. Three tabs in a
+         row, two of them a pair and the third an outsider: exactly the kind of difference
+         that reads as meaning something when it means nothing. Same tokens as 규칙 and
+         가드레일, so a tab looks like a tab. */
+      tabCodeBg: this.state.tab === 'code' ? '#faf8f3' : '#f1efe8',
+      tabCodeFg: this.state.tab === 'code' ? '#1b1a17' : '#98958c',
+      tabCodeBd: this.state.tab === 'code' ? '#1b1a17' : 'transparent',
       codeDraft: this.state.codeDraft || '',
       onCodeDraft: (e) => this.setState({ codeDraft: e.target.value }),
       onCodeKey: (e) => { if (e.key === 'Enter') this.addCode(); },
