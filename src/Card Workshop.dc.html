@@ -29,6 +29,10 @@
 <template id="__bundler_thumbnail"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200"><rect width="200" height="200" fill="#2f3b52"/><g transform="rotate(-8 100 100)"><rect x="58" y="62" width="84" height="60" rx="8" fill="#fff" opacity=".55"/></g><g transform="rotate(6 100 108)"><rect x="62" y="74" width="84" height="60" rx="8" fill="#fff"/><rect x="74" y="88" width="46" height="7" rx="3.5" fill="#2f3b52"/><rect x="74" y="102" width="60" height="5" rx="2.5" fill="#9aa5b8"/><rect x="74" y="113" width="38" height="5" rx="2.5" fill="#9aa5b8"/></g></svg></template>
 <div style="display:flex;flex-direction:column;height:calc(100vh / {{ ui }});zoom:{{ ui }};overflow:hidden">
 
+  <!-- 툴바가 다시 접히면 보드가 움직인다 / if this row re-wraps, the board below it MOVES — and
+       a board that jumps the instant you drop something looks exactly like the card landing
+       in the wrong place. It is not: the card is where you put it, and the board went up.
+       Every label in here that changes length therefore holds a fixed width. -->
   <div style="display:flex;flex-wrap:wrap;align-items:center;gap:10px 16px;min-height:58px;flex:0 0 auto;padding:9px 18px;background:#faf8f3;border-bottom:1px solid #e2dfd7">
     <!-- 뒤로 가는 길은 하나 / one way back, top left, always. For a participant it is the
          previous step; for the admin it is the list, which is what "back" means when you
@@ -48,7 +52,7 @@
           <span style="padding:3px 9px;border-radius:20px;background:#f7f0dc;color:#8a6a1f;font-size:11.5px;font-weight:600;white-space:nowrap">{{ t.viewBadge }}</span>
         </sc-if>
         <sc-if value="{{ showSync }}" hint-placeholder-val="{{ false }}">
-          <span style="display:inline-flex;align-items:center;gap:5px;padding:3px 8px;border-radius:20px;background:{{ syncBg }};font-size:11.5px;color:{{ syncColor }};white-space:nowrap">
+          <span style="display:inline-flex;align-items:center;justify-content:center;gap:5px;min-width:92px;padding:3px 8px;border-radius:20px;background:{{ syncBg }};font-size:11.5px;color:{{ syncColor }};white-space:nowrap">
             <span style="width:6px;height:6px;border-radius:50%;background:{{ syncDot }}"></span>{{ syncLabel }}
           </span>
         </sc-if>
@@ -77,9 +81,9 @@
           <button onClick="{{ onImg }}" style="padding:5px 9px;border:1px solid #d6d3ca;border-radius:6px;background:#fff;font-size:12.5px;cursor:pointer" style-hover="background:#f1efe8">{{ t.imgBtn }}</button>
           <button onClick="{{ onImgSense }}" style="padding:5px 9px;border:1px dashed oklch(0.62 0.11 62);border-radius:6px;background:#fdfbf5;color:#7a5a1f;font-size:12.5px;cursor:pointer">{{ t.imgSenseBtn }}</button>
           <button onClick="{{ onClearSense }}" style="padding:5px 8px;border:1px solid #e2dfd7;border-radius:6px;background:transparent;color:#98958c;font-size:12.5px;cursor:pointer" style-hover="color:#b03f34">{{ t.clearSenseBtn }}</button>
-          <label title="{{ t.upSenseTip }}" style="padding:5px 9px;border:1px solid #d6d3ca;border-radius:6px;background:#fff;font-size:12.5px;cursor:pointer" style-hover="background:#f1efe8">{{ upLabel }}<input type="file" accept="application/json,.json" onChange="{{ onUpSense }}" style="display:none" /></label>
+          <label title="{{ t.upSenseTip }}" style="display:inline-block;min-width:84px;text-align:center;padding:5px 9px;border:1px solid #d6d3ca;border-radius:6px;background:#fff;font-size:12.5px;cursor:pointer" style-hover="background:#f1efe8">{{ upLabel }}<input type="file" accept="application/json,.json" onChange="{{ onUpSense }}" style="display:none" /></label>
           <button onClick="{{ onDownSense }}" title="{{ t.downSenseTip }}" style="padding:5px 9px;border:1px solid #d6d3ca;border-radius:6px;background:#fff;font-size:12.5px;cursor:pointer" style-hover="background:#f1efe8">{{ t.downSense }}</button>
-          <button onClick="{{ onMark }}" title="{{ t.markTip }}" style="padding:5px 9px;border:1px dashed oklch(0.62 0.11 62);border-radius:6px;background:#fdfbf5;color:#7a5a1f;font-size:12.5px;cursor:pointer">{{ markLabel }}</button>
+          <button onClick="{{ onMark }}" title="{{ t.markTip }}" style="min-width:96px;padding:5px 9px;border:1px dashed oklch(0.62 0.11 62);border-radius:6px;background:#fdfbf5;color:#7a5a1f;font-size:12.5px;cursor:pointer">{{ markLabel }}</button>
           <button onClick="{{ onHistory }}" style="padding:5px 9px;border:1px solid #d6d3ca;border-radius:6px;background:#fff;font-size:12.5px;cursor:pointer" style-hover="background:#f1efe8">{{ t.histBtn }}</button>
         </sc-if>
         <sc-if value="{{ canDraw }}" hint-placeholder-val="{{ true }}">
@@ -102,7 +106,7 @@
         </sc-if>
         <sc-if value="{{ canEdit }}" hint-placeholder-val="{{ true }}">
         <sc-if value="{{ isStep1 }}" hint-placeholder-val="{{ true }}">
-          <span style="font-size:12.5px;color:#7a776f;margin-left:4px">{{ selLabel }}</span>
+          <span style="font-size:12.5px;color:#7a776f;margin-left:4px;min-width:64px;text-align:right">{{ selLabel }}</span>
           <button onClick="{{ goNext }}" style="padding:5px 16px;border:1px solid transparent;border-radius:6px;background:#1b1a17;color:#faf8f3;font-size:12.5px;cursor:pointer;opacity:{{ nextOpacity }}" style-hover="background:#35332c">{{ t.next }}</button>
         </sc-if>
         <sc-if value="{{ isStep2 }}" hint-placeholder-val="{{ false }}">
@@ -758,7 +762,7 @@ const SERVER_MIN = '2026-09-09a';
 // screen, so anyone reporting a problem can read it off without opening anything — "it does
 // not load" is a very different report from someone on last week's page than from someone
 // on today's. Bump it with any change worth telling apart.
-const APP_VERSION = '2026-09-09b';
+const APP_VERSION = '2026-09-09c';
 // 분석 메모는 두 종류 / two kinds of note in analysis mode, told apart by colour: the
 // gold one is the admin's own remark and matches the rest of the sensemaking layer;
 // the slate one holds transcript, which is somebody else's words, not the admin's.

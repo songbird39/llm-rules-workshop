@@ -416,6 +416,68 @@ module.exports = async function (browser) {
     await page.close();
   }
 
+  // ------------------------------------------------- 3e-ter. the board must not jump
+  // 카드가 엉뚱한 데 놓이는 것처럼 보였다 / a card appeared to land well above where it was
+  // dropped. It did not: the BOARD moved. The sync pill's text changes length as it saves,
+  // the toolbar re-wraps at a narrow layout width, the header loses a line and everything
+  // below it jumps up — right at the moment of the drop, so the drop takes the blame.
+  // Reproduced from a real report: a window opened wide (UI 1.35) and then shrunk to 1430,
+  // which leaves the toolbar sitting exactly on a wrap boundary.
+  say("\nthe header holds its height, so the board never jumps under a drop");
+  {
+    const page = await browser.newPage({ viewport: { width: 2400, height: 1000 } });
+    const errors = [];
+    page.on("pageerror", (e) => errors.push(e.message));
+    await page.route("**/macros/s/**", (r) => r.fulfill({ status: 200, body: "{}" }));
+    await page.goto(APP, { waitUntil: "load", timeout: 120000 });
+    await page.waitForSelector('input[placeholder="P0000"]', { timeout: 120000 });
+    await page.fill('input[placeholder="P0000"]', "JMP");
+    await page.getByText("시작하기", { exact: false }).click();
+    await page.waitForSelector("text=무엇을 하나요?", { timeout: 30000 });
+    // 크게 열고 줄인다 / opened wide, then shrunk: UI stays at the wide rung
+    await page.setViewportSize({ width: 1430, height: 1323 });
+    await page.waitForTimeout(600);
+    const diag = await page.evaluate(() => window.__wsDiag());
+    check(diag.UI > 1.2, "UI is left at the scale the window opened at", ` (${diag.UI})`);
+
+    const geo = () => page.evaluate(() => {
+      const L = [...document.querySelectorAll("div")].find((d) => d.style.width === "5000px");
+      return Math.round(L.parentElement.getBoundingClientRect().top);
+    });
+    const cb = await (await page.$('div[style*="radial-gradient"]')).boundingBox();
+    const tile = await page.evaluate(() => {
+      const t = [...document.querySelectorAll("div")].filter((x) => getComputedStyle(x).cursor === "grab")[0];
+      const r = t.getBoundingClientRect();
+      return { x: r.x, y: r.y, h: r.height };
+    });
+    const top0 = await geo();
+    const tx = cb.x + cb.width * 0.5, ty = cb.y + cb.height * 0.45;
+    await page.mouse.move(tile.x + 40, tile.y + tile.h / 2);
+    await page.mouse.down();
+    await page.waitForTimeout(60);
+    await page.mouse.move(tx, ty, { steps: 10 });
+    await page.waitForTimeout(200);
+    const ghost = await page.evaluate(() => {
+      const g = [...document.querySelectorAll("div")].find((x) => x.style.position === "fixed" && x.style.pointerEvents === "none");
+      const r = g.getBoundingClientRect();
+      return { x: Math.round(r.x), y: Math.round(r.y) };
+    });
+    await page.mouse.up();
+    await page.waitForTimeout(600);
+    const top1 = await geo();
+    check(top1 === top0, "the board does not move when the card lands", ` (${top0} -> ${top1})`);
+    const landed = await page.evaluate(() => {
+      const L = [...document.querySelectorAll("div")].find((d) => d.style.width === "5000px");
+      const r = [...L.querySelectorAll(':scope > [data-obj="card"]')].pop().getBoundingClientRect();
+      return { x: Math.round(r.x), y: Math.round(r.y) };
+    });
+    check(Math.abs(landed.y - ghost.y) <= 2 && Math.abs(landed.x - ghost.x) <= 2,
+      "and the card lands exactly where the ghost showed it",
+      ` (ghost ${ghost.x},${ghost.y} -> landed ${landed.x},${landed.y})`);
+    check(errors.length === 0, "no console errors", errors.length ? ` (${errors[0]})` : "");
+    await page.close();
+  }
+
   // ------------------------------------------------- 3f. arrows to anything
   say("\narrows attach to cards, notes and empty space");
   {

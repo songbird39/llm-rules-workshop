@@ -321,6 +321,19 @@ back, so nothing can be locked out of its own work.
 means something different from someone on last week's page; bump it with any change worth
 telling apart.
 
+## The header must hold its height
+
+A card appeared to land well above where it was dropped. It did not — the **board** moved.
+The sync pill's text changes length as it saves, the toolbar re-wraps at a narrow layout
+width, the header loses a line and everything below it jumps up, right at the moment of the
+drop, so the drop takes the blame. Every label in that row that changes length now holds a
+fixed width.
+
+The reproduction matters more than the fix: open the window wide, then shrink it. `UI` is a
+constant computed once at load, so a window opened at 2400 and shrunk to 1430 keeps the 1.35
+rung and sits exactly on a wrap boundary. `__wsDiag()` in the console reports `UI` beside the
+measured scale, which is what made this findable at all.
+
 ## Pointer maths: measure, never assume
 
 Every conversion between the screen and the board asks `scaleOf(el)` — the element's
