@@ -857,8 +857,24 @@ module.exports = async function (browser) {
     });
     await page.getByText("새로고침", { exact: true }).first().click();
     await page.waitForTimeout(1200);
+    check(!(await page.evaluate(() => document.body.innerText.includes("이 페이지가 오래되었습니다"))),
+      "a server that is merely newer does not accuse the page of being stale");
+
+    // 그리고 정말로 낡았을 때만 / and only when the deployment declares it has dropped this page
+    await page.unroute("**/macros/s/**");
+    await page.route("**/macros/s/**", async (route) => {
+      const u = new URL(route.request().url());
+      if (route.request().method() === "POST") return route.fulfill({ status: 200, body: "{}" });
+      const cb = u.searchParams.get("callback");
+      const out = u.searchParams.get("list")
+        ? { ok: true, version: "2099-01-01", pageMin: "2099-01-01", participants: [{ participant: "P9", rows: 3, submits: 1, lastAt: "2026-08-29T10:00:00Z" }] }
+        : { ok: true, version: "2099-01-01", pageMin: "2099-01-01", state: null };
+      return route.fulfill({ status: 200, contentType: "application/javascript", body: cb + "(" + JSON.stringify(out) + ");" });
+    });
+    await page.getByText("새로고침", { exact: true }).first().click();
+    await page.waitForTimeout(1200);
     check(await page.evaluate(() => document.body.innerText.includes("이 페이지가 오래되었습니다")),
-      "a newer server tells the page it is the one out of date");
+      "a deployment that has dropped this page does say so");
     check(!(await page.evaluate(() => document.body.innerText.includes("Apps Script가 오래되었습니다"))),
       "and does not blame the deployment for it");
     check(errors.length === 0, "no console errors", errors.length ? ` (${errors[0]})` : "");

@@ -792,7 +792,7 @@ const SERVER_MIN = '2026-09-09b';
 // screen, so anyone reporting a problem can read it off without opening anything — "it does
 // not load" is a very different report from someone on last week's page than from someone
 // on today's. Bump it with any change worth telling apart.
-const APP_VERSION = '2026-09-09s';
+const APP_VERSION = '2026-09-09t';
 // 분석 메모는 두 종류 / two kinds of note in analysis mode, told apart by colour: the
 // gold one is the admin's own remark and matches the rest of the sensemaking layer;
 // the slate one holds transcript, which is somebody else's words, not the admin's.
@@ -4000,12 +4000,14 @@ class Component extends DCLogic {
         // deployment carries a version, so its ABSENCE on one is what "old" looks like.
         if (!res || !res.ok) return;
         const stale = !res.version || res.version < SERVER_MIN;
-        // 반대 방향도 있다 / it goes the other way too, and that direction bit hard: a
-        // deployment NEWER than the page this build was written against means a newer page
-        // exists and this one is cached. The roster then reads fields the server has stopped
-        // sending — every participant came out "열리지 않음" because a missing field was being
-        // read as a broken record.
-        const behind = !!res.version && res.version > SERVER_MIN;
+        /* 반대 방향은 서버가 말해 준다 / the other direction is the SERVER's to declare. It used
+           to be inferred — any deployment newer than the one this build was written against
+           was taken as proof the page was a stale cache — so every ordinary server-side fix
+           accused a page that was perfectly current, and the accusation was specific and
+           alarming and wrong. Only the server knows which pages it has stopped serving
+           properly, so only the server says so, and a deployment that does not say it is
+           not evidence of anything. */
+        const behind = !!res.pageMin && APP_VERSION < res.pageMin;
         if (!!this.state.oldServer !== stale) this.setState({ oldServer: stale });
         if (!!this.state.oldPage !== behind) this.setState({ oldPage: behind });
       };

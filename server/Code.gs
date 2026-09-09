@@ -21,7 +21,13 @@
 // across several rows and an old deployment cannot reassemble them, so analysis saves
 // appear to work and then will not load. The client compares this against what it needs
 // and says so plainly instead of leaving you to guess.
-var VERSION = '2026-09-09c';
+var VERSION = '2026-09-09d';
+/* 이 배포가 감당하는 가장 오래된 페이지 / the OLDEST page this deployment still answers
+   correctly. 페이지가 낡았다는 경고는 서버만이 알 수 있다 — the page cannot know, and it used to
+   guess: any server newer than the one it was built against was read as "this page must be
+   a stale cache", so an ordinary server-side bugfix accused a perfectly current page.
+   Raise this only when a deployment actually stops sending something older pages read. */
+var PAGE_MIN = '2026-09-09b';
 
 var SHEET_NAME = 'responses';
 // 코드북은 참여자 기록과 다른 시트에 산다 / the codebook lives on its own sheet. It is GLOBAL —
@@ -196,6 +202,7 @@ function doGet(e) {
     out = { ok: true, rows: Math.max(0, sheet_().getLastRow() - 1) };
   }
   out.version = VERSION;
+  out.pageMin = PAGE_MIN;
   if (p.callback) {
     return ContentService
       .createTextOutput(p.callback + '(' + JSON.stringify(out) + ');')

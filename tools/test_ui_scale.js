@@ -910,11 +910,15 @@ console.log("\nthe loading gate");
     "a failed read is not evidence about the deployment either way");
   check(/const stale = !res\.version \|\| res\.version < SERVER_MIN;/.test(doc),
     "and a real answer with no version at all is what an old deployment looks like");
-  // 반대 방향 / and the other direction, which is the one that actually bit: a cached page
-  // against a newer server reads fields the server has stopped sending, and every
-  // participant came out "열리지 않음" because missing was being read as broken
-  check(/const behind = !!res\.version && res\.version > SERVER_MIN;/.test(doc),
-    "a server newer than this page means the PAGE is the stale half");
+  /* 반대 방향은 서버가 말한다 / the other direction is the server's to DECLARE. Inferring it
+     from "the server is newer than what I was built against" made every ordinary
+     server-side fix accuse a perfectly current page of being a stale cache. */
+  check(/const behind = !!res\.pageMin && APP_VERSION < res\.pageMin;/.test(doc),
+    "the page is called stale only when the server says which pages it has dropped");
+  check(/var PAGE_MIN = /.test(gs) && /out\.pageMin = PAGE_MIN;/.test(gs),
+    "which the server sends on every reply");
+  check(!/const behind = !!res\.version/.test(doc),
+    "and never inferred from the server merely being newer");
   check(/oldPage: !!this\.state\.oldPage && !!this\.state\.admin/.test(doc), "and it says so");
   // 없는 값은 고장이 아니다 / a missing field is unknown, never broken
   check(/r\.smReadable === undefined \? t\.smSaves \+ r\.smRows/.test(doc),
