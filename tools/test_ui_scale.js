@@ -832,8 +832,28 @@ console.log("\nthe loading gate");
     "producing both a shape to compute over and a document to read");
   check(/\(byset\[k\] \|\| \(byset\[k\] = \{ members: live, codes: \[\] \}\)\)\.codes\.push\(book\[g\.code\]\);/.test(doc),
     "with every code on one set kept in the same block");
-  check(/c\.x < t\.x \+ TAG_W && \(c\.x \+ \(c\.w \|\| CARD\)\) > t\.x && c\.y > t\.y/.test(doc),
+  check(/c\.x < t\.x \+ \(t\.w \|\| TAG_W\) && \(c\.x \+ \(c\.w \|\| CARD\)\) > t\.x && c\.y > t\.y/.test(doc),
     "and a card filed under the activity tag it sits beneath");
+  /* 놓인 차례가 아니라 놓인 자리 / never the order things were placed in, only where they ended
+     up — and read in ROWS, since sorting by x alone turns a wrapped board into one long line
+     while sorting by y alone throws the timeline away. */
+  check(/const rowOf = \(o\) => Math\.round\(o\.y \/ BAND\);/.test(doc) &&
+    /const byPlace = \(a, b\) => \(rowOf\(a\) - rowOf\(b\)\) \|\| \(a\.x - b\.x\)/.test(doc),
+    "everything is ordered by position, banded into rows");
+  {
+    // 이 함수 안에서만 / scoped to the export itself: `rows()` elsewhere is the板 layout code
+    const fn = doc.slice(doc.indexOf("exportShape(meta, dump, codes) {"), doc.indexOf("exportMarkdown(j) {"));
+    check(!/\.sort\(\(a, b\) => a\.y - b\.y/.test(fn) && !/\.sort\(\(a, b\) => a\.x - b\.x/.test(fn),
+      "with no leftover ordering inside it that ignores rows");
+    check((fn.match(/sort\(byPlace\)/g) || []).length >= 4,
+      "every list in it ordered the same way", ` (${(fn.match(/sort\(byPlace\)/g) || []).length} places)`);
+  }
+  // 해석 보드만 / the ANALYSIS board only — the participant's own board is not even fetched
+  check(/layer: 'analysis-board-only'/.test(doc), "the export says which layer it covers");
+  check(/const cards = \(sense\.cards \|\| \[\]\)\.filter\(\(c\) => c\.sm\);/.test(doc),
+    "and takes only what is on the analysis board");
+  check(!/get\('participant=' \+ encodeURIComponent\(pid\)\)/.test(doc),
+    "the participant's own board is not read at all");
   check(/const n = tries === undefined \? 4 : tries;/.test(doc),
     "every read retried, since this sheet drops one now and then");
   check(/console\.error\('\[export\]'/.test(doc),

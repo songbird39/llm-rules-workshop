@@ -819,7 +819,7 @@ const SERVER_MIN = '2026-09-09b';
 // screen, so anyone reporting a problem can read it off without opening anything — "it does
 // not load" is a very different report from someone on last week's page than from someone
 // on today's. Bump it with any change worth telling apart.
-const APP_VERSION = '2026-09-10g';
+const APP_VERSION = '2026-09-10h';
 // 분석 메모는 두 종류 / two kinds of note in analysis mode, told apart by colour: the
 // gold one is the admin's own remark and matches the rest of the sensemaking layer;
 // the slate one holds transcript, which is somebody else's words, not the admin's.
@@ -2289,15 +2289,17 @@ class Component extends DCLogic {
       if (i >= list.length) return Promise.resolve();
       const pid = list[i].participant;
       this.setState({ exporting: (i + 1) + '/' + list.length });
+      /* 해석 보드만 / the ANALYSIS board only. That is where the reading happened — what was
+         duplicated in, what was written, what was coded — and it is the layer the codings
+         point at. Reading the participant's own board as well only offered a second copy of
+         the same cards under different ids. Two requests a participant instead of three. */
       return Promise.all([
-        get('participant=' + encodeURIComponent(pid)),
         get('participant=' + encodeURIComponent('sm:' + pid)),
         get('participant=' + encodeURIComponent(TX_PREFIX + pid))
       ]).then((r) => {
         dump[pid] = {
-          board: r[0] && r[0].state ? r[0].state : null,
-          sense: r[1] && r[1].state ? r[1].state : null,
-          texts: (r[2] && r[2].state && r[2].state.texts) || {}
+          sense: r[0] && r[0].state ? r[0].state : null,
+          texts: (r[1] && r[1].state && r[1].state.texts) || {}
         };
         return one(i + 1, list);
       });
@@ -2333,27 +2335,36 @@ class Component extends DCLogic {
   exportShape(meta, dump, codes) {
     const book = {};
     (codes.codebook || []).forEach((c) => { if (!c.deleted) book[c.id] = c; });
+    /* 줄 단위로 읽는다 / read it in ROWS. Sorting by x alone treats a board that has wrapped
+       onto a second row as one long line, and sorting by y alone throws the timeline away.
+       So: band the y, then go left to right within the band. 놓인 차례는 쓰지 않는다 / the order
+       things were placed in is never consulted — only where they ended up, because that is
+       what the person arranged and what they would read back. */
+    const BAND = 140;
+    const rowOf = (o) => Math.round(o.y / BAND);
+    const byPlace = (a, b) => (rowOf(a) - rowOf(b)) || (a.x - b.x) || (a.y - b.y);
     const out = {
       generatedAt: new Date().toISOString(), app: APP_VERSION,
+      layer: 'analysis-board-only',
       codebook: (codes.codebook || []).filter((c) => !c.deleted)
         .map((c) => ({ id: c.id, folder: c.folder || '', name: c.name })),
       participants: []
     };
     meta.forEach((m) => {
       const d = dump[m.pid];
-      if (!d) return;
-      const board = d.board || { cards: [], notes: [] };
-      const sense = d.sense || { cards: [], notes: [] };
+      if (!d || !d.sense) return;
+      const sense = d.sense;
       const texts = d.texts || {};
+      // 해석 보드에 있는 것만 / only what is ON the analysis board
+      const cards = (sense.cards || []).filter((c) => c.sm);
+      const notes = (sense.notes || []).filter((n) => n.sm);
       const idx = {};
-      (board.cards || []).forEach((c) => { idx[c.id] = { kind: 'card', layer: 'board', o: c }; });
-      (board.notes || []).forEach((n) => { idx[n.id] = { kind: 'note', layer: 'board', o: n }; });
-      (sense.cards || []).forEach((c) => { idx[c.id] = { kind: 'card', layer: 'analysis', o: c }; });
-      (sense.notes || []).forEach((n) => { idx[n.id] = { kind: 'note', layer: 'analysis', o: n }; });
+      cards.forEach((c) => { idx[c.id] = { kind: 'card', o: c }; });
+      notes.forEach((n) => { idx[n.id] = { kind: 'note', o: n }; });
       const say = (id) => {
         const e = idx[id];
         if (!e) return { id: id, missing: true, x: 0, y: 0 };
-        const o = e.o, r = { id: id, kind: e.kind, layer: e.layer, x: Math.round(o.x), y: Math.round(o.y) };
+        const o = e.o, r = { id: id, kind: e.kind, x: Math.round(o.x), y: Math.round(o.y) };
         if (e.kind === 'card') {
           r.type = o.type;
           if (o.dia) r.diagram = o.dia;
@@ -2365,26 +2376,24 @@ class Component extends DCLogic {
           r.text = (o.text && o.text.length) ? o.text : (texts[o.id] || '');
           if (o.link) r.attachedTo = o.link;
         }
-        if (e.layer === 'analysis') {
-          r.origin = o.src === 'p' ? 'copied-from-participant' : 'written-in-analysis';
-          if (o.of) r.copyOf = o.of;
-          r.editedInAnalysis = !!o.edited;
-        }
+        r.origin = o.src === 'p' ? 'copied-from-participant' : 'written-in-analysis';
+        if (o.of) r.copyOf = o.of;
+        r.editedInAnalysis = !!o.edited;
         return r;
       };
-      const own = (board.cards || []).filter((c) => !c.sm);
-      const tags = own.filter((c) => c.type === 'act').sort((a, b) => a.x - b.x || a.y - b.y);
-      const rest = own.filter((c) => c.type !== 'act');
+      const tags = cards.filter((c) => c.type === 'act').slice().sort(byPlace);
+      const rest = cards.filter((c) => c.type !== 'act');
       const used = {};
       const steps = tags.map((t, i) => {
-        const under = rest.filter((c) => !used[c.id] && c.x < t.x + TAG_W && (c.x + (c.w || CARD)) > t.x && c.y > t.y);
+        // 그 태그 아래에 있는 것 / what sits UNDER this tag: overlapping in x, below in y
+        const under = rest.filter((c) => !used[c.id] &&
+          c.x < t.x + (t.w || TAG_W) && (c.x + (c.w || CARD)) > t.x && c.y > t.y);
         under.forEach((c) => { used[c.id] = 1; });
-        under.sort((a, b) => a.y - b.y || a.x - b.x);
+        under.sort(byPlace);
         return { order: i + 1, tag: say(t.id), cards: under.map((c) => say(c.id)) };
       });
-      const loose = rest.filter((c) => !used[c.id]).sort((a, b) => a.y - b.y || a.x - b.x).map((c) => say(c.id));
-      const notes = (sense.notes || []).filter((n) => n.sm)
-        .sort((a, b) => a.y - b.y || a.x - b.x).map((n) => say(n.id));
+      const loose = rest.filter((c) => !used[c.id]).slice().sort(byPlace).map((c) => say(c.id));
+      const noteList = notes.slice().sort(byPlace).map((n) => say(n.id));
       const byset = {};
       (codes.codings || []).forEach((g) => {
         if (g.participant !== m.pid || g.deleted || !book[g.code]) return;
@@ -2395,7 +2404,7 @@ class Component extends DCLogic {
       });
       const clusters = Object.keys(byset).map((k) => {
         const c = byset[k];
-        const mem = c.members.map(say).sort((a, b) => a.y - b.y || a.x - b.x);
+        const mem = c.members.map(say).sort(byPlace);
         let x0 = Infinity, y0 = Infinity;
         mem.forEach((e) => { x0 = Math.min(x0, e.x); y0 = Math.min(y0, e.y); });
         return {
@@ -2403,11 +2412,11 @@ class Component extends DCLogic {
             .sort((a, b) => a.folder.localeCompare(b.folder) || a.name.localeCompare(b.name)),
           at: { x: x0, y: y0 }, members: mem
         };
-      }).sort((a, b) => a.at.y - b.at.y || a.at.x - b.at.x);
+      }).sort((a, b) => byPlace(a.at, b.at));
       out.participants.push({
         id: m.pid, label: m.desc || '', lastSavedAt: m.lastAt,
         workflow: { steps: steps, unattachedCards: loose },
-        analysisNotes: notes, codedClusters: clusters
+        analysisNotes: noteList, codedClusters: clusters
       });
     });
     return out;

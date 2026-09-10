@@ -539,25 +539,36 @@ module.exports = async function (browser) {
     // shaping does not surface as "could not read the roster"
     const logs = [];
     page.on("console", (m) => logs.push(m.text().slice(0, 300)));
-    const board = (pid, x) => ({
-      savedAt: Date.now(), pid: pid, step: 2, lang: "ko", rules: [],
-      cards: [
-        { id: "a2", type: "act", title: "두 번째 활동", desc: "", dia: null, collapsed: false, w: 352, x: 800, y: 100 },
-        { id: "a1", type: "act", title: "첫 번째 활동", desc: "", dia: null, collapsed: false, w: 352, x: 100, y: 100 },
-        { id: "u1", type: "con", title: "질문 제안", desc: "도움이 될 질문을 던진다", dia: "h_ask", collapsed: false, w: 168, x: 120, y: 300 },
-      ],
-      notes: [], arrows: [], seq: 9, panelW: 566,
-    });
+    /* 해석 보드만 쓴다 / the export reads the ANALYSIS board only, so that is what this seeds.
+       놓인 차례가 아니라 자리 / and the objects are stored in an order that has nothing to do with
+       where they sit, so anything that leaned on array order comes out wrong. */
     const analysis = {
       savedAt: Date.now(), pid: "sm:P9", step: 2, lang: "ko", rules: [],
-      cards: [{ id: "s1", type: "con", title: "질문 제안", desc: "고친 설명", dia: "h_ask",
-                collapsed: false, w: 168, x: 900, y: 400, sm: true, src: "p", of: "u1", edited: true }],
+      cards: [
+        // 두 번째 줄이 먼저 저장돼 있다 / the SECOND row is stored first
+        { id: "b1", type: "act", title: "둘째 줄 활동", desc: "", dia: null, collapsed: false,
+          w: 352, x: 100, y: 900, sm: true, src: "p", of: "z9" },
+        { id: "a2", type: "act", title: "오른쪽 활동", desc: "", dia: null, collapsed: false,
+          w: 352, x: 800, y: 100, sm: true, src: "p", of: "z2" },
+        { id: "a1", type: "act", title: "왼쪽 활동", desc: "", dia: null, collapsed: false,
+          w: 352, x: 100, y: 100, sm: true, src: "p", of: "z1" },
+        { id: "s1", type: "con", title: "질문 제안", desc: "고친 설명", dia: "h_ask", collapsed: false,
+          w: 168, x: 120, y: 300, sm: true, src: "p", of: "z3", edited: true },
+        { id: "s2", type: "con", title: "개입 없음", desc: "", dia: "h_self", collapsed: false,
+          w: 168, x: 2000, y: 2000, sm: true, src: "a" },
+      ],
       notes: [{ id: "n1", x: 900, y: 600, text: "", kind: "tx", sm: true, src: "a" }],
-      arrows: [], strokes: [], seq: 20,
+      arrows: [], strokes: [], seq: 40,
     };
     const { srv } = await realServer(page, {
       seed: (s) => {
-        s.post({ participant: "P9", kind: "autosave", payload: { participant: "P9", state: board("P9") } });
+        // 참여자 보드도 시트에는 있다 / the participant's own board is on the sheet too — and must
+        // NOT appear in the export, which is the point of the layer being fixed
+        s.post({ participant: "P9", kind: "autosave", payload: { participant: "P9", state: {
+          savedAt: Date.now(), pid: "P9", step: 2, lang: "ko", rules: [],
+          cards: [{ id: "z1", type: "act", title: "참여자 원본 태그", desc: "", dia: null,
+                    collapsed: false, w: 352, x: 100, y: 100 }],
+          notes: [], arrows: [], seq: 9, panelW: 566 } } });
         s.post({ participant: "sm:P9", kind: "sensemaking", payload: { participant: "sm:P9", state: analysis } });
         s.post({ participant: "tx:P9", kind: "transcript",
                  payload: { participant: "tx:P9", state: { texts: { n1: "참여자가 말한 것" }, cards: [] } } });
@@ -602,11 +613,20 @@ module.exports = async function (browser) {
     const md = files[names.find((n) => n.endsWith(".md"))] || "";
     const js = JSON.parse(files[names.find((n) => n.endsWith(".json"))] || "{}");
     // 자리가 곧 순서 / the tags come out in the order they were laid, not the order they were stored
-    check(md.indexOf("첫 번째 활동") < md.indexOf("두 번째 활동"),
-      "activity tags come out left to right, not in storage order");
-    check(/### 1\. 첫 번째 활동/.test(md), "numbered as steps");
-    check(md.includes("- **질문 제안**  _(`con`, diagram `h_ask`)_"),
-      "a card keeps its type and its diagram");
+    check(/### 1\. 왼쪽 활동/.test(md) && /### 2\. 오른쪽 활동/.test(md) && /### 3\. 둘째 줄 활동/.test(md),
+      "tags are ordered by where they sit, not by the order they were stored",
+      ` (${(md.match(/### \d\. [^\n]*/g) || []).join(" | ")})`);
+    // 줄이 바뀌면 다시 왼쪽부터 / a second row starts again from the left rather than continuing
+    check(md.indexOf("왼쪽 활동") < md.indexOf("오른쪽 활동") &&
+      md.indexOf("오른쪽 활동") < md.indexOf("둘째 줄 활동"),
+      "and a wrapped row is read after the first, not merged into it");
+    check(!md.includes("참여자 원본 태그"),
+      "the participant's own board is not in the export at all");
+    check(md.includes("- **질문 제안**  _(`con`, diagram `h_ask`, copied, **edited**)_"),
+      "a card keeps its type, its diagram and where it came from",
+      ` (${(md.match(/- \*\*질문 제안[^\n]*/) || [""])[0]})`);
+    check(/- \*\*개입 없음\*\*  _\(`con`, diagram `h_self`, written\)_/.test(md),
+      "and one written in the analysis says so instead of claiming to be a copy");
     check(/묶음 1 — friction\/ease-desirable · value\/commitment/.test(md),
       "both codes on one set stay in ONE block", ` (${(md.match(/### 묶음[^\n]*/) || [""])[0]})`);
     check(md.includes("참여자가 말한 것"), "and the transcript body is in it, pulled from the tx record");
