@@ -24,7 +24,14 @@
   so they cannot disagree. 시트를 읽기만 하고 아무것도 쓰지 않습니다 / it only reads.
 </p>
 <button id="go">내보내기 / export</button>
+<button id="copy" disabled>markdown 복사 / copy</button>
+<button id="copyjson" disabled>json 복사 / copy</button>
 <div id="log">준비됨 / ready.</div>
+<!-- 내려받기가 어디로 갔는지 모를 때가 있다 / a download lands wherever the browser puts it, and
+     that is not always findable. 그래서 글자로도 꺼낼 수 있게 / so the text is also offered
+     directly: copy it and paste it wherever you actually want the file. -->
+<textarea id="out" style="width:100%;height:40vh;margin-top:16px;display:none;
+  font:11.5px/1.5 ui-monospace,Menlo,monospace;border:1px solid #e2dfd7;border-radius:10px;padding:12px"></textarea>
 
 <script>
 /* 이 파일을 그냥 브라우저로 열면 됩니다 / just open this file in a browser. It talks to the Apps
@@ -256,11 +263,27 @@ document.getElementById("go").onclick = async (e) => {
   const j = shape(meta, dump, codes);
   const md = markdown(j);
   const stamp = new Date().toISOString().slice(0, 10);
+  const jsonText = JSON.stringify(j, null, 2);
   save("workshop-export-" + stamp + ".md", md);
-  setTimeout(() => save("workshop-export-" + stamp + ".json", JSON.stringify(j, null, 2)), 1200);
+  setTimeout(() => save("workshop-export-" + stamp + ".json", jsonText), 1200);
+  /* 내려받기가 어디로 갔는지 모를 수 있다 / the download goes wherever the browser puts it, which is
+     not always somewhere findable — so keep the text to hand as well. */
+  const ta = document.getElementById("out");
+  ta.style.display = "block"; ta.value = md;
+  document.getElementById("copy").disabled = false;
+  document.getElementById("copyjson").disabled = false;
+  document.getElementById("copy").onclick = () => {
+    ta.value = md; ta.select(); document.execCommand("copy");
+    say("markdown 복사됨 / copied — " + md.length.toLocaleString() + " chars");
+  };
+  document.getElementById("copyjson").onclick = () => {
+    ta.value = jsonText; ta.select(); document.execCommand("copy");
+    say("json 복사됨 / copied — " + jsonText.length.toLocaleString() + " chars");
+  };
   say("\n내려받았습니다 / downloaded  ·  " + md.length.toLocaleString() + " chars markdown, " +
       j.participants.length + " participants, " +
       j.participants.reduce((a, p) => a + p.codedClusters.length, 0) + " coded clusters");
+  say("찾을 수 없으면 아래 상자에서 복사하세요 / if you cannot find the download, copy from the box below.");
   e.target.disabled = false;
 };
 </script>
