@@ -264,6 +264,7 @@
           <button onClick="{{ onModeDesc }}" style="padding:6px 12px;border:1px solid #d6d3ca;border-radius:7px;background:{{ descBtnBg }};color:{{ descBtnFg }};font-size:13px;cursor:pointer" style-hover="background:#faf8f3">{{ t.descMode }}</button>
           <button onClick="{{ onModeHide }}" style="padding:6px 12px;border:1px solid #d6d3ca;border-radius:7px;background:{{ hideBtnBg }};color:{{ hideBtnFg }};font-size:13px;cursor:pointer" style-hover="background:#faf8f3">{{ t.hideMode }}</button>
           <button onClick="{{ onToggleHidden }}" style="padding:6px 12px;border:1px solid #d6d3ca;border-radius:7px;background:{{ hiddenBtnBg }};color:{{ hiddenBtnFg }};font-size:13px;cursor:pointer" style-hover="background:#faf8f3">{{ hiddenBtnLabel }}</button>
+          <button onClick="{{ onExportAll }}" title="{{ t.exportAllTip }}" style="padding:6px 12px;border:1px solid #d6d3ca;border-radius:7px;background:#fff;font-size:13px;cursor:pointer" style-hover="background:#faf8f3">{{ exportAllLabel }}</button>
           <button onClick="{{ onRefresh }}" style="padding:6px 12px;border:1px solid #d6d3ca;border-radius:7px;background:#fff;font-size:13px;cursor:pointer" style-hover="background:#faf8f3">{{ t.refreshBtn }}</button>
           <button onClick="{{ doLogout }}" style="padding:6px 12px;border:1px solid transparent;border-radius:7px;background:transparent;color:#98958c;font-size:13px;cursor:pointer" style-hover="color:#1b1a17">{{ t.logout }}</button>
         </div>
@@ -818,7 +819,7 @@ const SERVER_MIN = '2026-09-09b';
 // screen, so anyone reporting a problem can read it off without opening anything — "it does
 // not load" is a very different report from someone on last week's page than from someone
 // on today's. Bump it with any change worth telling apart.
-const APP_VERSION = '2026-09-10f';
+const APP_VERSION = '2026-09-10g';
 // 분석 메모는 두 종류 / two kinds of note in analysis mode, told apart by colour: the
 // gold one is the admin's own remark and matches the rest of the sensemaking layer;
 // the slate one holds transcript, which is somebody else's words, not the admin's.
@@ -1058,6 +1059,8 @@ const I18N = {
       consentPdf: '동의서 PDF', consentPng: '동의서 이미지', consentPage: '{n} / {total} 쪽', consentLast: '마지막 장 — 서명용',
       step0: '참여자 로그인', loginTitle: '참여자 코드를 입력해 주세요', loginSub: '작업은 참여자 코드별로 자동 저장됩니다. 같은 코드로 다시 들어오면 이어서 할 수 있습니다.', start: '시작하기 →', continueAs: '이어서 하기', logout: '나가기',
       tabFlow: '규칙', tabGuard: '가드레일', tabCode: '코드',
+      exportAll: '모두 내보내기', exportAllBusy: '내보내는 중…',
+      exportAllTip: '참여자 전원의 워크플로 · 해석 메모 · 코딩 묶음을 md 와 json 으로 내려받기',
       codeNew: '새 코드 (폴더/이름)', codeAdd: '추가', codeNoFolder: '폴더 없음',
       codeApplyTip: '선택한 요소에 이 코드 걸기 / 다시 누르면 해제', codeOffTip: '눌러서 코드 고르기',
       codeBoxTip: '테두리를 눌러서 이 묶음 선택', codeDropTip: '이 코드 떼기',
@@ -1202,6 +1205,8 @@ const I18N = {
       consentPdf: 'Consent PDF', consentPng: 'Consent image', consentPage: 'Page {n} of {total}', consentLast: 'Last page — for signing',
       step0: 'Participant sign-in', loginTitle: 'Enter your participant code', loginSub: 'Work is saved automatically per participant code. Come back with the same code to continue where you left off.', start: 'Start →', continueAs: 'Continue as', logout: 'Exit',
       tabFlow: 'Rules', tabGuard: 'Guardrails', tabCode: 'Codes',
+      exportAll: 'Export all', exportAllBusy: 'Exporting…',
+      exportAllTip: 'Download every participant\u2019s workflow, analysis notes and coded clusters as md and json',
       codeNew: 'New code (folder/name)', codeAdd: 'Add', codeNoFolder: 'No folder',
       codeApplyTip: 'Code the current selection / press again to remove', codeOffTip: 'click to select this code',
       codeBoxTip: 'click the edge to select this set', codeDropTip: 'remove this code',
@@ -1232,7 +1237,7 @@ class Component extends DCLogic {
     super(props);
     this.state = { sync: '', step: 0, lang: 'ko', rules: [], pid: '', loginPid: '', cards: [], notes: [], arrows: [], arrowMode: false, pendingArrow: null, pen: null, strokes: [], selArrow: null, noteMode: false, noteKind: 'memo', panelOff: false, rosterMode: '', histWho: 'board', conflict: null, marked: '', senseDirty: false, recover: null, loading: null, importMsg: '', oldPage: false, txFail: false,
       codebook: [], codings: [], allCodings: [], codeFolder: '', codeMsg: '', codeSel: null,
-      findPick: {}, findHits: null, undoDepth: 0, focusNote: null, pan: { x: 0, y: 0 }, zoom: 1, ghost: null, seq: 1, panelW: panelCap(), sel: [], marquee: null, finish: null, tab: 'flow', hist: null, histList: [], travel: null, senseOn: true, admin: false, viewPid: '', roster: [], rosterMsg: '' };
+      findPick: {}, findHits: null, exporting: null, undoDepth: 0, focusNote: null, pan: { x: 0, y: 0 }, zoom: 1, ghost: null, seq: 1, panelW: panelCap(), sel: [], marquee: null, finish: null, tab: 'flow', hist: null, histList: [], travel: null, senseOn: true, admin: false, viewPid: '', roster: [], rosterMsg: '' };
     this.canvasRef = React.createRef();
     this.drag = null;
   }
@@ -2260,6 +2265,240 @@ class Component extends DCLogic {
 
   /* 해석 내려받기 / the analysis as a file she keeps. Everything else here depends on the
      sheet, the deployment, or somebody else's session; this does not. */
+  /* 전원을 한 벌로 / everyone in one bundle: a .md to read and a .json to compute over, from
+     one pass so they cannot disagree. 브라우저가 보드를 여는 그 경로 그대로 / it runs on the page
+     that already reaches the sheet, which a file opened from disk does not — the same JSONP
+     from a file:// page never gets an answer back. */
+  exportAll() {
+    if (this._exporting) return;
+    const url = this.syncUrl();
+    if (!url) return;
+    this._exporting = true;
+    this.setState({ exporting: 'start', rosterMsg: '' });
+    const get = (q, tries) => {
+      const n = tries === undefined ? 4 : tries;
+      return this.jsonp(q).then((r) => {
+        if (r && r.ok) return r;
+        if (n <= 1) return null;
+        return new Promise((go) => setTimeout(go, 900)).then(() => get(q, n - 1));
+      });
+    };
+    const dump = {};
+    let meta = [], codes = { codebook: [], codings: [] };
+    const one = (i, list) => {
+      if (i >= list.length) return Promise.resolve();
+      const pid = list[i].participant;
+      this.setState({ exporting: (i + 1) + '/' + list.length });
+      return Promise.all([
+        get('participant=' + encodeURIComponent(pid)),
+        get('participant=' + encodeURIComponent('sm:' + pid)),
+        get('participant=' + encodeURIComponent(TX_PREFIX + pid))
+      ]).then((r) => {
+        dump[pid] = {
+          board: r[0] && r[0].state ? r[0].state : null,
+          sense: r[1] && r[1].state ? r[1].state : null,
+          texts: (r[2] && r[2].state && r[2].state.texts) || {}
+        };
+        return one(i + 1, list);
+      });
+    };
+    Promise.all([get('list=1'), get('codes=all')]).then((r) => {
+      if (!r[0]) throw new Error('roster');
+      const list = (r[0].participants || []).filter((x) => !x.hidden);
+      meta = list.map((x) => ({ pid: x.participant, desc: x.desc || '', lastAt: x.lastAt }));
+      codes = { codebook: (r[1] && r[1].codebook) || [], codings: (r[1] && r[1].codings) || [] };
+      return one(0, list);
+    }).then(() => {
+      const shaped = this.exportShape(meta, dump, codes);
+      const stamp = new Date().toISOString().slice(0, 10);
+      this.saveText('workshop-export-' + stamp + '.md', this.exportMarkdown(shaped));
+      setTimeout(() => this.saveText('workshop-export-' + stamp + '.json',
+        JSON.stringify(shaped, null, 2)), 900);
+      this._exporting = false;
+      this.setState({ exporting: null });
+    }).catch((err) => {
+      /* 무엇이 잘못됐는지는 말해야 한다 / say WHAT went wrong. A bare catch turned a coding
+         mistake in the shaping into "목록을 불러오지 못했습니다", which sent me looking at the
+         network for a fault that was in this file. */
+      this._exporting = false;
+      try { console.error('[export]', err && err.stack ? err.stack : err); } catch (e) {}
+      this.setState({ exporting: null, rosterMsg: 'error' });
+    });
+  }
+
+  /* 자리가 곧 구조 / position IS the structure. 활동 태그는 왼쪽에서 오른쪽이 순서고, 카드는 자기
+     위의 태그에 속한다 — x 가 겹치고 y 가 아래. And a coded set is ONE thing: every code applied
+     to it belongs in the same block, because the set is what was selected and the codes are
+     what was said about it. Splitting them one row per code is the only way to lose that. */
+  exportShape(meta, dump, codes) {
+    const book = {};
+    (codes.codebook || []).forEach((c) => { if (!c.deleted) book[c.id] = c; });
+    const out = {
+      generatedAt: new Date().toISOString(), app: APP_VERSION,
+      codebook: (codes.codebook || []).filter((c) => !c.deleted)
+        .map((c) => ({ id: c.id, folder: c.folder || '', name: c.name })),
+      participants: []
+    };
+    meta.forEach((m) => {
+      const d = dump[m.pid];
+      if (!d) return;
+      const board = d.board || { cards: [], notes: [] };
+      const sense = d.sense || { cards: [], notes: [] };
+      const texts = d.texts || {};
+      const idx = {};
+      (board.cards || []).forEach((c) => { idx[c.id] = { kind: 'card', layer: 'board', o: c }; });
+      (board.notes || []).forEach((n) => { idx[n.id] = { kind: 'note', layer: 'board', o: n }; });
+      (sense.cards || []).forEach((c) => { idx[c.id] = { kind: 'card', layer: 'analysis', o: c }; });
+      (sense.notes || []).forEach((n) => { idx[n.id] = { kind: 'note', layer: 'analysis', o: n }; });
+      const say = (id) => {
+        const e = idx[id];
+        if (!e) return { id: id, missing: true, x: 0, y: 0 };
+        const o = e.o, r = { id: id, kind: e.kind, layer: e.layer, x: Math.round(o.x), y: Math.round(o.y) };
+        if (e.kind === 'card') {
+          r.type = o.type;
+          if (o.dia) r.diagram = o.dia;
+          r.title = o.title || '';
+          if (o.desc) r.desc = o.desc;
+        } else {
+          r.noteKind = o.kind || 'memo';
+          // 본문은 쪽지 안일 수도, tx 기록일 수도 / older records keep the body inline
+          r.text = (o.text && o.text.length) ? o.text : (texts[o.id] || '');
+          if (o.link) r.attachedTo = o.link;
+        }
+        if (e.layer === 'analysis') {
+          r.origin = o.src === 'p' ? 'copied-from-participant' : 'written-in-analysis';
+          if (o.of) r.copyOf = o.of;
+          r.editedInAnalysis = !!o.edited;
+        }
+        return r;
+      };
+      const own = (board.cards || []).filter((c) => !c.sm);
+      const tags = own.filter((c) => c.type === 'act').sort((a, b) => a.x - b.x || a.y - b.y);
+      const rest = own.filter((c) => c.type !== 'act');
+      const used = {};
+      const steps = tags.map((t, i) => {
+        const under = rest.filter((c) => !used[c.id] && c.x < t.x + TAG_W && (c.x + (c.w || CARD)) > t.x && c.y > t.y);
+        under.forEach((c) => { used[c.id] = 1; });
+        under.sort((a, b) => a.y - b.y || a.x - b.x);
+        return { order: i + 1, tag: say(t.id), cards: under.map((c) => say(c.id)) };
+      });
+      const loose = rest.filter((c) => !used[c.id]).sort((a, b) => a.y - b.y || a.x - b.x).map((c) => say(c.id));
+      const notes = (sense.notes || []).filter((n) => n.sm)
+        .sort((a, b) => a.y - b.y || a.x - b.x).map((n) => say(n.id));
+      const byset = {};
+      (codes.codings || []).forEach((g) => {
+        if (g.participant !== m.pid || g.deleted || !book[g.code]) return;
+        const live = (g.members || []).filter((id) => idx[id]);
+        if (!live.length) return;
+        const k = live.slice().sort().join(',');
+        (byset[k] || (byset[k] = { members: live, codes: [] })).codes.push(book[g.code]);
+      });
+      const clusters = Object.keys(byset).map((k) => {
+        const c = byset[k];
+        const mem = c.members.map(say).sort((a, b) => a.y - b.y || a.x - b.x);
+        let x0 = Infinity, y0 = Infinity;
+        mem.forEach((e) => { x0 = Math.min(x0, e.x); y0 = Math.min(y0, e.y); });
+        return {
+          codes: c.codes.map((z) => ({ folder: z.folder || '', name: z.name }))
+            .sort((a, b) => a.folder.localeCompare(b.folder) || a.name.localeCompare(b.name)),
+          at: { x: x0, y: y0 }, members: mem
+        };
+      }).sort((a, b) => a.at.y - b.at.y || a.at.x - b.at.x);
+      out.participants.push({
+        id: m.pid, label: m.desc || '', lastSavedAt: m.lastAt,
+        workflow: { steps: steps, unattachedCards: loose },
+        analysisNotes: notes, codedClusters: clusters
+      });
+    });
+    return out;
+  }
+
+  exportMarkdown(j) {
+    const L = [], esc = (v) => String(v == null ? '' : v).replace(/\r/g, '');
+    const quote = (v, ind) => esc(v).split('\n').map((x) => ind + x).join('\n');
+    L.push('# LLM 규칙 워크숍 — 전체 내보내기 / full export', '');
+    L.push('생성 / generated: ' + j.generatedAt + '  ·  참여자 / participants: ' + j.participants.length, '');
+    L.push('각 참여자는 세 부분입니다 / each participant has three parts: **워크플로** (what they built,');
+    L.push('activity tags left to right with the cards placed under each), **해석 메모** (the transcript');
+    L.push('and memo notes written over it), **코딩 묶음** (each coded set, held together, with every');
+    L.push('code applied to it). 코딩 묶음이 분석의 단위입니다 / a coded cluster is the unit of analysis:');
+    L.push('everything in one block was selected together and given those codes together.', '');
+    L.push('출처 / provenance: `copied` = duplicated from the participant into the analysis layer,');
+    L.push('`written` = written there, `edited` = its text changed after copying. Moving something');
+    L.push('does not count as an edit.', '');
+    L.push('## 코드북 / codebook', '');
+    const byF = {};
+    j.codebook.forEach((c) => {
+      const f = c.folder || '(no folder)';
+      (byF[f] = byF[f] || []).push(c.name);
+    });
+    Object.keys(byF).sort().forEach((f) => L.push('- **' + f + '** — ' + byF[f].join(', ')));
+    L.push('');
+    const line = (c) => {
+      const bits = ['`' + (c.type || c.kind) + '`'];
+      if (c.diagram) bits.push('diagram `' + c.diagram + '`');
+      if (c.origin) bits.push(c.origin === 'copied-from-participant' ? 'copied' : 'written');
+      if (c.editedInAnalysis) bits.push('**edited**');
+      const t = esc(c.title || '').trim();
+      return (t ? '**' + t + '**' : '_(제목 없음 / untitled)_') + '  _(' + bits.join(', ') + ')_';
+    };
+    j.participants.forEach((p) => {
+      L.push('---', '', '# ' + p.id + (p.label ? ' — ' + esc(p.label) : ''), '');
+      L.push('## 워크플로 / workflow', '');
+      p.workflow.steps.forEach((s) => {
+        L.push('### ' + s.order + '. ' + esc(s.tag.title) + '  _(활동 / activity tag)_');
+        if (s.tag.desc) L.push(quote(s.tag.desc, '> '));
+        L.push('');
+        if (!s.cards.length) L.push('_이 활동에는 카드가 없습니다 / no cards under this activity._');
+        s.cards.forEach((c) => { L.push('- ' + line(c)); if (c.desc) L.push(quote(c.desc, '  > ')); });
+        L.push('');
+      });
+      if (p.workflow.unattachedCards.length) {
+        L.push('### 어느 활동에도 붙지 않은 카드 / cards under no activity', '');
+        p.workflow.unattachedCards.forEach((c) => { L.push('- ' + line(c)); if (c.desc) L.push(quote(c.desc, '  > ')); });
+        L.push('');
+      }
+      if (p.analysisNotes.length) {
+        L.push('## 해석 메모 / analysis notes', '');
+        p.analysisNotes.forEach((n) => {
+          L.push('**[' + (n.noteKind === 'tx' ? '전사 / transcript' : '메모 / memo') + ']**' +
+            (n.attachedTo ? '  attached to `' + n.attachedTo + '`' : ''), '');
+          L.push(quote(n.text || '_(빈 메모 / empty)_', '> '), '');
+        });
+      }
+      L.push('## 코딩 묶음 / coded clusters — ' + p.codedClusters.length, '');
+      if (!p.codedClusters.length) L.push('_아직 코딩이 없습니다 / nothing coded yet._');
+      p.codedClusters.forEach((cl, i) => {
+        L.push('### 묶음 ' + (i + 1) + ' — ' +
+          cl.codes.map((c) => (c.folder ? c.folder + '/' : '') + c.name).join(' · '), '');
+        cl.members.forEach((mm) => {
+          if (mm.missing) { L.push('- _(사라진 요소 / no longer on the board: `' + mm.id + '`)_'); return; }
+          if (mm.kind === 'card') { L.push('- ' + line(mm)); if (mm.desc) L.push(quote(mm.desc, '  > ')); }
+          else {
+            const tg = [];
+            if (mm.origin) tg.push(mm.origin === 'copied-from-participant' ? 'copied' : 'written');
+            if (mm.editedInAnalysis) tg.push('**edited**');
+            L.push('- **[' + (mm.noteKind === 'tx' ? '전사 / transcript' : '메모 / memo') + ']**' +
+              (tg.length ? '  _(' + tg.join(', ') + ')_' : ''));
+            L.push(quote(mm.text || '_(빈 메모 / empty)_', '  > '));
+          }
+        });
+        L.push('');
+      });
+    });
+    return L.join('\n');
+  }
+
+  saveText(name, text) {
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(new Blob([text], { type: 'text/plain;charset=utf-8' }));
+    a.download = name;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(() => URL.revokeObjectURL(a.href), 5000);
+  }
+
   downloadSense() {
     const pid = this.state.viewPid;
     if (!pid) return;
@@ -4542,6 +4781,10 @@ class Component extends DCLogic {
         this.state.rosterMsg === 'nosnap' ? t.noSnap :
         this.state.rosterMode === 'hidden' && !(this.state.roster || []).some((r) => r.hidden) ? t.hiddenEmpty : '',
       hasRosterNote: !!this.state.rosterMsg || (this.state.rosterMode === 'hidden' && !(this.state.roster || []).some((r) => r.hidden)),
+      onExportAll: () => this.exportAll(),
+      exportAllLabel: this.state.exporting
+        ? (this.state.exporting === 'start' ? t.exportAllBusy : t.exportAllBusy + ' ' + this.state.exporting)
+        : t.exportAll,
       onRefresh: () => (this.state.viewPid ? this.openParticipant(this.state.viewPid) : this.refreshRoster()),
       showBack: viewing || this.state.step === 2,
       backLabel: viewing ? t.backList : t.prev,

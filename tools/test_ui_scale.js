@@ -823,6 +823,22 @@ console.log("\nthe loading gate");
      change colour with it, which a colour stored on the code at creation cannot do. */
   check(/codeColor\(c\) \{/.test(doc), "a code's colour is worked out, not stored");
 
+  /* 전원 내보내기는 앱 안에 있어야 한다 / the corpus export belongs IN the app. A page opened off
+     disk cannot get an answer from the sheet — the same JSONP from a file:// origin never
+     comes back — and a browser cannot write into a folder either way. */
+  check(/exportAll\(\) \{/.test(doc) && /\{\{ onExportAll \}\}/.test(doc),
+    "the roster can export every participant at once");
+  check(/exportShape\(meta, dump, codes\) \{/.test(doc) && /exportMarkdown\(j\) \{/.test(doc),
+    "producing both a shape to compute over and a document to read");
+  check(/\(byset\[k\] \|\| \(byset\[k\] = \{ members: live, codes: \[\] \}\)\)\.codes\.push\(book\[g\.code\]\);/.test(doc),
+    "with every code on one set kept in the same block");
+  check(/c\.x < t\.x \+ TAG_W && \(c\.x \+ \(c\.w \|\| CARD\)\) > t\.x && c\.y > t\.y/.test(doc),
+    "and a card filed under the activity tag it sits beneath");
+  check(/const n = tries === undefined \? 4 : tries;/.test(doc),
+    "every read retried, since this sheet drops one now and then");
+  check(/console\.error\('\[export\]'/.test(doc),
+    "and a mistake in the shaping says so rather than blaming the network");
+
   /* 탭 셋이 한 규칙을 써야 한다 / the three tabs must share one rule. 코드 was added later and
      brought its own palette — transparent when unselected against the others' #f1efe8, a
      different paper when selected, a different grey for its name, and a bottom rule the

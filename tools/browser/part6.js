@@ -522,4 +522,105 @@ module.exports = async function (browser) {
     await page.close();
   }
 
+
+
+  // ------------------------------------------------- exporting the whole corpus
+  /* 브라우저는 폴더에 파일을 쓸 수 없다 / a browser cannot write into a folder — it can only
+     download. 그래서 앱 안에 있어야 한다 / and it has to live in the APP, because the same JSONP
+     from a page opened off disk never gets an answer back: file:// is not the origin that
+     reaches the sheet. This is the button, and this is what it produces. */
+  say("\nexporting every participant as one corpus");
+  {
+    const EP = "https://script.google.com/macros/s/FAKE/exec";
+    const page = await browser.newPage({ viewport: { width: 1600, height: 1000 } });
+    const errors = [];
+    page.on("pageerror", (e) => errors.push(e.message));
+    // 내보내기가 조용히 실패하지 않게 / the export logs what it caught, so a mistake in the
+    // shaping does not surface as "could not read the roster"
+    const logs = [];
+    page.on("console", (m) => logs.push(m.text().slice(0, 300)));
+    const board = (pid, x) => ({
+      savedAt: Date.now(), pid: pid, step: 2, lang: "ko", rules: [],
+      cards: [
+        { id: "a2", type: "act", title: "두 번째 활동", desc: "", dia: null, collapsed: false, w: 352, x: 800, y: 100 },
+        { id: "a1", type: "act", title: "첫 번째 활동", desc: "", dia: null, collapsed: false, w: 352, x: 100, y: 100 },
+        { id: "u1", type: "con", title: "질문 제안", desc: "도움이 될 질문을 던진다", dia: "h_ask", collapsed: false, w: 168, x: 120, y: 300 },
+      ],
+      notes: [], arrows: [], seq: 9, panelW: 566,
+    });
+    const analysis = {
+      savedAt: Date.now(), pid: "sm:P9", step: 2, lang: "ko", rules: [],
+      cards: [{ id: "s1", type: "con", title: "질문 제안", desc: "고친 설명", dia: "h_ask",
+                collapsed: false, w: 168, x: 900, y: 400, sm: true, src: "p", of: "u1", edited: true }],
+      notes: [{ id: "n1", x: 900, y: 600, text: "", kind: "tx", sm: true, src: "a" }],
+      arrows: [], strokes: [], seq: 20,
+    };
+    const { srv } = await realServer(page, {
+      seed: (s) => {
+        s.post({ participant: "P9", kind: "autosave", payload: { participant: "P9", state: board("P9") } });
+        s.post({ participant: "sm:P9", kind: "sensemaking", payload: { participant: "sm:P9", state: analysis } });
+        s.post({ participant: "tx:P9", kind: "transcript",
+                 payload: { participant: "tx:P9", state: { texts: { n1: "참여자가 말한 것" }, cards: [] } } });
+        s.post({ kind: "code", id: "k1", name: "ease-desirable", folder: "friction", color: "", deleted: false });
+        s.post({ kind: "code", id: "k2", name: "commitment", folder: "value", color: "", deleted: false });
+        s.post({ kind: "coding", id: "g1", participant: "P9", name: "k1", members: ["s1", "n1"], deleted: false });
+        s.post({ kind: "coding", id: "g2", participant: "P9", name: "k2", members: ["n1", "s1"], deleted: false });
+      },
+    });
+    // 내려받기를 가로챈다 / catch the download instead of writing it anywhere
+    await page.exposeFunction("__grab", (name, text) => { (page.__files = page.__files || {})[name] = text; });
+    await page.addInitScript(() => {
+      const realCreate = document.createElement.bind(document);
+      document.createElement = (tag) => {
+        const el = realCreate(tag);
+        if (String(tag).toLowerCase() === "a") {
+          const realClick = el.click.bind(el);
+          el.click = function () {
+            if (this.download && this.href && this.href.startsWith("blob:")) {
+              fetch(this.href).then((r) => r.text()).then((t) => window.__grab(this.download, t));
+              return;
+            }
+            return realClick();
+          };
+        }
+        return el;
+      };
+    });
+    await page.goto(APP + "?sync=" + encodeURIComponent(EP), { waitUntil: "load", timeout: 120000 });
+    await page.waitForSelector('input[placeholder="P0000"]', { timeout: 120000 });
+    await page.fill('input[placeholder="P0000"]', "admin");
+    await page.getByText("시작하기", { exact: false }).click();
+    await page.waitForTimeout(1200);
+    check(await page.evaluate(() => document.body.innerText.includes("모두 내보내기")),
+      "the roster offers an export of everyone");
+    await page.getByText("모두 내보내기", { exact: true }).click();
+    await page.waitForTimeout(4000);
+    const files = page.__files || {};
+    const names = Object.keys(files);
+    check(names.some((n) => n.endsWith(".md")) && names.some((n) => n.endsWith(".json")),
+      "pressing it produces both files", ` (${names.join(", ")})`);
+    const md = files[names.find((n) => n.endsWith(".md"))] || "";
+    const js = JSON.parse(files[names.find((n) => n.endsWith(".json"))] || "{}");
+    // 자리가 곧 순서 / the tags come out in the order they were laid, not the order they were stored
+    check(md.indexOf("첫 번째 활동") < md.indexOf("두 번째 활동"),
+      "activity tags come out left to right, not in storage order");
+    check(/### 1\. 첫 번째 활동/.test(md), "numbered as steps");
+    check(md.includes("- **질문 제안**  _(`con`, diagram `h_ask`)_"),
+      "a card keeps its type and its diagram");
+    check(/묶음 1 — friction\/ease-desirable · value\/commitment/.test(md),
+      "both codes on one set stay in ONE block", ` (${(md.match(/### 묶음[^\n]*/) || [""])[0]})`);
+    check(md.includes("참여자가 말한 것"), "and the transcript body is in it, pulled from the tx record");
+    check(/copied, \*\*edited\*\*/.test(md), "with provenance kept — copied, and edited after copying");
+    const p = js.participants[0];
+    check(p.codedClusters.length === 1 && p.codedClusters[0].codes.length === 2,
+      "the json says the same: one cluster, two codes",
+      ` (${p.codedClusters.length} clusters)`);
+    check(p.codedClusters[0].members.map((m) => m.id).join(",") === "s1,n1",
+      "members ordered by position", ` (${p.codedClusters[0].members.map((m) => m.id).join(",")})`);
+    check(!logs.some((l) => l.indexOf("[export]") === 0), "and nothing was caught on the way",
+      ` (${logs.filter((l) => l.indexOf("[export]") === 0)[0] || ""})`);
+    check(errors.length === 0, "no console errors", errors.length ? ` (${errors[0]})` : "");
+    await page.close();
+  }
+
 };
