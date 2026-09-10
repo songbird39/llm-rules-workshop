@@ -338,6 +338,11 @@
 
       <sc-if value="{{ showCodes }}" hint-placeholder-val="{{ false }}">
       <div style="padding:14px 16px 10px;display:flex;flex-direction:column;gap:10px">
+        <!-- 합칠 것이 있을 때만 / only when there IS something to merge, so the button is a
+             statement about this codebook rather than a permanent offer -->
+        <sc-if value="{{ canMergeCodes }}" hint-placeholder-val="{{ false }}">
+          <button onClick="{{ onMergeCodes }}" title="{{ t.mergeCodesTip }}" style="padding:7px 10px;border:1px dashed oklch(0.52 0.14 250);border-radius:8px;background:#f2f5fb;color:oklch(0.40 0.14 250);font-size:12.5px;font-weight:600;cursor:pointer;text-align:left" style-hover="background:#e8eef8">{{ mergeCodesLabel }}</button>
+        </sc-if>
         <div style="display:flex;gap:6px">
           <input value="{{ codeDraft }}" onChange="{{ onCodeDraft }}" onKeyDown="{{ onCodeKey }}" placeholder="{{ t.codeNew }}" style="flex:1;min-width:0;padding:7px 10px;border:1px solid #dedbd3;border-radius:8px;background:#fdfcf9;font-size:13px;outline:none;font-family:inherit" style-focus="border-color:oklch(0.51 0.08 253)" />
           <button onClick="{{ onCodeAdd }}" style="padding:7px 12px;border:1px solid transparent;border-radius:8px;background:#1b1a17;color:#faf8f3;font-size:13px;cursor:pointer">{{ t.codeAdd }}</button>
@@ -819,7 +824,7 @@ const SERVER_MIN = '2026-09-09b';
 // screen, so anyone reporting a problem can read it off without opening anything — "it does
 // not load" is a very different report from someone on last week's page than from someone
 // on today's. Bump it with any change worth telling apart.
-const APP_VERSION = '2026-09-10h';
+const APP_VERSION = '2026-09-10i';
 // 분석 메모는 두 종류 / two kinds of note in analysis mode, told apart by colour: the
 // gold one is the admin's own remark and matches the rest of the sensemaking layer;
 // the slate one holds transcript, which is somebody else's words, not the admin's.
@@ -1062,6 +1067,9 @@ const I18N = {
       exportAll: '모두 내보내기', exportAllBusy: '내보내는 중…',
       exportAllTip: '참여자 전원의 워크플로 · 해석 메모 · 코딩 묶음을 md 와 json 으로 내려받기',
       codeNew: '새 코드 (폴더/이름)', codeAdd: '추가', codeNoFolder: '폴더 없음',
+      mergeCodesBtn: '같은 이름 합치기',
+      mergeCodesTip: '이름과 폴더가 같은 코드를 하나로 합칩니다. 코딩은 남는 코드로 옮겨집니다.',
+      mergeCodesBody: '이름이 같은 코드 %n쌍을 합칩니다 (%names). 코딩 %m건이 남는 코드로 옮겨지고, 이미 같은 묶음에 둘 다 걸려 있던 %d건은 하나로 합쳐집니다. 시트의 행은 지워지지 않습니다. 계속할까요?',
       codeApplyTip: '선택한 요소에 이 코드 걸기 / 다시 누르면 해제', codeOffTip: '눌러서 코드 고르기',
       codeBoxTip: '테두리를 눌러서 이 묶음 선택', codeDropTip: '이 코드 떼기',
       codeNoSel: '먼저 보드에서 요소를 선택해 주세요.',
@@ -1208,6 +1216,9 @@ const I18N = {
       exportAll: 'Export all', exportAllBusy: 'Exporting…',
       exportAllTip: 'Download every participant\u2019s workflow, analysis notes and coded clusters as md and json',
       codeNew: 'New code (folder/name)', codeAdd: 'Add', codeNoFolder: 'No folder',
+      mergeCodesBtn: 'Merge same names',
+      mergeCodesTip: 'Merge codes that share a folder and a name; their codings move to the one that stays.',
+      mergeCodesBody: 'Merge %n pair(s) of identically named codes (%names). %m codings move to the code that stays, and %d that already carried both on one set collapse into one. No row on the sheet is erased. Continue?',
       codeApplyTip: 'Code the current selection / press again to remove', codeOffTip: 'click to select this code',
       codeBoxTip: 'click the edge to select this set', codeDropTip: 'remove this code',
       codeNoSel: 'Select something on the board first.',
@@ -2636,10 +2647,16 @@ class Component extends DCLogic {
 
   putCoding(g) {
     const url = this.syncUrl();
+    /* 열려 있는 참여자의 것만 이 보드에 / only the OPEN participant's codings belong in the list
+       that draws this board. Member ids are unique within a participant, not across them —
+       "s126" exists on several boards — so letting another participant's coding in here can
+       draw a region around whatever happens to share those ids. Harmless until something
+       writes codings for someone else, which merging codes does. */
+    const mine = !g.participant || g.participant === this.state.viewPid;
     this.setState((st) => {
       const drop = (l) => (l || []).filter((c) => c.id !== g.id);
       return {
-        codings: g.deleted ? drop(st.codings) : drop(st.codings).concat([g]),
+        codings: mine ? (g.deleted ? drop(st.codings) : drop(st.codings).concat([g])) : st.codings,
         allCodings: g.deleted ? drop(st.allCodings) : drop(st.allCodings).concat([g])
       };
     });
@@ -2654,6 +2671,67 @@ class Component extends DCLogic {
         })
       });
     } catch (e) {}
+  }
+
+  /* 이름이 같은 코드 / codes with the same name. 폴더까지 같아야 같은 것 / the folder is part of the
+     name — value/transfer and bloom/transfer are two different readings that happen to share
+     a word, and collapsing those would erase the dimension the folder exists to mark. */
+  codeDupes() {
+    const by = {};
+    (this.state.codebook || []).forEach((c) => {
+      const k = (c.folder || '').trim() + '/' + (c.name || '').trim();
+      (by[k] || (by[k] = [])).push(c);
+    });
+    return Object.keys(by).map((k) => by[k]).filter((g) => g.length > 1);
+  }
+
+  /* 합치기 / merge them. 많이 쓰인 쪽을 남긴다 / the one that STAYS is the one used most, so the
+     fewest codings have to be rewritten; ties go to whichever was made first.
+     한 묶음이 둘 다 달고 있었다면 하나로 / where a set already carried both, the second is not
+     re-pointed but removed: a set cannot carry the same code twice, and the app treats a
+     repeat as a toggle rather than a duplicate. That is not a loss — it was one reading
+     recorded twice. */
+  mergeCodes() {
+    if (!this.state.admin) return;
+    const groups = this.codeDupes();
+    if (!groups.length) return;
+    const L = I18N[this.state.lang] || I18N.ko;
+    const all = (this.state.allCodings || []).filter((g) => !g.deleted);
+    const count = {};
+    all.forEach((g) => { count[g.code] = (count[g.code] || 0) + 1; });
+    let moved = 0, dropped = 0;
+    const plan = groups.map((g) => {
+      const ordered = g.slice().sort((a, b) => (count[b.id] || 0) - (count[a.id] || 0) ||
+        String(a.at || '').localeCompare(String(b.at || '')));
+      return { keep: ordered[0], losers: ordered.slice(1) };
+    });
+    const setKey = (x) => x.participant + '|' + (x.members || []).slice().sort().join(',');
+    plan.forEach((pl) => {
+      const held = {};
+      all.forEach((x) => { if (x.code === pl.keep.id) held[setKey(x)] = 1; });
+      pl.losers.forEach((l) => {
+        all.forEach((x) => {
+          if (x.code !== l.id) return;
+          if (held[setKey(x)]) dropped++; else { held[setKey(x)] = 1; moved++; }
+        });
+      });
+    });
+    const names = plan.map((pl) => (pl.keep.folder ? pl.keep.folder + '/' : '') + pl.keep.name).join(', ');
+    if (!window.confirm(L.ui.mergeCodesBody.replace('%n', plan.length)
+      .replace('%names', names).replace('%m', moved).replace('%d', dropped))) return;
+    plan.forEach((pl) => {
+      const held = {};
+      all.forEach((x) => { if (x.code === pl.keep.id) held[setKey(x)] = 1; });
+      pl.losers.forEach((l) => {
+        all.forEach((x) => {
+          if (x.code !== l.id) return;
+          if (held[setKey(x)]) { this.putCoding(Object.assign({}, x, { deleted: true })); return; }
+          held[setKey(x)] = 1;
+          this.putCoding(Object.assign({}, x, { code: pl.keep.id }));
+        });
+        this.putCode(Object.assign({}, l, { deleted: true }));
+      });
+    });
   }
 
   // 선택한 것들에 코드를 건다 / put a code on what is selected. 같은 묶음에 같은 코드를 두 번
@@ -4872,6 +4950,9 @@ class Component extends DCLogic {
         onOpen: () => this.openParticipant(r.pid)
       })),
       showCodes: this.state.tab === 'code' && viewing,
+      onMergeCodes: () => this.mergeCodes(),
+      canMergeCodes: !!this.state.admin && this.codeDupes().length > 0,
+      mergeCodesLabel: t.mergeCodesBtn + ' (' + this.codeDupes().length + ')',
       // 탭이 있느냐와 덱을 접을 수 있느냐는 다른 질문 / whether the tab exists and whether the
       // deck can be folded are two questions, and they were riding on one flag
       hasCodeTab: viewing,

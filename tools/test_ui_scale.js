@@ -823,6 +823,24 @@ console.log("\nthe loading gate");
      change colour with it, which a colour stored on the code at creation cannot do. */
   check(/codeColor\(c\) \{/.test(doc), "a code's colour is worked out, not stored");
 
+  /* 이름이 같은 코드는 한 코드 / two codes with the same name in the same folder are one code.
+     폴더까지 같아야 한다 / the folder is part of the name — value/transfer and bloom/transfer are
+     two readings that share a word, and collapsing those erases the dimension the folder is
+     there to mark. */
+  check(/const k = \(c\.folder \|\| ''\)\.trim\(\) \+ '\/' \+ \(c\.name \|\| ''\)\.trim\(\);/.test(doc),
+    "codes count as identical only when the folder matches too");
+  check(/\(count\[b\.id\] \|\| 0\) - \(count\[a\.id\] \|\| 0\)/.test(doc),
+    "the most-used one is the one that stays, so the fewest codings are rewritten");
+  check(/if \(held\[setKey\(x\)\]\) \{ this\.putCoding\(Object\.assign\(\{\}, x, \{ deleted: true \}\)\); return; \}/.test(doc),
+    "a set that already carried the survivor collapses instead of carrying it twice");
+  check(/setKey = \(x\) => x\.participant \+ '\|'/.test(doc),
+    "and a set is identified per participant, since member ids repeat across boards");
+  /* 남의 코딩이 이 보드에 들어오면 안 된다 / another participant's coding must not enter the list
+     that draws this board — "s126" exists on several boards, so it would draw a region
+     around whatever happens to share those ids. */
+  check(/const mine = !g\.participant \|\| g\.participant === this\.state\.viewPid;/.test(doc),
+    "writing a coding for someone else does not add it to the open board");
+
   /* 전원 내보내기는 앱 안에 있어야 한다 / the corpus export belongs IN the app. A page opened off
      disk cannot get an answer from the sheet — the same JSONP from a file:// origin never
      comes back — and a browser cannot write into a folder either way. */

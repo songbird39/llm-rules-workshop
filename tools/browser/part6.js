@@ -643,4 +643,101 @@ module.exports = async function (browser) {
     await page.close();
   }
 
+
+
+  // ------------------------------------------ merging codes that share a name
+  /* 같은 이름 코드가 둘이면 한 코드다 / two codes with the same name in the same folder are one
+     code, and reading them apart splits a count that belongs together. 합치되 아무것도 잃지
+     않아야 한다 / merging must lose nothing: every coding follows to the code that stays,
+     including codings belonging to OTHER participants, and a set that already carried both
+     collapses rather than carrying the same code twice. */
+  say("\nmerging codes that share a name");
+  {
+    const EP = "https://script.google.com/macros/s/FAKE/exec";
+    const page = await browser.newPage({ viewport: { width: 1700, height: 1000 } });
+    const errors = [];
+    page.on("pageerror", (e) => errors.push(e.message));
+    const analysis = {
+      savedAt: Date.now(), pid: "sm:P9", step: 2, lang: "ko", rules: [],
+      cards: [
+        { id: "s1", type: "con", title: "하나", desc: "", dia: null, collapsed: false,
+          w: 168, x: 200, y: 200, sm: true, src: "a" },
+        { id: "s2", type: "con", title: "둘", desc: "", dia: null, collapsed: false,
+          w: 168, x: 600, y: 200, sm: true, src: "a" },
+      ],
+      notes: [], arrows: [], strokes: [], seq: 30,
+    };
+    const { srv } = await realServer(page, {
+      seed: (s) => {
+        s.post({ participant: "P9", kind: "autosave", payload: { participant: "P9", state: {
+          savedAt: Date.now(), pid: "P9", step: 2, lang: "ko", rules: [],
+          cards: [], notes: [], arrows: [], seq: 9, panelW: 566 } } });
+        s.post({ participant: "sm:P9", kind: "sensemaking", payload: { participant: "sm:P9", state: analysis } });
+        // 같은 폴더 같은 이름 둘 / two with the same folder AND name; k2 is used more
+        s.post({ kind: "code", id: "k1", name: "transfer", folder: "value", color: "", deleted: false });
+        s.post({ kind: "code", id: "k2", name: "transfer", folder: "value", color: "", deleted: false });
+        // 이름만 같고 폴더가 다른 것은 건드리면 안 된다 / same name, different folder — must NOT merge
+        s.post({ kind: "code", id: "k3", name: "transfer", folder: "bloom", color: "", deleted: false });
+        // k2 를 더 많이 썼다 (4 대 3) / k2 is the more used of the pair — four codings to three —
+        // so it is the one that should stay, and the fewest rows have to be rewritten
+        s.post({ kind: "coding", id: "g1", participant: "P9", name: "k2", members: ["s1"], deleted: false });
+        s.post({ kind: "coding", id: "g2", participant: "P9", name: "k2", members: ["s2"], deleted: false });
+        s.post({ kind: "coding", id: "g6", participant: "P9", name: "k2", members: ["s1", "s2"], deleted: false });
+        s.post({ kind: "coding", id: "g7", participant: "P4", name: "k2", members: ["s2"], deleted: false });
+        // 이미 k2 가 걸린 묶음들이라 합쳐진다 / these two sets already carry k2, so they collapse
+        s.post({ kind: "coding", id: "g3", participant: "P9", name: "k1", members: ["s2", "s1"], deleted: false });
+        s.post({ kind: "coding", id: "g4", participant: "P9", name: "k1", members: ["s1"], deleted: false });
+        // 다른 참여자의 것은 옮겨져야 한다 / another participant's must MOVE, not collapse
+        s.post({ kind: "coding", id: "g5", participant: "P4", name: "k1", members: ["s1"], deleted: false });
+      },
+    });
+    await page.goto(APP + "?sync=" + encodeURIComponent(EP), { waitUntil: "load", timeout: 120000 });
+    await page.waitForSelector('input[placeholder="P0000"]', { timeout: 120000 });
+    await page.fill('input[placeholder="P0000"]', "admin");
+    await page.getByText("시작하기", { exact: false }).click();
+    await page.waitForTimeout(900);
+    await page.getByText("P9", { exact: true }).first().click();
+    await page.waitForTimeout(2500);
+    await page.getByText("코드", { exact: true }).click();
+    await page.waitForTimeout(600);
+    const named = () => srv.get({ codes: "all" }).codebook.filter((c) => !c.deleted && c.name === "transfer");
+    check(named().length === 3, "three codes named transfer to start with", ` (${named().length})`);
+    check(await page.evaluate(() => document.body.innerText.includes("같은 이름 합치기 (1)")),
+      "the codebook offers to merge one pair — not the one in another folder",
+      ` (${await page.evaluate(() => (document.body.innerText.match(/같은 이름 합치기[^\n]*/) || [""])[0])})`);
+    let asked = "";
+    page.once("dialog", (d) => { asked = d.message(); d.accept(); });
+    await page.getByText("같은 이름 합치기", { exact: false }).click();
+    await page.waitForTimeout(1800);
+    check(/value\/transfer/.test(asked) && /1/.test(asked),
+      "it says what it will merge before doing it", ` (${asked.slice(0, 90)})`);
+    const book = srv.get({ codes: "all" }).codebook.filter((c) => !c.deleted);
+    const transfers = book.filter((c) => c.name === "transfer");
+    check(transfers.length === 2, "one of the pair is gone, the other folder untouched",
+      ` (${transfers.map((c) => c.folder + "/" + c.id).join(", ")})`);
+    check(transfers.some((c) => c.id === "k2") && transfers.some((c) => c.id === "k3"),
+      "and the one that stays is the one that was used more",
+      ` (${transfers.map((c) => c.id).join(",")})`);
+    const cods = srv.get({ codes: "all" }).codings.filter((g) => !g.deleted);
+    check(!cods.some((g) => g.code === "k1"), "no coding still points at the merged-away code",
+      ` (${cods.filter((g) => g.code === "k1").length} left)`);
+    const g5 = cods.find((g) => g.id === "g5");
+    check(g5 && g5.code === "k2" && g5.participant === "P4",
+      "a coding moves across, and stays with its own participant",
+      g5 ? ` (${g5.participant}/${g5.code})` : " (LOST)");
+    check(!cods.some((g) => g.id === "g3") && !cods.some((g) => g.id === "g4"),
+      "while sets that already carried the survivor collapse rather than doubling it",
+      ` (${["g3", "g4"].filter((id) => cods.some((g) => g.id === id)).join(",") || "both gone"})`);
+    check(cods.filter((g) => g.participant === "P9").length === 3,
+      "leaving one coding per distinct set", ` (${cods.filter((g) => g.participant === "P9").length})`);
+    // 남의 코딩이 이 보드에 그려지면 안 된다 / and it must not have leaked onto this board
+    check((await page.evaluate(() => window.__wsDiag().codings)).length === 3,
+      "the open board still shows only its own codings, not P4's",
+      ` (${JSON.stringify(await page.evaluate(() => window.__wsDiag().codings))})`);
+    check(!(await page.evaluate(() => document.body.innerText.includes("같은 이름 합치기"))),
+      "the offer goes once there is nothing left to merge");
+    check(errors.length === 0, "no console errors", errors.length ? ` (${errors[0]})` : "");
+    await page.close();
+  }
+
 };
